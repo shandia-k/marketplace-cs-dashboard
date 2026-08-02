@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAM Stress Test Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0c10;
+      --card-bg: #12161f;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #00f2ff;
+      --accent-purple: #7000ff;
+      --accent-danger: #ff0055;
+      --accent-warning: #ffaa00;
+      --accent-success: #00ff88;
+      --text-main: #f0f4f8;
+      --text-muted: #8892b0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(112, 0, 255, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.08) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    header {
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Main Gauge Stat */
+    .stat-huge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Meter Progress Bar */
+    .meter-container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 99px;
+      height: 12px;
+      overflow: hidden;
+      margin: 16px 0;
+      position: relative;
+    }
+
+    .meter-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 99px;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+
+    .meter-bar.warning {
+      background: linear-gradient(90deg, var(--accent-warning), var(--accent-danger));
+    }
+
+    /* Controls */
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-cyan {
+      background: rgba(0, 242, 255, 0.1);
+      border-color: rgba(0, 242, 255, 0.3);
+      color: var(--accent-cyan);
+    }
+    .btn-cyan:hover {
+      background: rgba(0, 242, 255, 0.2);
+    }
+
+    .btn-purple {
+      background: rgba(112, 0, 255, 0.15);
+      border-color: rgba(112, 0, 255, 0.4);
+      color: #b877ff;
+    }
+    .btn-purple:hover {
+      background: rgba(112, 0, 255, 0.3);
+    }
+
+    .btn-danger {
+      background: rgba(255, 0, 85, 0.15);
+      border-color: rgba(255, 0, 85, 0.4);
+      color: var(--accent-danger);
+      grid-column: span 2;
+    }
+    .btn-danger:hover {
+      background: rgba(255, 0, 85, 0.3);
+    }
+
+    .btn-auto {
+      grid-column: span 2;
+      background: rgba(255, 170, 0, 0.15);
+      border-color: rgba(255, 170, 0, 0.3);
+      color: var(--accent-warning);
+    }
+    .btn-auto:hover {
+      background: rgba(255, 170, 0, 0.25);
+    }
+
+    /* Details List */
+    .info-list {
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .info-item:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+    }
+
+    .info-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    /* Terminal Console Log */
+    .console-card {
+      grid-column: 1 / -1;
+    }
+
+    .console {
+      background: #050608;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-line {
+      line-height: 1.4;
+      display: flex;
+      gap: 10px;
+    }
+
+    .log-time {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: #c0caf5;
+    }
+
+    .log-msg.alloc { color: var(--accent-cyan); }
+    .log-msg.free  { color: var(--accent-success); }
+    .log-msg.warn  { color: var(--accent-warning); }
+    .log-msg.error { color: var(--accent-danger); }
+
+    /* Scrollbar */
+    .console::-webkit-scrollbar {
+      width: 4px;
+    }
+    .console::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>⚡ RAM Stress Test Tool</h1>
+      <p>Alat penguji alokasi memori RAM browser & Electron untuk simulasi beban kerja CS Dashboard</p>
+    </header>
+
+    <div class="grid">
+      <!-- Card 1: Main Status -->
+      <div class="card">
+        <div class="card-title">
+          <span>Alokasi Memori Aktif</span>
+          <span id="alloc-count-badge" style="color: var(--accent-cyan)">0 Chunks</span>
+        </div>
+        <div class="stat-huge" id="stat-allocated">0 MB</div>
+        <div class="meter-container">
+          <div class="meter-bar" id="meter-bar"></div>
+        </div>
+        <div class="stat-sub" id="stat-target-info">Target alokasi dapat diatur secara manual di bawah</div>
+      </div>
+
+      <!-- Card 2: Controls -->
+      <div class="card">
+        <div class="card-title">Kontrol Alokasi RAM</div>
+        <div class="button-grid">
+          <button class="btn btn-cyan" onclick="allocateRAM(50)">+ 50 MB</button>
+          <button class="btn btn-cyan" onclick="allocateRAM(100)">+ 100 MB</button>
+          <button class="btn btn-purple" onclick="allocateRAM(250)">+ 250 MB</button>
+          <button class="btn btn-purple" onclick="allocateRAM(500)">+ 500 MB</button>
+          <button class="btn btn-auto" id="btn-auto" onclick="toggleAutoRamp()">▶ Mulai Auto Stress (+50MB/dtk)</button>
+          <button class="btn btn-danger" onclick="freeRAM()">🗑️ Kosongkan Semua RAM (Free Memory)</button>
+        </div>
+      </div>
+
+      <!-- Card 3: System Heap Metrics -->
+      <div class="card">
+        <div class="card-title">Chrome / Electron Heap Stats</div>
+        <ul class="info-list">
+          <li class="info-item">
+            <span class="info-label">JS Heap Size Used:</span>
+            <span class="info-value" id="heap-used">-</span>
+          </li>
+          <li class="info-item">
+            <span class="info-label">Total JS Heap Size:</span>
+            <span class="info-value" id="heap-total">-</span>
+          </li>
+          <li class="info-item">
+            <span class="info-label">JS Heap Size Limit:</span>
+            <span class="info-value" id="heap-limit">-</span>
+          </li>
+          <li class="info-item">
+            <span class="info-label">Garbage Collection:</span>
+            <span class="info-value" id="gc-status" style="color: var(--accent-success)">Aktif (Auto)</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Console Log -->
+      <div class="card console-card">
+        <div class="card-title">
+          <span>Activity Console Log</span>
+          <span style="cursor: pointer; color: var(--text-muted)" onclick="clearLog()">Clear Log</span>
+        </div>
+        <div class="console" id="console"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Storage array to retain allocated memory in heap
+    let memoryBlocks = [];
+    let totalAllocatedMB = 0;
+    let autoInterval = null;
+
+    const statAllocated = document.getElementById('stat-allocated');
+    const allocBadge = document.getElementById('alloc-count-badge');
+    const meterBar = document.getElementById('meter-bar');
+    const consoleEl = document.getElementById('console');
+    const btnAuto = document.getElementById('btn-auto');
+
+    function log(msg, type = 'info') {
+      const now = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      div.innerHTML = `<span class="log-time">[${now}]</span><span class="log-msg ${type}">${msg}</span>`;
+      consoleEl.appendChild(div);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearLog() {
+      consoleEl.innerHTML = '';
+      log('Console log dibersihkan.');
+    }
+
+    // Allocate memory using ArrayBuffer (1 MB = 1,048,576 bytes)
+    function allocateRAM(mb) {
+      try {
+        const bytesPerMB = 1024 * 1024;
+        // Allocate typed array and fill it to force physical memory commit
+        const buffer = new Uint8Array(mb * bytesPerMB);
+        for (let i = 0; i < buffer.length; i += 4096) {
+          buffer[i] = Math.floor(Math.random() * 256); // Touch memory pages
+        }
+
+        memoryBlocks.push(buffer);
+        totalAllocatedMB += mb;
+
+        updateUI();
+        log(`Alokasi berhasi: +${mb} MB (Total: ${totalAllocatedMB} MB)`, 'alloc');
+      } catch (err) {
+        log(`Gagal mengalokasikan ${mb} MB! Memori penuh atau Out of Memory (OOM). Error: ${err.message}`, 'error');
+        stopAutoRamp();
+      }
+    }
+
+    // Free memory blocks
+    function freeRAM() {
+      stopAutoRamp();
+      const freed = totalAllocatedMB;
+      memoryBlocks = []; // Clear array reference
+      totalAllocatedMB = 0;
+
+      updateUI();
+      log(`Semua memori dilepaskan (${freed} MB dibebaskan). Menunggu Garbage Collection...`, 'free');
+    }
+
+    function toggleAutoRamp() {
+      if (autoInterval) {
+        stopAutoRamp();
+      } else {
+        log('Memulai tes otomatis: menambah 50 MB setiap detik...', 'warn');
+        btnAuto.textContent = '⏹ Stop Auto Stress Test';
+        btnAuto.style.background = 'rgba(255, 0, 85, 0.2)';
+        btnAuto.style.borderColor = 'rgba(255, 0, 85, 0.4)';
+        btnAuto.style.color = 'var(--accent-danger)';
+
+        autoInterval = setInterval(() => {
+          allocateRAM(50);
+          if (totalAllocatedMB >= 3000) { // Limit auto ramp to 3GB for safety
+            log('Mencapai batas keamanan auto-ramp (3 GB). Tes dihentikan otomatis.', 'warn');
+            stopAutoRamp();
+          }
+        }, 1000);
+      }
+    }
+
+    function stopAutoRamp() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btnAuto.textContent = '▶ Mulai Auto Stress (+50MB/dtk)';
+        btnAuto.style.background = 'rgba(255, 170, 0, 0.15)';
+        btnAuto.style.borderColor = 'rgba(255, 170, 0, 0.3)';
+        btnAuto.style.color = 'var(--accent-warning)';
+        log('Auto stress test dihentikan.');
+      }
+    }
+
+    function updateUI() {
+      statAllocated.textContent = totalAllocatedMB >= 1000 
+        ? `${(totalAllocatedMB / 1024).toFixed(2)} GB` 
+        : `${totalAllocatedMB} MB`;
+
+      allocBadge.textContent = `${memoryBlocks.length} Chunks`;
+
+      // Percentage out of 2 GB reference
+      const pct = Math.min(100, (totalAllocatedMB / 2048) * 100);
+      meterBar.style.width = `${pct}%`;
+
+      if (totalAllocatedMB > 1500) {
+        meterBar.classList.add('warning');
+      } else {
+        meterBar.classList.remove('warning');
+      }
+    }
+
+    // Monitor performance.memory API
+    function updateHeapMetrics() {
+      if (window.performance && window.performance.memory) {
+        const mem = window.performance.memory;
+        const usedMB = (mem.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+        const totalMB = (mem.totalJSHeapSize / (1024 * 1024)).toFixed(1);
+        const limitMB = (mem.jsHeapSizeLimit / (1024 * 1024)).toFixed(1);
+
+        document.getElementById('heap-used').textContent = `${usedMB} MB`;
+        document.getElementById('heap-total').textContent = `${totalMB} MB`;
+        document.getElementById('heap-limit').textContent = `${limitMB} MB`;
+      } else {
+        document.getElementById('heap-used').textContent = 'N/A (Non-Chromium)';
+        document.getElementById('heap-total').textContent = 'N/A';
+        document.getElementById('heap-limit').textContent = 'N/A';
+      }
+    }
+
+    // Initial setup
+    log('Alat penguji RAM siap digunakan.');
+    updateHeapMetrics();
+    setInterval(updateHeapMetrics, 1000);
+  </script>
+</body>
+</html>

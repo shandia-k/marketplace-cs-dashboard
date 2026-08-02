@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+  <title>CS Marketplace Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Custom Title Bar -->
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag-region"></div>
+    <div class="titlebar-title">
+      <div class="titlebar-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="url(#grad1)" stroke-width="2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#6366f1"/>
+              <stop offset="100%" style="stop-color:#a78bfa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <span>CS Marketplace Dashboard</span>
+    </div>
+    <!-- RAM Indicator -->
+    <div class="titlebar-ram" id="ram-indicator" title="Total penggunaan RAM aplikasi. Webview tidak aktif akan dihibernasi otomatis jika melebihi batas.">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 6V4M10 6V4M14 6V4M18 6V4M6 18v2M10 18v2M14 18v2M18 18v2"/></svg>
+      <span id="ram-text">-- MB</span>
+    </div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn minimize" id="btn-minimize" title="Minimize">
+        <svg width="10" height="2" viewBox="0 0 10 2"><rect width="10" height="2" rx="1" fill="currentColor"/></svg>
+      </button>
+      <button class="titlebar-btn maximize" id="btn-maximize" title="Maximize">
+        <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      </button>
+      <button class="titlebar-btn close" id="btn-close" title="Close">
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main App Layout -->
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <button class="btn-collapse-sidebar" id="btn-collapse-sidebar" title="Sembunyikan/Tampilkan Sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div class="sidebar-search">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Cari toko..." />
+        </div>
+      </div>
+
+      <!-- Store Groups -->
+      <div class="sidebar-content" id="sidebar-content">
+        <!-- Diisi oleh renderer.js -->
+        <div class="loading-stores">
+          <div class="spinner"></div>
+          <span>Memuat toko...</span>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <button class="btn-add-store" id="btn-add-store">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span class="btn-text">Tambah Toko</span>
+        </button>
+
+        <button class="btn-settings" id="btn-settings" title="Pengaturan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Panel -->
+    <main class="main-panel" id="main-panel">
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" id="tab-bar" style="display:none;">
+        <!-- Tab items rendered by renderer.js -->
+      </div>
+
+      <!-- Update Banner -->
+      <div class="update-banner" id="update-banner" style="display:none;">
+        <div class="update-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+        <div class="update-content">
+          <div class="update-text" id="update-text">Mengecek pembaruan...</div>
+          <div class="update-progress-bar" id="update-progress-bar" style="display:none;">
+            <div class="update-progress-fill" id="update-progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+        <div class="update-actions">
+          <button class="btn-update-restart" id="btn-update-restart" style="display:none;">Restart & Update</button>
+          <button class="btn-update-close" id="btn-update-close" title="Tutup">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="url(#grad2)" stroke-width="1.5" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#6366f1"/>
+                <stop offset="100%" style="stop-color:#a78bfa"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2>Selamat Datang di CS Dashboard</h2>
+        <p>Pilih toko dari sidebar untuk membuka halaman chat, atau tambahkan toko baru untuk memulai.</p>
+        <button class="btn-primary" id="btn-add-store-empty">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Tambah Toko Pertama
+        </button>
+      </div>
+
+      <!-- Webview Container -->
+      <div class="webview-container" id="webview-container">
+        <!-- Webview ditambahkan secara dinamis oleh renderer.js -->
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal: Add/Edit Store -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal-store">
+      <div class="modal-header">
+        <h3 id="modal-title">Tambah Toko Baru</h3>
+        <button class="modal-close" id="modal-close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="store-id">
+
+        <div class="form-group">
+          <label for="store-marketplace">Marketplace</label>
+          <div class="marketplace-picker" id="marketplace-picker">
+            <div class="mp-option selected" data-value="shopee">
+              <span class="mp-icon shopee-icon">🛍️</span>
+              <span>Shopee</span>
+            </div>
+            <div class="mp-option" data-value="tokopedia">
+              <span class="mp-icon tokopedia-icon">🟢</span>
+              <span>Tokopedia</span>
+            </div>
+            <div class="mp-option" data-value="lazada">
+              <span class="mp-icon lazada-icon">🔵</span>
+              <span>Lazada</span>
+            </div>
+            <div class="mp-option" data-value="tiktok">
+              <span class="mp-icon tiktok-icon">⬛</span>
+              <span>TikTok Shop</span>
+            </div>
+            <div class="mp-option" data-value="blibli">
+              <span class="mp-icon blibli-icon">🔷</span>
+              <span>Blibli</span>
+            </div>
+            <div class="mp-option" data-value="bukalapak">
+              <span class="mp-icon bukalapak-icon">🔴</span>
+              <span>Bukalapak</span>
+            </div>
+            <div class="mp-option" data-value="custom">
+              <span class="mp-icon">⚙️</span>
+              <span>Custom</span>
+            </div>
+          </div>
+          <input type="hidden" id="store-marketplace" value="shopee">
+        </div>
+
+        <div class="form-row" style="display: flex; gap: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="store-name">Nama Toko</label>
+            <input type="text" id="store-name" placeholder="Contoh: Shopee Official Store" maxlength="40">
+          </div>
+
+          <div class="form-group" style="width: 100px;">
+            <label for="store-initials">Inisial (2 Hrf)</label>
+            <input type="text" id="store-initials" placeholder="S1" maxlength="2" style="text-transform: uppercase; text-align: center; font-weight: bold; letter-spacing: 1px;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Warna Ikon & Tab</label>
+          <div class="color-picker-wrapper" id="color-picker-wrapper">
+            <div class="color-preset active" data-color="" title="Warna Bawaan Marketplace">Bawaan</div>
+            <div class="color-preset" data-color="#f5521d" style="background:#f5521d"></div>
+            <div class="color-preset" data-color="#03ac0e" style="background:#03ac0e"></div>
+            <div class="color-preset" data-color="#0f146b" style="background:#0f146b"></div>
+            <div class="color-preset" data-color="#6366f1" style="background:#6366f1"></div>
+            <div class="color-preset" data-color="#ec4899" style="background:#ec4899"></div>
+            <div class="color-preset" data-color="#f59e0b" style="background:#f59e0b"></div>
+            <div class="color-preset" data-color="#14b8a6" style="background:#14b8a6"></div>
+            <div class="color-preset" data-color="#8b5cf6" style="background:#8b5cf6"></div>
+            <div class="color-custom-input" title="Pilih Warna Kustom">
+              <input type="color" id="store-color" value="#6366f1">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="custom-url-group" style="display:none;">
+          <label for="store-url">URL Chat Kustom</label>
+          <input type="url" id="store-url" placeholder="https://...">
+          <small>Masukkan URL halaman chat marketplace kamu</small>
+        </div>
+
+        <div class="form-group">
+          <label>URL yang akan dibuka</label>
+          <div class="url-preview" id="url-preview">https://seller.shopee.co.id/portal/chat</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-modal-cancel">Batal</button>
+        <button class="btn-primary" id="btn-modal-save">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+          Simpan Toko
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Settings -->
+  <div class="modal-overlay" id="settings-overlay">
+    <div class="modal modal-wide" id="modal-settings">
+      <div class="modal-header">
+        <h3>Kelola Semua Toko</h3>
+        <button class="modal-close" id="settings-close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="stores-list" id="settings-stores-list">
+          <!-- Diisi oleh renderer.js -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="btn-settings-add">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Tambah Toko Baru
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Scratchpad Button -->
+  <button class="btn-scratchpad-floating" id="btn-scratchpad" title="Catatan / Scratchpad">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>
+  </button>
+
+  <!-- Floating Scratchpad -->
+  <div class="floating-scratchpad" id="scratchpad-window" style="display: none;">
+    <div class="scratchpad-header" id="scratchpad-header">
+      <div class="scratchpad-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span>Catatan</span>
+      </div>
+      <div class="scratchpad-tabs" id="scratchpad-tabs">
+        <!-- Tabs will be rendered here -->
+      </div>
+      <button class="btn-add-tab" id="btn-add-tab" title="Tambah Tab">+</button>
+      <button class="scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="scratchpad-body">
+      <textarea id="scratchpad-textarea" placeholder="Paste data dari notepad, word, atau excel di sini..."></textarea>
+    </div>
+    <div class="scratchpad-footer">
+      <button class="btn-sp-action" id="btn-sp-load" title="Load dari TXT/XLSX/DOCX">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Load
+      </button>
+      <button class="btn-sp-action primary" id="btn-sp-save" title="Save ke TXT/XLSX/DOCX">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        Save
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/renderer.js"></script>
+</body>
+</html>

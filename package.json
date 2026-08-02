@@ -1,0 +1,50 @@
+{
+  "name": "marketplace-cs-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard CS Multi-Marketplace - Kelola semua akun chat marketplace dalam 1 jendela",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "keywords": [
+    "marketplace",
+    "shopee",
+    "tokopedia",
+    "lazada",
+    "cs",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.cs.marketplace-dashboard",
+    "productName": "CS Marketplace Dashboard",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "shandia-k",
+        "repo": "marketplace-cs-dashboard",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "docx": "^9.7.1",
+    "electron-updater": "^6.8.9",
+    "mammoth": "^1.12.0",
+    "xlsx": "^0.18.5"
+  }
+}
