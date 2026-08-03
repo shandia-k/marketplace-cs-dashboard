@@ -127,8 +127,6 @@ function createWebview(store, tab) {
   wv.setAttribute('partition', store.partition);
   wv.setAttribute('preload', preloadUrl);
   wv.setAttribute('allowpopups', '');
-  wv.setAttribute('useragent',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
   // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
   wv.addEventListener('ipc-message', (event) => {

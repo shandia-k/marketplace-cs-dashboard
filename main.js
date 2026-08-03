@@ -329,6 +329,9 @@ app.on('web-contents-created', (event, contents) => {
   }
 });
 
+// Memaksa User-Agent standar Firefox agar login Google/Gmail tidak memicu pengecekan Chromium security
+app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0';
+
 app.whenReady().then(() => {
   createWindow();
   

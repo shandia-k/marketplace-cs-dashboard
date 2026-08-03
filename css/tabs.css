@@ -1,0 +1,356 @@
+/* ==============
+   TAB BAR
+   ============================================= */
+.tab-bar {
+  height: 36px;
+  min-height: 36px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 2px;
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 2px;
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 99px;
+}
+
+/* Nav Controls (Back, Forward, Refresh) */
+.tab-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.tab-nav-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.tab-nav-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tab-nav-btn:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.tab-nav-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--border-hover);
+  margin: 0 6px;
+  flex-shrink: 0;
+  border-radius: 99px;
+}
+
+/* Tab Item */
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  min-width: 50px;
+  max-width: 180px;
+  flex-shrink: 1; /* Memungkinkan tab menyusut saat terlalu banyak */
+  position: relative;
+  user-select: none;
+}
+
+.tab-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+  flex-shrink: 0; /* Tab memanjang secara proporsional */
+  max-width: 280px; /* Batas maksimal panjang saat dihover */
+}
+
+.tab-item.active {
+  background: var(--bg-active);
+  border-color: rgba(223, 22, 131, 0.3);
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent-gradient);
+  border-radius: 99px;
+}
+
+.tab-favicon-mini {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+}
+
+.tab-title {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.tab-item.active .tab-title {
+  color: var(--text-primary);
+}
+
+.tab-close {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.tab-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* Only show close on hover or active */
+.tab-item:not(:hover):not(.active) .tab-close {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Add New Tab Button */
+.tab-add-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  margin-left: 2px;
+  transition: all var(--transition-fast);
+}
+
+.tab-add-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-icon {
+  width: 88px;
+  height: 88px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.empty-state h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* Webview Container — takes remaining height after tab bar */
+.webview-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: none;
+  flex-direction: column;
+}
+
+.webview-container.active {
+  display: flex;
+}
+
+/* Individual Webview — Electron <webview> perlu display:flex + flex:1 */
+.store-webview {
+  flex: 1;
+  width: 100%;
+  border: none;
+  display: none;
+  background: #fff;
+  min-height: 0;
+}
+
+.store-webview.visible {
+  display: flex;
+}
+
+/* Pastikan webview tag selalu block-level */
+webview {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Webview Loading Overlay */
+.webview-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  gap: 16px;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+  pointer-events: all;
+}
+
+.webview-loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.webview-loading .spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.webview-loading p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+
+
+/* ==============
+   ZOOM INDICATOR
+   ============================================= */
+.zoom-indicator {
+  position: fixed;
+  bottom: 70px;
+  right: 24px;
+  background: var(--bg-active);
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 9998;
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+}
+
+.zoom-indicator.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+
+
+/* ==============
+   TAB HIBERNATE BUTTON (per-tab leaf button)
+   ============================================= */
+.tab-hibernate-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 3px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tab-item:hover .tab-hibernate-btn {
+  opacity: 0.7;
+}
+
+.tab-hibernate-btn:hover {
+  opacity: 1 !important;
+  background: var(--bg-hover);
+}

@@ -203,6 +203,12 @@ btnScratchpadClose.addEventListener('click', () => {
 });
 
 // Dragging logic
+scratchpadWindow.addEventListener('mousedown', () => {
+  // Disable webview pointer events to prevent them from swallowing mouse events 
+  // during dragging or resizing the scratchpad.
+  document.querySelectorAll('webview').forEach(w => w.style.pointerEvents = 'none');
+});
+
 scratchpadHeader.addEventListener('mousedown', (e) => {
   // Prevent dragging if clicked on interactive elements
   if (e.target.closest('#btn-scratchpad-close') || 
@@ -245,6 +251,8 @@ window.addEventListener('mousemove', (e) => {
 
 window.addEventListener('mouseup', () => {
   isScratchpadDragging = false;
+  // Re-enable webview pointer events
+  document.querySelectorAll('webview').forEach(w => w.style.pointerEvents = '');
 });
 
 // Load IPC (Loads into a new tab)

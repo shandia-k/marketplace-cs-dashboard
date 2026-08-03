@@ -3,6 +3,7 @@ function activateStore(storeId) {
   // Hide all currently visible webviews
   Object.keys(webviewMap).forEach(tabId => {
     webviewMap[tabId].webview?.classList.remove('visible');
+    if (webviewMap[tabId].loading) webviewMap[tabId].loading.style.display = 'none';
   });
 
   activeStoreId = storeId;
@@ -235,6 +236,7 @@ function switchTab(storeId, tabId) {
   const prevTabId = activeTabMap[storeId];
   if (prevTabId && webviewMap[prevTabId] && !webviewMap[prevTabId].hibernated) {
     webviewMap[prevTabId].webview?.classList.remove('visible');
+    if (webviewMap[prevTabId].loading) webviewMap[prevTabId].loading.style.display = 'none';
   }
 
   activeTabMap[storeId] = tabId;
@@ -277,7 +279,7 @@ function showTab(storeId, tabId) {
   } else {
     webviewMap[tabId].webview?.classList.add('visible');
     if (webviewMap[tabId].loading) {
-      webviewMap[tabId].loading.classList.add('hidden');
+      webviewMap[tabId].loading.style.display = '';
     }
     if (tab.zoom && tab.zoom !== 1.0) {
       webviewMap[tabId].webview?.setZoomFactor(tab.zoom);

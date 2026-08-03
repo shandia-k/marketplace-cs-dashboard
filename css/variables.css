@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+/* ==============
+   CS MARKETPLACE DASHBOARD - STYLESHEET
+   Dark Premium Theme
+   ============================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Color Palette */
+  --bg-primary: #0f1117;
+  --bg-secondary: #161b27;
+  --bg-tertiary: #1e2535;
+  --bg-hover: #252d3d;
+  --bg-active: #2a3347;
+
+  /* Accent Colors */
+  --accent-primary: #DF1683;
+  --accent-secondary: #FFB837;
+  --accent-gradient: linear-gradient(135deg, #DF1683, #FFB837);
+
+  /* Text Colors */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  /* Border */
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+
+  /* Marketplace Colors */
+  --shopee-color: #f5521d;
+  --tokopedia-color: #03ac0e;
+  --lazada-color: #0f146b;
+  --tiktok-color: #ffffff;
+  --blibli-color: #0190d0;
+  --bukalapak-color: #e12b2b;
+  --custom-color: #DF1683;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+
+  /* Titlebar */
+  --titlebar-height: 38px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+
+  /* A11y */
+  --focus-ring-color: #3b82f6; /* Tailwind blue-500 */
+}
+
+
+
+/* ==============
+   ACCESSIBILITY & FOCUS
+   ============================================= */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-radius: 2px; /* fallback */
+}
+
+/* Rounded elements focus */
+button:focus-visible, 
+.titlebar-btn:focus-visible,
+.store-item:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-icon-text:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+.mp-option:focus-visible,
+.color-preset:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+:root[data-theme="light"] {
+  /* Color Palette */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --bg-active: #cbd5e1;
+
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  /* Border */
+  --border-color: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.15);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+
+
+/* ==============
+   ANIMATIONS
+   ============================================= */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.store-item {
+  animation: fadeIn 0.2s ease forwards;
+}
