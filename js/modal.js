@@ -49,7 +49,9 @@ function closeModal() {
 function setSelectedMarketplace(value) {
   fieldStoreMarketplace.value = value;
   document.querySelectorAll('.mp-option').forEach(el => {
-    el.classList.toggle('selected', el.dataset.value === value);
+    const isSelected = el.dataset.value === value;
+    el.classList.toggle('selected', isSelected);
+    el.setAttribute('aria-checked', isSelected ? 'true' : 'false');
   });
   updateUrlPreview(value, fieldStoreUrl.value);
 }
@@ -59,6 +61,7 @@ function setSelectedColor(colorHex) {
   document.querySelectorAll('.color-preset').forEach(el => {
     const match = (el.dataset.color || '').toLowerCase() === (colorHex || '').toLowerCase();
     el.classList.toggle('active', match);
+    el.setAttribute('aria-checked', match ? 'true' : 'false');
     if (match) found = true;
   });
   if (colorHex && !found) {
@@ -116,7 +119,17 @@ async function saveStore() {
     stores.push({ id, name, initials, marketplace, url, color, partition: `persist:${id}` });
   }
 
+  const btnSave = document.getElementById('btn-modal-save');
+  const originalText = btnSave.innerHTML;
+  btnSave.disabled = true;
+  btnSave.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white; border-right-color: white;"></span> Menyimpan...';
+  btnSave.setAttribute('aria-busy', 'true');
+
   const ok = await window.electronAPI.saveStores(stores);
+
+  btnSave.disabled = false;
+  btnSave.innerHTML = originalText;
+  btnSave.removeAttribute('aria-busy');
   if (ok) {
     closeModal();
     renderSidebar(getFilteredStores());
@@ -177,6 +190,7 @@ function renderSettingsList() {
     const cfg      = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
     const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
     const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
+    const isWhitelisted = store.hibernationWhitelisted === true;
     return `
       <div class="settings-store-item">
         <div class="settings-store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}</div>
@@ -185,6 +199,11 @@ function renderSettingsList() {
           <div class="settings-store-url">${escapeHtml(store.url || cfg.url)}</div>
         </div>
         <div class="settings-store-actions">
+          <button class="btn-icon btn-whitelist ${isWhitelisted ? 'active' : ''}" title="${isWhitelisted ? 'Nonaktifkan perlindungan hibernasi' : 'Lindungi dari hibernasi otomatis'}" onclick="toggleWhitelist('${store.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="${isWhitelisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </button>
           <button class="btn-icon" title="Edit" onclick="openEditModal('${store.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -203,6 +222,71 @@ function renderSettingsList() {
       </div>`;
   }).join('');
 }
+
+// ── Toggle Whitelist Hibernasi ─────────────────────────────────────────────────
+async function toggleWhitelist(storeId) {
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+  store.hibernationWhitelisted = !store.hibernationWhitelisted;
+  await window.electronAPI.saveStores(stores);
+  renderSettingsList();
+  const status = store.hibernationWhitelisted ? 'dilindungi 🛡️' : 'tidak dilindungi';
+  showToast(`"${store.name}" ${status} dari hibernasi.`, 'success');
+}
+
+// ── Export / Import Config ───────────────────────────────────────────────────
+async function exportConfig() {
+  const btn = document.getElementById('btn-export-config');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Ekspor...';
+  btn.setAttribute('aria-busy', 'true');
+  
+  try {
+    const ok = await window.electronAPI.exportStoresConfig(stores);
+    if (ok) showToast('Konfigurasi berhasil diekspor ✓', 'success');
+  } catch (err) {
+    showToast('Gagal ekspor: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+async function importConfig() {
+  const btn = document.getElementById('btn-import-config');
+  const original = btn.innerHTML;
+  
+  try {
+    const result = await window.electronAPI.importStoresConfig();
+    if (!result) return; // dibatalkan user
+    const confirmed = confirm(
+      `Impor ${result.length} toko dari file?\n\nSemua toko yang ada sekarang akan digantikan.`
+    );
+    if (!confirmed) return;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Impor...';
+    btn.setAttribute('aria-busy', 'true');
+    
+    stores = result;
+    await window.electronAPI.saveStores(stores);
+    renderSidebar(getFilteredStores());
+    renderSettingsList();
+    updateEmptyState();
+    showToast(`${result.length} toko berhasil diimpor ✓`, 'success');
+  } catch (err) {
+    showToast('Gagal impor: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+// Expose fungsi untuk onclick inline
+window.toggleWhitelist = toggleWhitelist;
 
 // ── Empty State ───────────────────────────────────────────────────────────────
 function updateEmptyState() {

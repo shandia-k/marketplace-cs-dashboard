@@ -12,6 +12,9 @@ const storeTabs   = {};
 const activeTabMap = {};
 const webviewMap  = {};
 
+// Unread messages tracking: storeId → total unread count
+const unreadMap = {};
+
 // Zoom indicator timer
 let zoomIndicatorTimer = null;
 

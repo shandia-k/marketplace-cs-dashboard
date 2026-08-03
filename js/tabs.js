@@ -82,10 +82,12 @@ function renderTabBar() {
   const leafIcon = '&#x1F343;';
   const tabsHtml = tabs.map(tab => {
     const isHibernated = webviewMap[tab.id]?.hibernated;
+    const isCurTab = tab.id === curTabId;
     return `
-    <div class="tab-item ${tab.id === curTabId ? 'active' : ''} ${isHibernated ? 'hibernated' : ''}" data-tab-id="${tab.id}" title="${isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title)}">
+    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''}" data-tab-id="${tab.id}" title="${isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title)}">
       <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
+      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
       <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -120,9 +122,20 @@ function renderTabBar() {
   // Bind tab click (not close)
   tabBar.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', e => {
-      if (!e.target.closest('.tab-close')) {
+      if (!e.target.closest('.tab-close') && !e.target.closest('.tab-hibernate-btn')) {
         switchTab(activeStoreId, el.dataset.tabId);
       }
+    });
+  });
+
+  // Bind hibernate buttons
+  tabBar.querySelectorAll('.tab-hibernate-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const storeId = Object.keys(storeTabs).find(sid =>
+        storeTabs[sid].some(t => t.id === el.dataset.tabId)
+      );
+      if (storeId) hibernateTab(storeId, el.dataset.tabId);
     });
   });
 

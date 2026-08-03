@@ -30,13 +30,19 @@ async function checkAndHibernateIfNeeded() {
 
     if (ramUsageMB < RAM_THRESHOLD_MB) return;
 
-    // Cari kandidat: webview aktif yang BUKAN tab aktif saat ini
+    // Cari kandidat: webview aktif yang BUKAN tab aktif saat ini & bukan whitelist
     const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
 
     const candidates = [];
     for (const [tabId, entry] of Object.entries(webviewMap)) {
       if (entry.hibernated || !entry.webview) continue;
       if (tabId === activeTabId) continue;
+      // Skip toko yang di-whitelist dari hibernasi
+      const storeId = Object.keys(storeTabs).find(sid =>
+        storeTabs[sid].some(t => t.id === tabId)
+      );
+      const store = stores.find(s => s.id === storeId);
+      if (store?.hibernationWhitelisted) continue;
       candidates.push({ tabId, lastSeen: lastAccessed[tabId] || 0 });
     }
 
@@ -60,6 +66,45 @@ async function checkAndHibernateIfNeeded() {
     // Tidak kritis, abaikan
   }
 }
+
+// ── Hibernasi Semua (Manual) ─────────────────────────────────────────────────
+function hibernateAll() {
+  const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
+  let count = 0;
+  let skipped = 0;
+
+  for (const [tabId, entry] of Object.entries(webviewMap)) {
+    if (entry.hibernated || !entry.webview) continue;
+    if (tabId === activeTabId) continue; // Jangan hibernate tab yang sedang aktif
+
+    const storeId = Object.keys(storeTabs).find(sid =>
+      storeTabs[sid].some(t => t.id === tabId)
+    );
+    const store = stores.find(s => s.id === storeId);
+
+    if (store?.hibernationWhitelisted) {
+      skipped++;
+      continue;
+    }
+
+    hibernateTab(storeId, tabId);
+    count++;
+  }
+
+  if (count === 0 && skipped === 0) {
+    showToast('Tidak ada tab yang perlu dihibernasi.', '');
+  } else if (count === 0 && skipped > 0) {
+    showToast(`Semua tab dilindungi whitelist (${skipped} toko).`, '');
+  } else {
+    const msg = skipped > 0
+      ? `${count} tab dihibernasi. ${skipped} toko dilindungi whitelist.`
+      : `${count} tab berhasil dihibernasi.`;
+    showToast(msg, 'success');
+  }
+}
+
+// Expose untuk onclick inline
+window.hibernateAll = hibernateAll;
 
 // ── Create Webview ────────────────────────────────────────────────────────────
 function createWebview(store, tab) {
@@ -85,7 +130,7 @@ function createWebview(store, tab) {
   wv.setAttribute('useragent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
-  // ── IPC: Ctrl+Click, Zoom, Nav dari webview-preload.js ──────────────────
+  // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
   wv.addEventListener('ipc-message', (event) => {
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
 
@@ -116,6 +161,19 @@ function createWebview(store, tab) {
 
     } else if (event.channel === 'draft-status') {
       if (webviewMap[tab.id]) webviewMap[tab.id].hasDraft = event.args[0];
+
+    } else if (event.channel === 'unread-count') {
+      const count = event.args[0] || 0;
+      // Akumulasi unread dari semua tab toko ini
+      const allTabs = storeTabs[store.id] || [];
+      let total = 0;
+      allTabs.forEach(t => {
+        if (t.id === tab.id) total += count;
+        else total += (webviewMap[t.id]?.unreadCount || 0);
+      });
+      if (webviewMap[tab.id]) webviewMap[tab.id].unreadCount = count;
+      unreadMap[store.id] = total;
+      renderSidebar(getFilteredStores());
     }
   });
 

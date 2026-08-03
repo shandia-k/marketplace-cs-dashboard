@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
+  exportStoresConfig: (stores) => ipcRenderer.invoke('export-stores-config', stores),
+  importStoresConfig: () => ipcRenderer.invoke('import-stores-config'),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),

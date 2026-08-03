@@ -54,6 +54,45 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+
+  /* A11y */
+  --focus-ring-color: #3b82f6; /* Tailwind blue-500 */
+}
+
+/* =============================================
+   ACCESSIBILITY & FOCUS
+   ============================================= */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-radius: 2px; /* fallback */
+}
+
+/* Rounded elements focus */
+button:focus-visible, 
+.titlebar-btn:focus-visible,
+.store-item:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-icon-text:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+.mp-option:focus-visible,
+.color-preset:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 :root[data-theme="light"] {
@@ -154,41 +193,7 @@ html, body {
   z-index: 1;
 }
 
-/* RAM Indicator in Titlebar */
-.titlebar-ram {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-  color: var(--text-muted);
-  -webkit-app-region: no-drag;
-  z-index: 1;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  cursor: default;
-  margin-left: auto;
-  transition: color 0.3s ease;
-}
 
-.titlebar-ram.warning {
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.titlebar-ram.danger {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.35);
-  animation: pulse-danger 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-danger {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
-}
 
 .titlebar-btn {
   width: 28px;
@@ -720,8 +725,8 @@ html, body {
 }
 
 .tab-title {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 300;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -1305,7 +1310,7 @@ webview {
   border-radius: 10px;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 300;
   box-shadow: var(--shadow-md);
   z-index: 9999;
   transform: translateY(16px);
@@ -1812,4 +1817,233 @@ webview {
 @keyframes slideDown {
   from { transform: translateY(-100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* =============================================
+   UNREAD BADGE
+   ============================================= */
+.unread-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 1.5px solid var(--bg-secondary);
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.5);
+  animation: badgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes badgePop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* =============================================
+   WHITELIST SHIELD BADGE (sidebar)
+   ============================================= */
+.whitelist-badge {
+  position: absolute;
+  bottom: -4px;
+  left: -4px;
+  font-size: 9px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* =============================================
+   DRAG & DROP (Sidebar)
+   ============================================= */
+.store-item[draggable="true"] {
+  cursor: grab;
+}
+
+.store-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.store-item.dragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.store-item.drag-over {
+  border: 1.5px dashed var(--accent-primary) !important;
+  background: rgba(223, 22, 131, 0.08) !important;
+  border-radius: 8px;
+}
+
+/* =============================================
+   TAB HIBERNATE BUTTON (per-tab leaf button)
+   ============================================= */
+.tab-hibernate-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 3px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tab-item:hover .tab-hibernate-btn {
+  opacity: 0.7;
+}
+
+.tab-hibernate-btn:hover {
+  opacity: 1 !important;
+  background: var(--bg-hover);
+}
+
+/* =============================================
+   WHITELIST BUTTON (settings)
+   ============================================= */
+.btn-whitelist {
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.btn-whitelist:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #86efac !important;
+}
+
+.btn-whitelist.active {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+}
+
+.btn-whitelist.active:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+}
+
+/* =============================================
+   BTN-ICON-TEXT
+   ============================================= */
+.btn-icon-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 300;
+  font-family: 'Nexa', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-icon-text:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+#btn-hibernate-all:hover {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.3);
+  color: #fb923c;
+}
+
+/* =============================================
+   SETTINGS FOOTER LAYOUT
+   ============================================= */
+.settings-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-footer-left {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-footer-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* =============================================
+   STATUS BAR
+   ============================================= */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: var(--text-muted);
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.status-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.status-bar-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--border-color);
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-green {
+  background: #22c55e;
+  box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);
+}
+
+.status-sleep {
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-size: 10px;
+}
+
+.status-warn {
+  color: #fb923c;
 }

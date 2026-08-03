@@ -112,6 +112,44 @@ ipcMain.handle('get-app-path', () => {
   return __dirname;
 });
 
+// Export konfigurasi toko ke file JSON
+ipcMain.handle('export-stores-config', async (event, stores) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Ekspor Konfigurasi Toko',
+    defaultPath: 'cs-dashboard-config.json',
+    filters: [{ name: 'JSON Config', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return false;
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(stores, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    throw new Error('Gagal ekspor: ' + err.message);
+  }
+});
+
+// Import konfigurasi toko dari file JSON
+ipcMain.handle('import-stores-config', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Impor Konfigurasi Toko',
+    properties: ['openFile'],
+    filters: [{ name: 'JSON Config', extensions: ['json'] }]
+  });
+  if (canceled || filePaths.length === 0) return null;
+  try {
+    const raw = fs.readFileSync(filePaths[0], 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Format file tidak valid.');
+    // Validasi minimal setiap toko punya id, name, marketplace
+    parsed.forEach(s => {
+      if (!s.id || !s.name || !s.marketplace) throw new Error('Data toko tidak lengkap.');
+    });
+    return parsed;
+  } catch (err) {
+    throw new Error('Gagal impor: ' + err.message);
+  }
+});
+
 ipcMain.handle('get-app-memory-mb', () => {
   try {
     const metrics = app.getAppMetrics();

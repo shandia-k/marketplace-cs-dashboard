@@ -23,34 +23,27 @@
       </div>
       <span>CS Marketplace Dashboard</span>
     </div>
-    <!-- RAM Indicator -->
-    <div class="titlebar-ram" id="ram-indicator"
-      title="Total penggunaan RAM aplikasi. Webview tidak aktif akan dihibernasi otomatis jika melebihi batas.">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <rect x="2" y="6" width="20" height="12" rx="2" />
-        <path d="M6 6V4M10 6V4M14 6V4M18 6V4M6 18v2M10 18v2M14 18v2M18 18v2" />
-      </svg>
-      <span id="ram-text">-- MB</span>
-    </div>
+    <!-- Status Bar (includes RAM) -->
+    <div class="status-bar" id="status-bar" style="display:none;"></div>
     <div class="titlebar-controls">
       <!-- Theme Toggle -->
-      <button class="titlebar-btn theme-toggle" id="btn-theme-toggle" title="Ganti Tema">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="titlebar-btn theme-toggle" id="btn-theme-toggle" title="Ganti Tema" aria-label="Ganti Tema Terang atau Gelap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
       </button>
-      <button class="titlebar-btn minimize" id="btn-minimize" title="Minimize">
-        <svg width="10" height="2" viewBox="0 0 10 2">
+      <button class="titlebar-btn minimize" id="btn-minimize" title="Minimize" aria-label="Minimize Window">
+        <svg width="10" height="2" viewBox="0 0 10 2" aria-hidden="true" focusable="false">
           <rect width="10" height="2" rx="1" fill="currentColor" />
         </svg>
       </button>
-      <button class="titlebar-btn maximize" id="btn-maximize" title="Maximize">
-        <svg width="10" height="10" viewBox="0 0 10 10">
+      <button class="titlebar-btn maximize" id="btn-maximize" title="Maximize" aria-label="Maximize Window">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
           <rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none" />
         </svg>
       </button>
-      <button class="titlebar-btn close" id="btn-close" title="Close">
-        <svg width="10" height="10" viewBox="0 0 10 10">
+      <button class="titlebar-btn close" id="btn-close" title="Close" aria-label="Tutup Aplikasi">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
       </button>
@@ -65,18 +58,19 @@
 
       <!-- Sidebar Header -->
       <div class="sidebar-header">
-        <button class="btn-collapse-sidebar" id="btn-collapse-sidebar" title="Sembunyikan/Tampilkan Sidebar">
+        <button class="btn-collapse-sidebar" id="btn-collapse-sidebar" title="Sembunyikan/Tampilkan Sidebar" aria-label="Toggle Sidebar">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
         <div class="sidebar-search">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2">
+            stroke-width="2" aria-hidden="true" focusable="false">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
           </svg>
+          <label for="search-input" class="sr-only">Cari toko</label>
           <input type="text" id="search-input" placeholder="Cari toko..." />
         </div>
       </div>
@@ -92,16 +86,16 @@
 
       <!-- Sidebar Footer -->
       <div class="sidebar-footer">
-        <button class="btn-add-store" id="btn-add-store">
+        <button class="btn-add-store" id="btn-add-store" aria-label="Tambah Toko Baru">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round">
+            stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M12 5v14M5 12h14" />
           </svg>
           <span class="btn-text">Tambah Toko</span>
         </button>
 
-        <button class="btn-settings" id="btn-settings" title="Pengaturan">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn-settings" id="btn-settings" title="Pengaturan" aria-label="Buka Pengaturan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
             <path
               d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
@@ -172,12 +166,12 @@
 
   <!-- Modal: Add/Edit Store -->
   <div class="modal-overlay" id="modal-overlay">
-    <div class="modal" id="modal-store">
+    <div class="modal" id="modal-store" role="dialog" aria-labelledby="modal-title" aria-modal="true">
       <div class="modal-header">
         <h3 id="modal-title">Tambah Toko Baru</h3>
-        <button class="modal-close" id="modal-close">
+        <button class="modal-close" id="modal-close" aria-label="Tutup Modal Tambah Toko">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
+            stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -187,33 +181,33 @@
 
         <div class="form-group">
           <label for="store-marketplace">Marketplace</label>
-          <div class="marketplace-picker" id="marketplace-picker">
-            <div class="mp-option selected" data-value="shopee">
-              <span class="mp-icon shopee-icon">🛍️</span>
+          <div class="marketplace-picker" id="marketplace-picker" role="radiogroup" aria-label="Pilih Marketplace">
+            <div class="mp-option selected" data-value="shopee" role="radio" aria-checked="true" tabindex="0">
+              <span class="mp-icon shopee-icon" aria-hidden="true">🛍️</span>
               <span>Shopee</span>
             </div>
-            <div class="mp-option" data-value="tokopedia">
-              <span class="mp-icon tokopedia-icon">🟢</span>
+            <div class="mp-option" data-value="tokopedia" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon tokopedia-icon" aria-hidden="true">🟢</span>
               <span>Tokopedia</span>
             </div>
-            <div class="mp-option" data-value="lazada">
-              <span class="mp-icon lazada-icon">🔵</span>
+            <div class="mp-option" data-value="lazada" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon lazada-icon" aria-hidden="true">🔵</span>
               <span>Lazada</span>
             </div>
-            <div class="mp-option" data-value="tiktok">
-              <span class="mp-icon tiktok-icon">⬛</span>
+            <div class="mp-option" data-value="tiktok" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon tiktok-icon" aria-hidden="true">⬛</span>
               <span>TikTok Shop</span>
             </div>
-            <div class="mp-option" data-value="blibli">
-              <span class="mp-icon blibli-icon">🔷</span>
+            <div class="mp-option" data-value="blibli" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon blibli-icon" aria-hidden="true">🔷</span>
               <span>Blibli</span>
             </div>
-            <div class="mp-option" data-value="bukalapak">
-              <span class="mp-icon bukalapak-icon">🔴</span>
+            <div class="mp-option" data-value="bukalapak" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon bukalapak-icon" aria-hidden="true">🔴</span>
               <span>Bukalapak</span>
             </div>
-            <div class="mp-option" data-value="custom">
-              <span class="mp-icon">⚙️</span>
+            <div class="mp-option" data-value="custom" role="radio" aria-checked="false" tabindex="0">
+              <span class="mp-icon" aria-hidden="true">⚙️</span>
               <span>Custom</span>
             </div>
           </div>
@@ -222,30 +216,31 @@
 
         <div class="form-row" style="display: flex; gap: 12px;">
           <div class="form-group" style="flex: 1;">
-            <label for="store-name">Nama Toko</label>
-            <input type="text" id="store-name" placeholder="Contoh: Shopee Official Store" maxlength="40">
+            <label for="store-name">Nama Toko <span class="required-indicator" aria-hidden="true" style="color: #ef4444;">*</span></label>
+            <input type="text" id="store-name" placeholder="Contoh: Shopee Official Store" maxlength="40" required aria-required="true">
           </div>
 
           <div class="form-group" style="width: 100px;">
-            <label for="store-initials">Inisial</label>
-            <input type="text" id="store-initials" placeholder="S1" maxlength="2"
+            <label for="store-initials">Inisial <span class="required-indicator" aria-hidden="true" style="color: #ef4444;">*</span></label>
+            <input type="text" id="store-initials" placeholder="S1" maxlength="2" required aria-required="true"
               style="text-transform: uppercase; text-align: center; font-weight: 600; letter-spacing: 1px;">
           </div>
         </div>
 
         <div class="form-group">
           <label>Warna Ikon & Tab</label>
-          <div class="color-picker-wrapper" id="color-picker-wrapper">
-            <div class="color-preset active" data-color="" title="Warna Bawaan Marketplace">Bawaan</div>
-            <div class="color-preset" data-color="#f5521d" style="background:#f5521d"></div>
-            <div class="color-preset" data-color="#03ac0e" style="background:#03ac0e"></div>
-            <div class="color-preset" data-color="#0f146b" style="background:#0f146b"></div>
-            <div class="color-preset" data-color="#DF1683" style="background:#DF1683"></div>
-            <div class="color-preset" data-color="#ec4899" style="background:#ec4899"></div>
-            <div class="color-preset" data-color="#FFB837" style="background:#FFB837"></div>
-            <div class="color-preset" data-color="#14b8a6" style="background:#14b8a6"></div>
-            <div class="color-preset" data-color="#FF6C0E" style="background:#FF6C0E"></div>
+          <div class="color-picker-wrapper" id="color-picker-wrapper" role="radiogroup" aria-label="Pilih Warna Ikon">
+            <div class="color-preset active" data-color="" title="Warna Bawaan Marketplace" role="radio" aria-checked="true" tabindex="0">Bawaan</div>
+            <div class="color-preset" data-color="#f5521d" style="background:#f5521d" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Oranye"></div>
+            <div class="color-preset" data-color="#03ac0e" style="background:#03ac0e" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Hijau"></div>
+            <div class="color-preset" data-color="#0f146b" style="background:#0f146b" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Biru Gelap"></div>
+            <div class="color-preset" data-color="#DF1683" style="background:#DF1683" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Pink"></div>
+            <div class="color-preset" data-color="#ec4899" style="background:#ec4899" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Pink Muda"></div>
+            <div class="color-preset" data-color="#FFB837" style="background:#FFB837" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Kuning"></div>
+            <div class="color-preset" data-color="#14b8a6" style="background:#14b8a6" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Teal"></div>
+            <div class="color-preset" data-color="#FF6C0E" style="background:#FF6C0E" role="radio" aria-checked="false" tabindex="0" aria-label="Warna Oranye Terang"></div>
             <div class="color-custom-input" title="Pilih Warna Kustom">
+              <label for="store-color" class="sr-only">Warna Kustom</label>
               <input type="color" id="store-color" value="#DF1683">
             </div>
           </div>
@@ -277,12 +272,12 @@
 
   <!-- Modal: Settings -->
   <div class="modal-overlay" id="settings-overlay">
-    <div class="modal modal-wide" id="modal-settings">
+    <div class="modal modal-wide" id="modal-settings" role="dialog" aria-labelledby="settings-title" aria-modal="true">
       <div class="modal-header">
-        <h3>Kelola Semua Toko</h3>
-        <button class="modal-close" id="settings-close">
+        <h3 id="settings-title">Kelola Semua Toko</h3>
+        <button class="modal-close" id="settings-close" aria-label="Tutup Pengaturan">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
+            stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -292,56 +287,85 @@
           <!-- Diisi oleh renderer.js -->
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn-primary" id="btn-settings-add">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Tambah Toko Baru
-        </button>
+      <div class="modal-footer settings-footer">
+        <div class="settings-footer-left">
+          <button class="btn-icon-text" id="btn-hibernate-all" onclick="hibernateAll()" title="Hibernasi semua tab (kecuali yang dilindungi)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Hibernasi Semua
+          </button>
+        </div>
+        <div class="settings-footer-right">
+          <button class="btn-icon-text" id="btn-import-config" onclick="importConfig()" title="Impor konfigurasi dari file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Impor
+          </button>
+          <button class="btn-icon-text" id="btn-export-config" onclick="exportConfig()" title="Ekspor konfigurasi toko ke file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Ekspor
+          </button>
+          <button class="btn-primary" id="btn-settings-add">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Tambah Toko Baru
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Floating Scratchpad Button -->
-  <button class="btn-scratchpad-floating" id="btn-scratchpad" title="Catatan / Scratchpad">
+  <button class="btn-scratchpad-floating" id="btn-scratchpad" title="Catatan / Scratchpad" aria-label="Buka Catatan Scratchpad">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
     </svg>
   </button>
 
   <!-- Floating Scratchpad -->
-  <div class="floating-scratchpad" id="scratchpad-window" style="display: none;">
+  <div class="floating-scratchpad" id="scratchpad-window" style="display: none;" role="dialog" aria-label="Catatan">
     <div class="scratchpad-header" id="scratchpad-header">
       <div class="scratchpad-title">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
         </svg>
         <span>Catatan</span>
       </div>
-      <div class="scratchpad-tabs" id="scratchpad-tabs">
+      <div class="scratchpad-tabs" id="scratchpad-tabs" role="tablist">
         <!-- Tabs will be rendered here -->
       </div>
-      <button class="btn-add-tab" id="btn-add-tab" title="Tambah Tab">+</button>
-      <button class="scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize">
+      <button class="btn-add-tab" id="btn-add-tab" title="Tambah Tab" aria-label="Tambah Tab Catatan Baru">+</button>
+      <button class="scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize" aria-label="Tutup Catatan">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round">
+          stroke-linecap="round" aria-hidden="true" focusable="false">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </button>
     </div>
     <div class="scratchpad-body">
+      <label for="scratchpad-textarea" class="sr-only">Area Teks Catatan</label>
       <textarea id="scratchpad-textarea" placeholder="Paste data dari notepad, word, atau excel di sini..."></textarea>
     </div>
     <div class="scratchpad-footer">
       <button class="btn-sp-action" id="btn-sp-load" title="Load dari TXT/XLSX/DOCX">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -350,7 +374,7 @@
       </button>
       <button class="btn-sp-action primary" id="btn-sp-save" title="Save ke TXT/XLSX/DOCX">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
           <polyline points="17 21 17 13 7 13 7 21"></polyline>
           <polyline points="7 3 7 8 15 8"></polyline>
@@ -371,6 +395,7 @@
   <script src="js/webview.js"></script>
   <script src="js/modal.js"></script>
   <script src="js/scratchpad.js"></script>
+  <script src="js/statusbar.js"></script>
   <script src="js/app.js"></script>
 </body>
 

@@ -43,9 +43,12 @@ function renderSidebar(filteredStores) {
       const storeTabList = storeTabs[store.id] || [];
       const allHibernated = storeTabList.length > 0 && storeTabList.every(t => webviewMap[t.id]?.hibernated);
       const leafBadge = '<span class="hibernate-badge">&#x1F343;</span>';
+      const unread = unreadMap[store.id] || 0;
+      const unreadBadge = unread > 0 ? `<span class="unread-badge">${unread > 99 ? '99+' : unread}</span>` : '';
+      const shieldBadge = store.hibernationWhitelisted ? '<span class="whitelist-badge">🛡️</span>' : '';
       html += `
-        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''}" data-id="${store.id}" title="${escapeHtml(store.name)}${allHibernated ? ' (Tidur)' : ''}">
-          <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${allHibernated ? leafBadge : ''}</div>
+        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''}" data-id="${store.id}" title="${escapeHtml(store.name)}${allHibernated ? ' (Tidur)' : ''}" draggable="true">
+          <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${allHibernated ? leafBadge : ''}${shieldBadge}${unreadBadge}</div>
           <div class="store-info">
             <div class="store-name">${escapeHtml(store.name)}</div>
             <div class="store-marketplace-label">${cfg.label}${allHibernated ? ' &middot; Tidur' : ''}</div>
@@ -59,5 +62,54 @@ function renderSidebar(filteredStores) {
 
   sidebarContent.querySelectorAll('.store-item').forEach(el => {
     el.addEventListener('click', () => activateStore(el.dataset.id));
+    bindDragEvents(el);
+  });
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+let dragSrcId = null;
+
+function bindDragEvents(el) {
+  el.addEventListener('dragstart', e => {
+    dragSrcId = el.dataset.id;
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragSrcId);
+  });
+
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    document.querySelectorAll('.store-item.drag-over').forEach(d => d.classList.remove('drag-over'));
+    dragSrcId = null;
+  });
+
+  el.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (el.dataset.id !== dragSrcId) {
+      document.querySelectorAll('.store-item.drag-over').forEach(d => d.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+    }
+  });
+
+  el.addEventListener('dragleave', () => {
+    el.classList.remove('drag-over');
+  });
+
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    if (!dragSrcId || el.dataset.id === dragSrcId) return;
+
+    const srcIdx  = stores.findIndex(s => s.id === dragSrcId);
+    const destIdx = stores.findIndex(s => s.id === el.dataset.id);
+    if (srcIdx === -1 || destIdx === -1) return;
+
+    // Reorder
+    const [moved] = stores.splice(srcIdx, 1);
+    stores.splice(destIdx, 0, moved);
+
+    window.electronAPI.saveStores(stores);
+    renderSidebar(getFilteredStores());
   });
 }

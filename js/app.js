@@ -18,18 +18,36 @@ function bindEvents() {
 
   // Marketplace picker
   document.querySelectorAll('.mp-option').forEach(el => {
-    el.addEventListener('click', () => {
+    const handleSelect = () => {
       const val = el.dataset.value;
       setSelectedMarketplace(val);
       customUrlGroup.style.display = val === 'custom' ? 'flex' : 'none';
+    };
+    el.addEventListener('click', handleSelect);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSelect();
+      }
     });
   });
 
   // Color picker events
   document.querySelectorAll('.color-preset').forEach(el => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+    const handleSelect = () => {
+      document.querySelectorAll('.color-preset').forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-checked', 'false');
+      });
       el.classList.add('active');
+      el.setAttribute('aria-checked', 'true');
+    };
+    el.addEventListener('click', handleSelect);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSelect();
+      }
     });
   });
 
