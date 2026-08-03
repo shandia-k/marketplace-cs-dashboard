@@ -1,4 +1,4 @@
-﻿/**
+/**
  * webview-preload.js
  * Script yang diinjeksi ke dalam setiap webview.
  * Menangkap: Ctrl+Click (tab baru), Ctrl+Scroll (zoom), Alt+Panah (nav), F5 (refresh),
@@ -111,3 +111,13 @@ setInterval(checkUnread, 3000);
 
 // Cek pertama kali setelah halaman load
 window.addEventListener('load', () => setTimeout(checkUnread, 1000));
+
+// -- RAM Usage Polling
+setInterval(async () => {
+  try {
+    if (process && typeof process.getProcessMemoryInfo === 'function') {
+      const mem = await process.getProcessMemoryInfo();
+      ipcRenderer.sendToHost('memory-usage', mem.private || 0); // in KB
+    }
+  } catch (e) {}
+}, 3000);

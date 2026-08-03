@@ -95,10 +95,9 @@
         </button>
 
         <button class="btn-settings" id="btn-settings" title="Pengaturan" aria-label="Buka Pengaturan">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
-            <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
         </button>
       </div>
@@ -381,6 +380,35 @@
         </svg>
         Save
       </button>
+    </div>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div class="modal-overlay" id="feedback-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Lapor Bug / Feedback</h3>
+        <button class="modal-close" id="btn-feedback-close" aria-label="Tutup Form">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted); font-size: 13px; margin-bottom:12px; line-height: 1.5;">Sistem secara otomatis menyertakan RAM, OS, dan konfigurasi tab aktif (tanpa password) untuk membantu perbaikan.</p>
+        <div class="form-group">
+          <label for="feedback-type">Jenis Laporan</label>
+          <select id="feedback-type">
+            <option value="bug">🐛 Lapor Bug (Error / Macet)</option>
+            <option value="saran">💡 Saran Fitur</option>
+            <option value="tanya">❓ Pertanyaan Umum</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="feedback-message">Deskripsi</label>
+          <textarea id="feedback-message" rows="4" placeholder="Jelaskan masalah atau saran Anda di sini..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-feedback-cancel">Batal</button>
+        <button class="btn-primary" id="btn-feedback-submit">Kirim Feedback</button>
+      </div>
     </div>
   </div>
 

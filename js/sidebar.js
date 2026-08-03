@@ -113,3 +113,64 @@ function bindDragEvents(el) {
     renderSidebar(getFilteredStores());
   });
 }
+
+// ==========================================
+// Feedback Modal Logic
+// ==========================================
+const feedbackModal = document.getElementById('feedback-modal');
+const btnFeedbackClose = document.getElementById('btn-feedback-close');
+const btnFeedbackCancel = document.getElementById('btn-feedback-cancel');
+const btnFeedbackSubmit = document.getElementById('btn-feedback-submit');
+const feedbackType = document.getElementById('feedback-type');
+const feedbackMessage = document.getElementById('feedback-message');
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#btn-feedback')) {
+    feedbackModal.classList.add('active');
+    if (feedbackMessage) feedbackMessage.focus();
+  }
+});
+
+const closeFeedbackModal = () => {
+  feedbackModal.classList.remove('active');
+  feedbackMessage.value = '';
+};
+
+if (btnFeedbackClose) btnFeedbackClose.addEventListener('click', closeFeedbackModal);
+if (btnFeedbackCancel) btnFeedbackCancel.addEventListener('click', closeFeedbackModal);
+
+if (btnFeedbackSubmit) {
+  btnFeedbackSubmit.addEventListener('click', async () => {
+    const msg = feedbackMessage.value.trim();
+    if (!msg) {
+      showToast('Deskripsi tidak boleh kosong.', 'error');
+      return;
+    }
+
+    btnFeedbackSubmit.disabled = true;
+    btnFeedbackSubmit.textContent = 'Mengirim...';
+
+    // Prepare diagnostic config safely (no passwords)
+    const safeConfig = JSON.stringify(stores.map(s => ({ name: s.name, type: s.type })), null, 2);
+
+    try {
+      const response = await window.electronAPI.submitFeedback({
+        type: feedbackType.value,
+        message: msg,
+        storesConfig: safeConfig
+      });
+
+      if (response.success) {
+        showToast('Feedback berhasil dikirim. Terima kasih!', 'success');
+        closeFeedbackModal();
+      } else {
+        throw new Error(response.error || 'Unknown error');
+      }
+    } catch (err) {
+      showToast('Gagal mengirim feedback: ' + err.message, 'error');
+    } finally {
+      btnFeedbackSubmit.disabled = false;
+      btnFeedbackSubmit.textContent = 'Kirim Feedback';
+    }
+  });
+}

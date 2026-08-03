@@ -172,6 +172,9 @@ function createWebview(store, tab) {
       if (webviewMap[tab.id]) webviewMap[tab.id].unreadCount = count;
       unreadMap[store.id] = total;
       renderSidebar(getFilteredStores());
+
+    } else if (event.channel === 'memory-usage') {
+      if (webviewMap[tab.id]) webviewMap[tab.id].memKB = event.args[0] || 0;
     }
   });
 
@@ -192,6 +195,11 @@ function createWebview(store, tab) {
   });
 
   // ── Loading done & Nav state update ──────────────────────────────────────
+  wv.addEventListener('did-attach', () => {
+    if (webviewMap[tab.id] && wv.getWebContentsId) {
+      webviewMap[tab.id].wcId = wv.getWebContentsId();
+    }
+  });
   wv.addEventListener('did-finish-load', () => {
     loadingEl.classList.add('hidden');
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
