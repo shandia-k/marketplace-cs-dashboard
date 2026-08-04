@@ -260,78 +260,46 @@ ipcMain.handle('save-scratchpad-file', async (event, content) => {
 // Feedback Handler
 ipcMain.handle('submit-feedback', async (event, data) => {
   // -------------------------------------------------------------
-  // PENGATURAN FEEDBACK - TELEGRAM ATAU DISCORD
+  // PENGATURAN PROXY SERVER FEEDBACK (GOOGLE APPS SCRIPT)
   // -------------------------------------------------------------
-  // Jika ingin menggunakan TELEGRAM BOT, isi variabel di bawah ini:
-  const TELEGRAM_BOT_TOKEN = "8428763125:AAGtkZUh3QzWNtMEW2MfitPE0wQxMGXGv9c"; // Contoh: "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-  const TELEGRAM_CHAT_ID = "7094622052";   // Contoh: "-1001234567890" atau "987654321"
+  // Ganti URL di bawah ini dengan Web App URL dari Google Apps Script Anda.
+  // Ini memastikan aplikasi Anda 100% aman dan bersih dari Token Rahasia.
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxX7AEaLnjhY4jNmnrOGxF_BR0Qwu7P03-5xhNiRmxn3OZTnWG89GtxMol8z6DD1uhKSQ/exec";
 
-  // Jika ingin menggunakan DISCORD WEBHOOK, isi variabel di bawah ini:
-  const DISCORD_WEBHOOK_URL = "";
-
-  if (!TELEGRAM_BOT_TOKEN && !DISCORD_WEBHOOK_URL) {
-    // Simulasi sukses untuk testing jika webhook belum diatur
-    return { success: true, message: "Webhook/Bot belum diatur, namun pengumpulan data berhasil." };
+  if (!GAS_WEB_APP_URL) {
+    // Simulasi sukses untuk testing jika proxy belum diatur
+    return { success: true, message: "Server Proxy belum diatur, namun pengumpulan data berhasil." };
   }
 
   try {
     const os = require('os');
     const systemInfo = `
-*OS*: ${os.type()} ${os.release()} (${os.arch()})
-*Node*: ${process.versions.node} | *Electron*: ${process.versions.electron}
-*App Version*: ${app.getVersion()}
-*Free RAM*: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB
+OS: ${os.type()} ${os.release()} (${os.arch()})
+Node: ${process.versions.node} | Electron: ${process.versions.electron}
+App Version: ${app.getVersion()}
+Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB
     `.trim();
 
-    // 1. KIRIM VIA TELEGRAM
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-      // Escape HTML characters to prevent Telegram API 400 Bad Request
-      const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
-      const tgText = `🚨 <b>[${escapeHTML(data.type.toUpperCase())}] Laporan Baru Dashboard</b>\n\n<b>Pesan:</b>\n${escapeHTML(data.message)}\n\n<b>System Info:</b>\n<pre>${escapeHTML(systemInfo)}</pre>\n<b>Active Stores Config:</b>\n<pre><code class="language-json">${escapeHTML(data.storesConfig.substring(0, 800))}</code></pre>`;
-      
-      const tgResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: TELEGRAM_CHAT_ID,
-          text: tgText,
-          parse_mode: 'HTML'
-        })
-      });
-      if (!tgResponse.ok) {
-        const errText = await tgResponse.text();
-        throw new Error(`Telegram HTTP Error ${tgResponse.status}: ${errText}`);
-      }
-    }
+    // Kirim data ke Google Apps Script Proxy Anda
+    const response = await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: data.type.toUpperCase(),
+        message: data.message,
+        systemInfo: systemInfo,
+        storesConfig: data.storesConfig
+      })
+    });
 
-    // 2. KIRIM VIA DISCORD (Jika juga diisi)
-    if (DISCORD_WEBHOOK_URL) {
-      const payload = {
-        content: `**[${data.type.toUpperCase()}] Laporan Baru dari CS Dashboard**`,
-        embeds: [{
-          title: "Pesan",
-          description: data.message,
-          color: data.type === 'bug' ? 15158332 : (data.type === 'saran' ? 3447003 : 10181046),
-          fields: [
-            { name: "System Info", value: systemInfo.replace(/\*/g, '**'), inline: false },
-            { name: "Active Stores Config", value: data.storesConfig ? `\`\`\`json\n${data.storesConfig.substring(0, 800)}\n\`\`\`` : "None", inline: false }
-          ],
-          timestamp: new Date().toISOString()
-        }]
-      };
-
-      const response = await fetch(DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error(`Discord HTTP Error ${response.status}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Proxy HTTP Error ${response.status}: ${errText}`);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Feedback Error:', error);
+    console.error('Feedback Proxy Error:', error);
     return { success: false, error: error.message };
   }
 });
