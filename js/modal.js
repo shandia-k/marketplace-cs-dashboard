@@ -125,7 +125,7 @@ async function saveStore() {
   btnSave.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white; border-right-color: white;"></span> Menyimpan...';
   btnSave.setAttribute('aria-busy', 'true');
 
-  const ok = await window.electronAPI.saveStores(stores);
+  const ok = await window.electronAPI.saveStores(stores, window.currentUser);
 
   btnSave.disabled = false;
   btnSave.innerHTML = originalText;
@@ -169,7 +169,7 @@ async function deleteStore(storeId) {
   }
 
   stores = stores.filter(s => s.id !== storeId);
-  await window.electronAPI.saveStores(stores);
+  await window.electronAPI.saveStores(stores, window.currentUser);
   renderSidebar(getFilteredStores());
   renderSettingsList();
   showToast('Toko dihapus.', 'success');
@@ -228,7 +228,7 @@ async function toggleWhitelist(storeId) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
   store.hibernationWhitelisted = !store.hibernationWhitelisted;
-  await window.electronAPI.saveStores(stores);
+  await window.electronAPI.saveStores(stores, window.currentUser);
   renderSettingsList();
   const status = store.hibernationWhitelisted ? 'dilindungi 🛡️' : 'tidak dilindungi';
   showToast(`"${store.name}" ${status} dari hibernasi.`, 'success');
@@ -271,7 +271,7 @@ async function importConfig() {
     btn.setAttribute('aria-busy', 'true');
     
     stores = result;
-    await window.electronAPI.saveStores(stores);
+    await window.electronAPI.saveStores(stores, window.currentUser);
     renderSidebar(getFilteredStores());
     renderSettingsList();
     updateEmptyState();

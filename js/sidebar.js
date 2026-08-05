@@ -4,11 +4,40 @@ function toggleSidebar() {
   sidebarEl.classList.toggle('collapsed', sidebarCollapsed);
 }
 
+// ── Store Ordering ─────────────────────────────────────────────────────────────
+function getOrderedStores() {
+  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
+  const savedOrderStr = localStorage.getItem('storeOrder' + userPrefix);
+  let orderedStores = [...stores];
+  
+  if (savedOrderStr) {
+    try {
+      const savedOrder = JSON.parse(savedOrderStr);
+      orderedStores.sort((a, b) => {
+        const idxA = savedOrder.indexOf(a.id);
+        const idxB = savedOrder.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    } catch(e) {}
+  }
+  return orderedStores;
+}
+
+function saveStoreOrder(currentOrderedStores) {
+  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
+  const order = currentOrderedStores.map(s => s.id);
+  localStorage.setItem('storeOrder' + userPrefix, JSON.stringify(order));
+}
+
 // ── Search / Filter ───────────────────────────────────────────────────────────
 function getFilteredStores() {
   const q = searchInput.value.toLowerCase().trim();
-  if (!q) return stores;
-  return stores.filter(s =>
+  const ordered = getOrderedStores();
+  if (!q) return ordered;
+  return ordered.filter(s =>
     s.name.toLowerCase().includes(q) ||
     (MARKETPLACE_CONFIG[s.marketplace]?.label || '').toLowerCase().includes(q)
   );
@@ -101,15 +130,19 @@ function bindDragEvents(el) {
     el.classList.remove('drag-over');
     if (!dragSrcId || el.dataset.id === dragSrcId) return;
 
-    const srcIdx  = stores.findIndex(s => s.id === dragSrcId);
-    const destIdx = stores.findIndex(s => s.id === el.dataset.id);
+    const ordered = getOrderedStores();
+    const srcIdx  = ordered.findIndex(s => s.id === dragSrcId);
+    const destIdx = ordered.findIndex(s => s.id === el.dataset.id);
     if (srcIdx === -1 || destIdx === -1) return;
 
     // Reorder
-    const [moved] = stores.splice(srcIdx, 1);
-    stores.splice(destIdx, 0, moved);
+    const [moved] = ordered.splice(srcIdx, 1);
+    ordered.splice(destIdx, 0, moved);
 
-    window.electronAPI.saveStores(stores);
+    // Save only the order for the current user
+    saveStoreOrder(ordered);
+    
+    // Note: We don't save to global stores.json to prevent affecting other users
     renderSidebar(getFilteredStores());
   });
 }

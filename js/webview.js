@@ -23,10 +23,126 @@ function hibernateTab(storeId, tabId) {
   renderSidebar(getFilteredStores());
 }
 
+// ── System RAM Alert ─────────────────────────────────────────────────────────
+const RAM_WARN_PCT    = 85;    // Tampilkan peringatan (kuning) saat sistem ≥ 85%
+const RAM_CRITICAL_PCT = 95;   // Tampilkan peringatan kritis (merah) saat sistem ≥ 95%
+const RAM_ALERT_COOLDOWN_MS = 60000; // Jangan tampilkan lagi dalam 1 menit setelah dismiss
+
+let ramAlertLastDismissed = 0;
+let ramAlertCurrentLevel  = 0; // 0 = hidden, 1 = warn, 2 = critical
+
+const ramAlertOverlay  = document.getElementById('ram-alert-overlay');
+const ramAlertIcon     = document.getElementById('ram-alert-icon');
+const ramAlertTitle    = document.getElementById('ram-alert-title');
+const ramAlertDesc     = document.getElementById('ram-alert-desc');
+const ramAlertBarFill  = document.getElementById('ram-alert-bar-fill');
+const ramAlertBarLabel = document.getElementById('ram-alert-bar-label');
+const ramAlertTips     = document.getElementById('ram-alert-tips');
+const ramAlertDismiss  = document.getElementById('ram-alert-dismiss');
+
+if (ramAlertDismiss) {
+  ramAlertDismiss.addEventListener('click', () => {
+    ramAlertOverlay.style.display = 'none';
+    ramAlertCurrentLevel = 0;
+    ramAlertLastDismissed = Date.now();
+  });
+}
+
+function showRamAlert(pct, freeMB, totalMB, level) {
+  if (!ramAlertOverlay) return;
+  
+  const freeGB  = (freeMB  / 1024).toFixed(1);
+  const totalGB = (totalMB / 1024).toFixed(1);
+  const usedGB  = ((totalMB - freeMB) / 1024).toFixed(1);
+  const pctRound = Math.round(pct);
+
+  ramAlertBarFill.style.width  = `${Math.min(pct, 100)}%`;
+  ramAlertBarLabel.textContent = `${pctRound}%`;
+
+  if (level === 2) {
+    // Critical
+    ramAlertOverlay.classList.add('critical');
+    ramAlertIcon.textContent    = '🚨';
+    ramAlertTitle.textContent   = 'KRITIS: RAM Sistem Hampir Habis!';
+    ramAlertDesc.textContent    = `RAM tersisa hanya ${freeGB} GB dari total ${totalGB} GB (terpakai ${pctRound}%). Aplikasi berisiko crash!`;
+    ramAlertTips.innerHTML = `
+      <li>Tutup aplikasi yang tidak dipakai (Spotify, Office, browser lain)</li>
+      <li>Restart PC jika belum lama</li>
+      <li>Dashboard ini sudah menghibernasi tab untuk menghemat RAM</li>
+    `;
+  } else {
+    // Warning
+    ramAlertOverlay.classList.remove('critical');
+    ramAlertIcon.textContent    = '⚠️';
+    ramAlertTitle.textContent   = 'Peringatan: RAM Sistem Tinggi';
+    ramAlertDesc.textContent    = `RAM sistem terpakai ${pctRound}% — tersisa ${freeGB} GB dari ${totalGB} GB. Performa mungkin mulai melambat.`;
+    ramAlertTips.innerHTML = `
+      <li>Pertimbangkan menutup Spotify, Office, atau browser yang tidak dipakai</li>
+      <li>Tab dashboard yang tidak aktif sudah dihibernasi otomatis</li>
+    `;
+  }
+  
+  ramAlertOverlay.style.display = 'block';
+  
+  // Force re-trigger animasi jika sudah terlihat sebelumnya
+  ramAlertOverlay.style.animation = 'none';
+  ramAlertOverlay.offsetHeight; // reflow
+  ramAlertOverlay.style.animation = '';
+}
+
+function hideRamAlert() {
+  if (!ramAlertOverlay) return;
+  ramAlertOverlay.style.display = 'none';
+  ramAlertCurrentLevel = 0;
+}
+
+async function checkSystemRam() {
+  try {
+    const sysRam = await window.electronAPI.getSystemRam();
+    const pct    = sysRam.usedPct;
+    
+    const now = Date.now();
+    const cooldownActive = (now - ramAlertLastDismissed) < RAM_ALERT_COOLDOWN_MS;
+
+    if (pct >= RAM_CRITICAL_PCT) {
+      // Selalu tampilkan ulang di level kritis, abaikan cooldown
+      if (ramAlertCurrentLevel !== 2) {
+        ramAlertCurrentLevel = 2;
+        showRamAlert(pct, sysRam.freeMB, sysRam.totalMB, 2);
+      } else {
+        // Update angka tanpa re-animasi
+        ramAlertBarFill.style.width  = `${Math.min(pct, 100)}%`;
+        ramAlertBarLabel.textContent = `${Math.round(pct)}%`;
+      }
+    } else if (pct >= RAM_WARN_PCT) {
+      if (ramAlertCurrentLevel === 0 && !cooldownActive) {
+        ramAlertCurrentLevel = 1;
+        showRamAlert(pct, sysRam.freeMB, sysRam.totalMB, 1);
+      } else if (ramAlertCurrentLevel === 2) {
+        // Turunkan dari critical ke warning
+        ramAlertCurrentLevel = 1;
+        showRamAlert(pct, sysRam.freeMB, sysRam.totalMB, 1);
+      } else if (ramAlertCurrentLevel === 1) {
+        // Update angka
+        ramAlertBarFill.style.width  = `${Math.min(pct, 100)}%`;
+        ramAlertBarLabel.textContent = `${Math.round(pct)}%`;
+      }
+    } else {
+      // RAM kembali normal
+      if (ramAlertCurrentLevel > 0) hideRamAlert();
+    }
+  } catch (e) {
+    // Tidak kritis, abaikan
+  }
+}
+
 async function checkAndHibernateIfNeeded() {
   try {
     ramUsageMB = await window.electronAPI.getAppMemoryMB();
     updateRamIndicator(ramUsageMB);
+
+    // Cek RAM sistem juga
+    checkSystemRam();
 
     if (ramUsageMB < RAM_THRESHOLD_MB) return;
 
@@ -66,6 +182,7 @@ async function checkAndHibernateIfNeeded() {
     // Tidak kritis, abaikan
   }
 }
+
 
 // ── Hibernasi Semua (Manual) ─────────────────────────────────────────────────
 function hibernateAll() {
@@ -120,11 +237,12 @@ function createWebview(store, tab) {
     <p>Membuka ${escapeHtml(store.name)}…</p>`;
   webviewCont.appendChild(loadingEl);
 
-  // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login)
+  // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
+  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
   const wv = document.createElement('webview');
   wv.className = 'store-webview visible';
   wv.setAttribute('src', tab.url);
-  wv.setAttribute('partition', store.partition);
+  wv.setAttribute('partition', actualPartition);
   wv.setAttribute('preload', preloadUrl);
   wv.setAttribute('allowpopups', '');
 
@@ -233,7 +351,7 @@ function createWebview(store, tab) {
         </svg>
         <p style="color:#fca5a5">Gagal memuat halaman.<br>
         <small style="color:#64748b">${escapeHtml(e.errorDescription || 'Periksa koneksi internet.')}</small></p>
-        <button onclick="document.querySelector('webview[partition=\\'${store.partition}\\']').reload()" 
+        <button onclick="document.querySelector('webview[partition=\\'${actualPartition}\\']').reload()" 
           style="margin-top:8px;padding:8px 16px;background:#DF1683;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;font-family:'Nexa', sans-serif;">
           Muat Ulang
         </button>`;

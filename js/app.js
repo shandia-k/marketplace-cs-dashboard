@@ -87,7 +87,11 @@ function bindEvents() {
 function toggleTheme() {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', currentTheme);
-  localStorage.setItem('theme', currentTheme);
+  if (window.currentUser) {
+    localStorage.setItem('theme_' + window.currentUser, currentTheme);
+  } else {
+    localStorage.setItem('theme', currentTheme);
+  }
 }
 
 // ── Global helpers (untuk onclick inline di html) ─────────────────────────
@@ -96,19 +100,30 @@ window.deleteStore   = deleteStore;
 window.retryTab      = retryTab;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
-async function init() {
-  // Apply initial theme
+window.initApp = async function() {
+  // Apply initial theme based on user
+  if (window.currentUser) {
+    const savedTheme = localStorage.getItem('theme_' + window.currentUser);
+    if (savedTheme) currentTheme = savedTheme;
+  }
   document.documentElement.setAttribute('data-theme', currentTheme);
 
   appPath = await window.electronAPI.getAppPath();
-  stores  = await window.electronAPI.getStores();
-  renderSidebar(stores);
+  stores  = await window.electronAPI.getStores(window.currentUser);
+  renderSidebar(getFilteredStores());
   bindEvents();
+  
+  // Reload scratchpad for current user
+  if (typeof loadScratchpadState === 'function') {
+    loadScratchpadState();
+    if (scratchpadWindow && scratchpadWindow.style.display !== 'none') {
+      renderScratchpadTabs();
+      const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
+      if (currentTab) spTextarea.value = currentTab.content;
+    }
+  }
 
   // Mulai monitor RAM dan hibernate otomatis
   setInterval(checkAndHibernateIfNeeded, RAM_CHECK_INTERVAL_MS);
   checkAndHibernateIfNeeded(); // langsung cek pertama kali
-}
-
-// ── Start App ─────────────────────────────────────────────────────────────────
-init();
+};

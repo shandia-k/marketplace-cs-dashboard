@@ -3,13 +3,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose API yang aman dari main process ke renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   // Store management
-  getStores: () => ipcRenderer.invoke('get-stores'),
-  saveStores: (stores) => ipcRenderer.invoke('save-stores', stores),
+  getStores: (username) => ipcRenderer.invoke('get-stores', username),
+  saveStores: (stores, username) => ipcRenderer.invoke('save-stores', stores, username),
   getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
   getAppMetrics: () => ipcRenderer.invoke('get-app-metrics-full'),
+  getSystemRam: () => ipcRenderer.invoke('get-system-ram'),
   submitFeedback: (data) => ipcRenderer.invoke('submit-feedback', data),
+  getUsers: () => ipcRenderer.invoke('get-users'),
+  createUser: (data) => ipcRenderer.invoke('create-user', data),
+  loginUser: (data) => ipcRenderer.invoke('login-user', data),
   exportStoresConfig: (stores) => ipcRenderer.invoke('export-stores-config', stores),
   importStoresConfig: () => ipcRenderer.invoke('import-stores-config'),
 

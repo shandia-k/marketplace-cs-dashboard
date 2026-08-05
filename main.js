@@ -5,10 +5,12 @@ const xlsx = require('xlsx');
 const mammoth = require('mammoth');
 const docx = require('docx');
 const { autoUpdater } = require('electron-updater');
+const crypto = require('crypto');
 
-// Path untuk menyimpan data toko
+// Path untuk menyimpan data toko dan user
 const userDataPath = app.getPath('userData');
 const storesFilePath = path.join(userDataPath, 'stores.json');
+const usersFilePath = path.join(userDataPath, 'users.json');
 
 // Default stores jika belum ada data
 const defaultStores = [
@@ -36,29 +38,60 @@ const defaultStores = [
 ];
 
 // Baca stores dari file JSON
-function readStores() {
+function readStores(username) {
+  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const filePath = path.join(userDataPath, fileName);
   try {
-    if (fs.existsSync(storesFilePath)) {
-      const data = fs.readFileSync(storesFilePath, 'utf8');
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
       return JSON.parse(data);
     }
   } catch (err) {
     console.error('Error reading stores:', err);
   }
   // Buat file default jika belum ada
-  fs.writeFileSync(storesFilePath, JSON.stringify(defaultStores, null, 2));
+  fs.writeFileSync(filePath, JSON.stringify(defaultStores, null, 2));
   return defaultStores;
 }
 
 // Simpan stores ke file JSON
-function saveStores(stores) {
+function saveStores(stores, username) {
+  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const filePath = path.join(userDataPath, fileName);
   try {
-    fs.writeFileSync(storesFilePath, JSON.stringify(stores, null, 2));
+    fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
     return true;
   } catch (err) {
     console.error('Error saving stores:', err);
     return false;
   }
+}
+
+// ── Logika Users ─────────────────────────────────────────────────────────────
+function readUsers() {
+  try {
+    if (fs.existsSync(usersFilePath)) {
+      const data = fs.readFileSync(usersFilePath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading users:', err);
+  }
+  return [];
+}
+
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Error saving users:', err);
+    return false;
+  }
+}
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
 }
 
 let mainWindow;
@@ -96,16 +129,44 @@ function createWindow() {
 }
 
 // IPC Handlers
-ipcMain.handle('get-stores', () => {
-  return readStores();
+ipcMain.handle('get-stores', (event, username) => {
+  return readStores(username);
 });
 
-ipcMain.handle('save-stores', (event, stores) => {
-  return saveStores(stores);
+ipcMain.handle('save-stores', (event, stores, username) => {
+  return saveStores(stores, username);
 });
 
 ipcMain.handle('get-user-data-path', () => {
   return userDataPath;
+});
+
+// IPC Users
+ipcMain.handle('get-users', () => {
+  const users = readUsers();
+  return users.map(u => ({ username: u.username }));
+});
+
+ipcMain.handle('create-user', (event, { username, password }) => {
+  const users = readUsers();
+  if (users.find(u => u.username === username)) {
+    return { success: false, error: 'Username sudah digunakan' };
+  }
+  users.push({ username, passwordHash: hashPassword(password) });
+  saveUsers(users);
+  return { success: true };
+});
+
+ipcMain.handle('login-user', (event, { username, password }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  
+  if (user.passwordHash === hashPassword(password)) {
+    return { success: true };
+  } else {
+    return { success: false, error: 'PIN/Password salah' };
+  }
 });
 
 ipcMain.handle('get-app-path', () => {
@@ -164,6 +225,16 @@ ipcMain.handle('get-app-memory-mb', () => {
 // Mengembalikan metrik lengkap termasuk ID webContents untuk pemetaan per tab
 ipcMain.handle('get-app-metrics-full', () => {
   return app.getAppMetrics();
+});
+
+// Mengembalikan info RAM sistem (bukan hanya RAM aplikasi)
+ipcMain.handle('get-system-ram', () => {
+  const os = require('os');
+  const totalMB = os.totalmem() / 1024 / 1024;
+  const freeMB  = os.freemem()  / 1024 / 1024;
+  const usedMB  = totalMB - freeMB;
+  const usedPct = (usedMB / totalMB) * 100;
+  return { totalMB, freeMB, usedMB, usedPct };
 });
 
 // Scratchpad IPC Handlers

@@ -1,0 +1,238 @@
+.login-layout {
+  position: fixed;
+  top: 36px; /* Below titlebar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.login-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: slideUpFade 0.4s ease-out forwards;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-header img {
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+
+.login-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-base);
+}
+
+.login-header p {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.login-body .form-group {
+  margin-bottom: 16px;
+}
+
+.login-actions {
+  margin-top: 24px;
+}
+
+.login-footer {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.login-footer a {
+  color: var(--primary-base);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.login-footer a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── RAM Alert Popup ─────────────────────────────────────────────────────────── */
+.ram-alert-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  max-width: 380px;
+  width: calc(100vw - 40px);
+  animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.ram-alert-card {
+  background: #1e1a2e;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 158, 11, 0.2);
+  position: relative;
+}
+
+.ram-alert-overlay.critical .ram-alert-card {
+  background: #1e0f0f;
+  border-color: #ef4444;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.15);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.ram-alert-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ram-alert-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ram-alert-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f59e0b;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.ram-alert-overlay.critical .ram-alert-title {
+  color: #ef4444;
+}
+
+.ram-alert-desc {
+  font-size: 12px;
+  color: #d1d5db;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.ram-alert-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ram-alert-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ram-alert-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  transition: width 1s ease;
+}
+
+.ram-alert-bar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
+}
+
+.ram-alert-overlay.critical .ram-alert-bar-label {
+  color: #ef4444;
+}
+
+.ram-alert-tips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ram-alert-tips li {
+  font-size: 11px;
+  color: #9ca3af;
+  padding: 2px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.ram-alert-tips li::before {
+  content: '→';
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.ram-alert-overlay.critical .ram-alert-tips li::before {
+  color: #ef4444;
+}
+
+.ram-alert-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.2s, background 0.2s;
+}
+
+.ram-alert-dismiss:hover {
+  color: #f3f4f6;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(239,68,68,0.3); }
+  50%       { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 2px rgba(239,68,68,0.5), 0 0 30px rgba(239,68,68,0.2); }
+}

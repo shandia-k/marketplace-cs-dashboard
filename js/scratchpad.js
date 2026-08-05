@@ -18,7 +18,8 @@ let scratchpadTabs = [];
 let activeScratchpadTabId = null;
 
 function loadScratchpadState() {
-  const saved = localStorage.getItem('scratchpadTabs');
+  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
+  const saved = localStorage.getItem('scratchpadTabs' + userPrefix);
   if (saved) {
     try {
       scratchpadTabs = JSON.parse(saved);
@@ -31,7 +32,7 @@ function loadScratchpadState() {
     ];
   }
   
-  const savedActive = localStorage.getItem('activeScratchpadTabId');
+  const savedActive = localStorage.getItem('activeScratchpadTabId' + userPrefix);
   if (savedActive && scratchpadTabs.find(t => t.id === savedActive)) {
     activeScratchpadTabId = savedActive;
   } else {
@@ -40,8 +41,9 @@ function loadScratchpadState() {
 }
 
 function saveScratchpadState() {
-  localStorage.setItem('scratchpadTabs', JSON.stringify(scratchpadTabs));
-  localStorage.setItem('activeScratchpadTabId', activeScratchpadTabId);
+  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
+  localStorage.setItem('scratchpadTabs' + userPrefix, JSON.stringify(scratchpadTabs));
+  localStorage.setItem('activeScratchpadTabId' + userPrefix, activeScratchpadTabId);
 }
 
 loadScratchpadState();
