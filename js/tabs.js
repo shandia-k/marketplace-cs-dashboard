@@ -88,8 +88,8 @@ function renderTabBar() {
     <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''}" data-tab-id="${tab.id}" title="${isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title)}">
       <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
-      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
+      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)}">&#x1F343;</button>` : ''}
+      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
