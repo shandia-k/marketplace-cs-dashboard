@@ -1,0 +1,3 @@
+## 2024-05-18 - Missing ARIA labels in dynamic HTML lists
+**Learning:** Dynamically generated lists with icon-only buttons (like settings lists or tab lists) often lack contextual ARIA labels because they aren't written directly in HTML. This makes screen readers announce them generically as "button".
+**Action:** Ensure dynamically generated HTML string templates for lists and tabs include `aria-label` attributes using string interpolation (e.g. `aria-label="Edit ${store.name}"`).
