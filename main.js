@@ -37,9 +37,19 @@ const defaultStores = [
   }
 ];
 
+// Helper to sanitize username to prevent path traversal
+function sanitizeUsername(username) {
+  if (!username) return username;
+  // Ensure username is converted to string in case non-string is passed via IPC
+  const strUsername = String(username);
+  // Only allow alphanumeric, dash, and underscore
+  return strUsername.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     if (fs.existsSync(filePath)) {
@@ -56,7 +66,8 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
@@ -148,6 +159,11 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  // Validate username to prevent injection/path traversal
+  if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { success: false, error: 'Username hanya boleh berisi huruf, angka, strip (-), dan garis bawah (_)' };
+  }
+
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
