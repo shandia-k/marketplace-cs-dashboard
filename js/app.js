@@ -14,7 +14,10 @@ function bindEvents() {
   document.getElementById('btn-settings').addEventListener('click', openSettings);
 
   // Search
-  searchInput.addEventListener('input', () => renderSidebar(getFilteredStores()));
+  // ⚡ Bolt Optimization: Debounced search input to prevent synchronous DOM re-renders on every keystroke.
+  // Impact: Reduces main thread blocking and DOM thrashing when filtering a large list of stores.
+  const debouncedSearch = debounce(() => renderSidebar(getFilteredStores()), 200);
+  searchInput.addEventListener('input', debouncedSearch);
 
   // Marketplace picker
   document.querySelectorAll('.mp-option').forEach(el => {
