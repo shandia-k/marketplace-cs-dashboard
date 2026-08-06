@@ -37,8 +37,17 @@ const defaultStores = [
   }
 ];
 
+// 🛡️ Sentinel: Validate username to prevent path traversal
+function isValidUsername(username) {
+  return !username || /^[a-zA-Z0-9_-]+$/.test(username);
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
+  if (!isValidUsername(username)) {
+    console.error('Invalid username format');
+    return defaultStores;
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -56,6 +65,10 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
+  if (!isValidUsername(username)) {
+    console.error('Invalid username format');
+    return false;
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -148,6 +161,9 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  if (!isValidUsername(username)) {
+    return { success: false, error: 'Format username tidak valid (gunakan huruf, angka, _, atau -)' };
+  }
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };

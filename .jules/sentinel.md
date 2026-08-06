@@ -1,0 +1,4 @@
+## 2024-05-24 - Path Traversal via IPC Username Parameters
+**Vulnerability:** Path traversal vulnerability exists when reading and saving user-specific files in `readStores` and `saveStores`. The `username` parameter passed via IPC is concatenated directly into the file path (`stores_${username}.json`) without validation, allowing a malicious attacker to read/write arbitrary JSON files on the system using `../../`.
+**Learning:** Always validate and sanitize input originating from IPC before using it in file path operations, even if it seems it's coming from an internal renderer process.
+**Prevention:** Implement strict validation for file path components (e.g., rejecting `/`, `\`, and `..`) and verify that the resolved path starts with the intended base directory (`app.getPath('userData')`).
