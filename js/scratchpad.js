@@ -169,14 +169,31 @@ function closeScratchpadTab(tabId) {
   }
 }
 
-// Update current tab content on input
-spTextarea.addEventListener('input', () => {
+// Helper to perform the actual saving logic synchronously when needed
+function flushScratchpadSave() {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
     saveScratchpadState();
   }
+}
+
+// Update current tab content on input
+// Debounce to prevent blocking main thread with sync I/O (localStorage) on every keystroke
+const debouncedSaveScratchpad = debounce(flushScratchpadSave, 300);
+
+spTextarea.addEventListener('input', () => {
+  // Capture current state in memory immediately to prevent race conditions during tab switches
+  const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
+  if (currentTab) {
+    currentTab.content = spTextarea.value;
+    // Debounce the heavy localStorage sync
+    debouncedSaveScratchpad();
+  }
 });
+
+// Immediately flush any pending saves before the window is closed/reloaded
+window.addEventListener('beforeunload', flushScratchpadSave);
 
 // Add tab button
 btnAddTab.addEventListener('click', (e) => {

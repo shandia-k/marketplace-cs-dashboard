@@ -12,6 +12,21 @@ function generateId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
+// ── Debounce ──────────────────────────────────────────────────────────────────
+/**
+ * Debounce utility to limit the rate at which a function can fire.
+ * @param {Function} func The function to debounce
+ * @param {number} wait Time in milliseconds to wait before calling the function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg, type = '') {
   const toast   = document.getElementById('toast');
