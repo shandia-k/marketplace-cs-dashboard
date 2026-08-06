@@ -1,0 +1,3 @@
+## 2026-08-06 - [Dynamic Icon-Only Buttons Accessibility]
+**Learning:** Icon-only buttons rendered dynamically via template literals (e.g. in `js/tabs.js`) were found to be missing crucial ARIA labels (`aria-label`) for screen readers. Furthermore, their embedded `<svg>` icons lacked `aria-hidden="true" focusable="false"`, meaning screen readers might attempt to read the SVG content incorrectly.
+**Action:** Ensure all dynamically generated UI components, especially icon-only buttons, include `aria-label` for screen reader accessibility and hide decorative/non-semantic SVGs from screen readers using `aria-hidden="true" focusable="false"`.
