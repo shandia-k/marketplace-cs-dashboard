@@ -37,8 +37,18 @@ const defaultStores = [
   }
 ];
 
+// Helper untuk validasi username agar aman dari path traversal
+function isValidUsername(username) {
+  return /^[a-zA-Z0-9_-]+$/.test(username);
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
+  // Cegah path traversal dengan validasi format username
+  if (username && !isValidUsername(username)) {
+    console.error('Invalid username format, reverting to default stores.json');
+    username = null; // Revert ke default jika format tidak valid
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -56,6 +66,11 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
+  // Cegah path traversal dengan validasi format username
+  if (username && !isValidUsername(username)) {
+    console.error('Invalid username format, reverting to default stores.json');
+    username = null; // Revert ke default jika format tidak valid
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -148,6 +163,9 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  if (!username || !isValidUsername(username)) {
+    return { success: false, error: 'Format username tidak valid (hanya huruf, angka, _, -)' };
+  }
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
@@ -158,6 +176,9 @@ ipcMain.handle('create-user', (event, { username, password }) => {
 });
 
 ipcMain.handle('login-user', (event, { username, password }) => {
+  if (!username || !isValidUsername(username)) {
+    return { success: false, error: 'Format username tidak valid' };
+  }
   const users = readUsers();
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
