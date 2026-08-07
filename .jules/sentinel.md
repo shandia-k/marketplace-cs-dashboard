@@ -1,0 +1,4 @@
+## 2024-05-24 - Path Traversal in IPC Handlers
+**Vulnerability:** The application is vulnerable to path traversal because unsanitized inputs (`username`) passed from the renderer via IPC to `main.js` are directly concatenated into file paths (e.g. `stores_${username}.json`) using `path.join()`. This allows a malicious user or compromised renderer to read/write arbitrary files outside the expected `userDataPath` by supplying usernames like `../../../Windows/System32/config/sam`.
+**Learning:** Never trust input from the renderer process in the main process, especially when constructing file paths or executing commands. The IPC boundary is the primary security perimeter in an Electron app.
+**Prevention:** Always strictly validate and sanitize inputs received via IPC. For usernames, use a whitelist regex (e.g., `/^[a-zA-Z0-9_-]+$/`) and throw an error or sanitize the input if it fails the check before using it in sensitive operations like file I/O.
