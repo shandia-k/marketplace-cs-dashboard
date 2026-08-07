@@ -95,7 +95,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     btnRegister.disabled = true;
-    btnRegister.textContent = 'Membuat...';
+    btnRegister.setAttribute('aria-busy', 'true');
+    btnRegister.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white; border-right-color: transparent;"></span> Membuat...';
 
     try {
       const res = await window.electronAPI.createUser({ username, password });
@@ -114,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToast('Terjadi kesalahan sistem', 'error');
     } finally {
       btnRegister.disabled = false;
+      btnRegister.removeAttribute('aria-busy');
       btnRegister.textContent = 'Buat Akun';
     }
   });
@@ -130,7 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     btnLogin.disabled = true;
-    btnLogin.textContent = 'Masuk...';
+    btnLogin.setAttribute('aria-busy', 'true');
+    btnLogin.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-top-color: white; border-right-color: transparent;"></span> Masuk...';
 
     try {
       const res = await window.electronAPI.loginUser({ username, password });
@@ -156,6 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToast('Terjadi kesalahan sistem', 'error');
     } finally {
       btnLogin.disabled = false;
+      btnLogin.removeAttribute('aria-busy');
       btnLogin.textContent = 'Masuk';
     }
   });
