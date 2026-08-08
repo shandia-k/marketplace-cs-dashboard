@@ -12,6 +12,12 @@ const userDataPath = app.getPath('userData');
 const storesFilePath = path.join(userDataPath, 'stores.json');
 const usersFilePath = path.join(userDataPath, 'users.json');
 
+// Validasi username agar hanya menerima karakter aman (mencegah path traversal)
+function sanitizeUsername(username) {
+  if (!username) return username;
+  return username.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 // Default stores jika belum ada data
 const defaultStores = [
   {
@@ -39,7 +45,8 @@ const defaultStores = [
 
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     if (fs.existsSync(filePath)) {
@@ -56,7 +63,8 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
@@ -148,6 +156,10 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  if (!username || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { success: false, error: 'Username hanya boleh berisi huruf, angka, strip (-), atau underscore (_)' };
+  }
+
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
