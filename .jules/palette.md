@@ -1,0 +1,3 @@
+## 2024-10-24 - Accessibility in Dynamically Rendered Vanilla JS Components
+**Learning:** When generating HTML structures using string literals (template strings) in Vanilla JS, it's very easy to miss essential accessibility attributes like `aria-label`, `role`, `tabindex`, and interactive keyboard events (keydown), because the structural markup is hidden inside JavaScript strings rather than a declarative templating language.
+**Action:** Always inspect `.innerHTML` injections and string-based component rendering functions (`renderSidebar`, `renderTabBar`) to verify that standard accessibility patterns (like ARIA labels for icon-only buttons and keyboard accessibility for custom interactive `div`s) are implemented correctly alongside the visual HTML structure.
