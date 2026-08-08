@@ -76,7 +76,7 @@ function renderSidebar(filteredStores) {
       const unreadBadge = unread > 0 ? `<span class="unread-badge">${unread > 99 ? '99+' : unread}</span>` : '';
       const shieldBadge = store.hibernationWhitelisted ? '<span class="whitelist-badge">🛡️</span>' : '';
       html += `
-        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''}" data-id="${store.id}" title="${escapeHtml(store.name)}${allHibernated ? ' (Tidur)' : ''}" draggable="true">
+        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''}" data-id="${store.id}" title="${escapeHtml(store.name)}${allHibernated ? ' (Tidur)' : ''}" draggable="true" role="button" tabindex="0" aria-pressed="${isActive ? 'true' : 'false'}">
           <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${allHibernated ? leafBadge : ''}${shieldBadge}${unreadBadge}</div>
           <div class="store-info">
             <div class="store-name">${escapeHtml(store.name)}</div>
@@ -90,7 +90,14 @@ function renderSidebar(filteredStores) {
   sidebarContent.innerHTML = html;
 
   sidebarContent.querySelectorAll('.store-item').forEach(el => {
-    el.addEventListener('click', () => activateStore(el.dataset.id));
+    const triggerActivate = () => activateStore(el.dataset.id);
+    el.addEventListener('click', triggerActivate);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        triggerActivate();
+      }
+    });
     bindDragEvents(el);
   });
 }
