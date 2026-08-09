@@ -37,8 +37,18 @@ const defaultStores = [
   }
 ];
 
+// Helper to validate username to prevent path traversal
+function isValidUsername(username) {
+  if (!username) return true; // allow empty username for default file
+  return /^[a-zA-Z0-9_-]+$/.test(username);
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
+  if (username && !isValidUsername(username)) {
+    console.error('Invalid username format');
+    return defaultStores;
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -56,6 +66,10 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
+  if (username && !isValidUsername(username)) {
+    console.error('Invalid username format');
+    return false;
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -148,6 +162,9 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  if (!isValidUsername(username)) {
+    return { success: false, error: 'Username tidak valid' };
+  }
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
@@ -158,6 +175,9 @@ ipcMain.handle('create-user', (event, { username, password }) => {
 });
 
 ipcMain.handle('login-user', (event, { username, password }) => {
+  if (!isValidUsername(username)) {
+    return { success: false, error: 'Username tidak valid' };
+  }
   const users = readUsers();
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
