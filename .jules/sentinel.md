@@ -1,0 +1,4 @@
+## 2024-05-24 - [Path Traversal in IPC Handlers]
+**Vulnerability:** The application accepts a `username` string from the renderer process via IPC and concatenates it directly into file paths (e.g., `stores_${username}.json`) without validation. This allows a path traversal attack if a malicious `username` like `../` is provided, enabling an attacker to read, create, or overwrite files outside the intended user data directory.
+**Learning:** All inputs from the renderer process, especially those used in file system operations (like `path.join`), must be strictly validated. The IPC boundary is a security boundary and data from the renderer cannot be trusted blindly.
+**Prevention:** Always validate and sanitize user input before using it in sensitive operations. Implement strict regex validation for identifiers like usernames to ensure they only contain safe characters (e.g., alphanumeric).
