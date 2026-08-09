@@ -56,3 +56,21 @@ function showZoomIndicator(percent) {
     indicator?.classList.remove('visible');
   }, 1800);
 }
+
+/**
+ * Debounce a function call to prevent rapid, high-frequency execution.
+ * @param {Function} func The function to debounce.
+ * @param {number} wait The number of milliseconds to wait.
+ * @returns {Function} A debounced version of the function.
+ */
+function debounce(func, wait = 150) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
