@@ -170,13 +170,13 @@ function closeScratchpadTab(tabId) {
 }
 
 // Update current tab content on input
-spTextarea.addEventListener('input', () => {
+spTextarea.addEventListener('input', debounce(() => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
     saveScratchpadState();
   }
-});
+}, 300));
 
 // Add tab button
 btnAddTab.addEventListener('click', (e) => {
