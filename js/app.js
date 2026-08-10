@@ -14,7 +14,7 @@ function bindEvents() {
   document.getElementById('btn-settings').addEventListener('click', openSettings);
 
   // Search
-  searchInput.addEventListener('input', () => renderSidebar(getFilteredStores()));
+  searchInput.addEventListener('input', debounce(() => renderSidebar(getFilteredStores()), 300));
 
   // Marketplace picker
   document.querySelectorAll('.mp-option').forEach(el => {
