@@ -39,6 +39,10 @@ const defaultStores = [
 
 // Baca stores dari file JSON
 function readStores(username) {
+  if (username && !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    console.error('Invalid username format for readStores:', username);
+    return defaultStores; // Fallback securely
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -56,6 +60,10 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
+  if (username && !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    console.error('Invalid username format for saveStores:', username);
+    return false;
+  }
   const fileName = username ? `stores_${username}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
@@ -148,6 +156,10 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  if (!username || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { success: false, error: 'Username tidak valid. Gunakan huruf, angka, _, atau -.' };
+  }
+
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
