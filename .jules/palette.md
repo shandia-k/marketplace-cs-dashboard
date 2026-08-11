@@ -1,0 +1,3 @@
+## 2024-06-25 - ARIA Labels in Dynamic JS Templates
+**Learning:** In Vanilla JS applications, UI elements are frequently generated via string interpolation (e.g., \`js/tabs.js\`). When adding screen-reader accessibility to these dynamically generated elements, standard HTML \`aria-label\` attributes must be embedded directly within the template literal strings, identically to how they are added in static HTML.
+**Action:** When inspecting icon-only buttons for accessibility, always trace back to their source template in the JS files rather than searching for an HTML file that might not contain them.
