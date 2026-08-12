@@ -170,11 +170,15 @@ function closeScratchpadTab(tabId) {
 }
 
 // Update current tab content on input
+const debouncedSaveScratchpadState = debounce(saveScratchpadState, 500);
+
 spTextarea.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
+    // Read DOM immediately into memory to prevent data loss on context switch
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    // Debounce the expensive JSON.stringify and localStorage I/O
+    debouncedSaveScratchpadState();
   }
 });
 
