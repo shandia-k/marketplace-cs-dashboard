@@ -1,0 +1,3 @@
+## 2024-08-12 - Dynamic UI elements missing explicit ARIA labels
+**Learning:** When generating string-based HTML for UI elements (like in `js/tabs.js` and `js/modal.js`), developers often rely solely on the `title` attribute for tooltips. However, icon-only buttons need an explicit `aria-label` attribute (mirroring or expanding on the `title`) to ensure screen readers consistently announce the button's purpose, as some screen reader configurations do not announce the `title` attribute reliably.
+**Action:** Always check dynamic HTML string generation for interactive icon-only elements and ensure they include an explicit `aria-label`.
