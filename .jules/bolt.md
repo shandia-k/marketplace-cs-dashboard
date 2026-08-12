@@ -1,0 +1,3 @@
+## 2024-08-12 - Prevent I/O blocking and UI Thrashing in Vanilla JS
+**Learning:** Because this frontend is built using Vanilla JS without a Virtual DOM, rebuilding DOM elements via string-based HTML (e.g., `renderSidebar`) is computationally expensive and causes UI thrashing. Also, synchronous I/O operations like writing state to `localStorage` via `JSON.stringify` (e.g., `saveScratchpadState`) block the main thread if fired on every keystroke.
+**Action:** Always wrap high-frequency event listeners (like search inputs and textarea inputs) in `debounce` utilities. For data inputs (like `spTextarea`), ensure that the DOM is read immediately to prevent data loss on context switch, and only debounce the expensive I/O operations.
