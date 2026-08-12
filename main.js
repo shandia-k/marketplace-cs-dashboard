@@ -39,7 +39,8 @@ const defaultStores = [
 
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const sanitizedUsername = username ? username.replace(/[^a-zA-Z0-9_-]/g, '') : '';
+  const fileName = sanitizedUsername ? `stores_${sanitizedUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     if (fs.existsSync(filePath)) {
@@ -56,7 +57,8 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const sanitizedUsername = username ? username.replace(/[^a-zA-Z0-9_-]/g, '') : '';
+  const fileName = sanitizedUsername ? `stores_${sanitizedUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
@@ -148,6 +150,11 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password }) => {
+  // Validate username format
+  if (!username || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { success: false, error: 'Username hanya boleh berisi huruf, angka, _, dan -' };
+  }
+
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };

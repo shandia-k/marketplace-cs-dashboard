@@ -1,0 +1,4 @@
+## 2024-05-18 - Path Traversal in IPC Handlers
+**Vulnerability:** The application constructs file paths for user-specific store configurations by directly interpolating unvalidated user input (`username`) into a path string (`path.join(userDataPath, \`stores_\${username}.json\`)`). An attacker could provide a malicious username like `../../../config` to read or overwrite files outside the intended `userDataPath`.
+**Learning:** Input originating from the renderer process and passed via IPC to the main process should be treated as untrusted and carefully sanitized before being used in sensitive operations like file system access.
+**Prevention:** Always validate and sanitize user input before using it to construct file paths. Use allow-list validation (e.g., regex matching alphanumeric characters) to restrict input to expected characters.
