@@ -91,7 +91,21 @@ function saveUsers(users) {
 }
 
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derivedKey}`;
+}
+
+function verifyPassword(password, hash) {
+  if (hash.includes(':')) {
+    const [salt, key] = hash.split(':');
+    const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+    return key === derivedKey;
+  } else {
+    // Legacy support for raw SHA-256 hashes
+    const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
+    return hash === legacyHash;
+  }
 }
 
 let mainWindow;
@@ -162,7 +176,7 @@ ipcMain.handle('login-user', (event, { username, password }) => {
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
   
-  if (user.passwordHash === hashPassword(password)) {
+  if (verifyPassword(password, user.passwordHash)) {
     return { success: true };
   } else {
     return { success: false, error: 'PIN/Password salah' };
