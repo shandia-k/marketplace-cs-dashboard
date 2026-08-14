@@ -37,9 +37,21 @@ const defaultStores = [
   }
 ];
 
+// Helper to sanitize inputs
+function sanitizeUsername(username) {
+  if (!username) return null;
+  return username.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function isValidPartition(partition) {
+  if (!partition) return false;
+  return /^persist:[a-zA-Z0-9_-]+$/.test(partition);
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     if (fs.existsSync(filePath)) {
@@ -56,7 +68,8 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
@@ -148,6 +161,10 @@ ipcMain.handle('get-users', () => {
 });
 
 ipcMain.handle('create-user', (event, { username, password, securityQuestion, securityAnswer }) => {
+  if (!username || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { success: false, error: 'Username tidak valid. Hanya huruf, angka, -, dan _ yang diizinkan.' };
+  }
+
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
@@ -319,7 +336,7 @@ ipcMain.handle('clear-safe-cache', async () => {
 // Opsi 2: Bersihkan Cache Khusus Toko Tertentu (Per-Store Cache Clear & Reload)
 ipcMain.handle('clear-store-cache', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData({
@@ -334,7 +351,7 @@ ipcMain.handle('clear-store-cache', async (event, { partition }) => {
 // Opsi 3: Deep Clean / Reset Toko (Termasuk Logout / Sesi Dihapus)
 ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
