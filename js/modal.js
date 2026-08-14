@@ -178,7 +178,24 @@ async function deleteStore(storeId) {
 // ── Settings Modal ─────────────────────────────────────────────────────────────
 function openSettings() {
   renderSettingsList();
+  updateCacheSizeDisplay();
   settingsOverlay.classList.add('active');
+}
+
+async function updateCacheSizeDisplay() {
+  const badge = document.getElementById('settings-cache-size-badge');
+  if (!badge) return;
+  badge.textContent = 'Menghitung...';
+  try {
+    const res = await window.electronAPI.getCacheSize();
+    if (res && res.formatted) {
+      badge.textContent = res.formatted;
+    } else {
+      badge.textContent = '-';
+    }
+  } catch (e) {
+    badge.textContent = '-';
+  }
 }
 
 function renderSettingsList() {
@@ -199,6 +216,19 @@ function renderSettingsList() {
           <div class="settings-store-url">${escapeHtml(store.url || cfg.url)}</div>
         </div>
         <div class="settings-store-actions">
+          <!-- Opsi 2: Clear Cache & Reload Toko -->
+          <button class="btn-icon" title="Clear Cache & Reload Toko Ini (Login Tetap Aman)" onclick="clearStoreCacheAndReload('${store.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          </button>
+          <!-- Opsi 3: Reset Sesi Toko (Logout) -->
+          <button class="btn-icon" title="Reset Total Sesi Toko Ini (Logout)" onclick="deepCleanStoreAndConfirm('${store.id}')" style="color: #f59e0b;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+              <line x1="12" y1="2" x2="12" y2="12"/>
+            </svg>
+          </button>
           <button class="btn-icon btn-whitelist ${isWhitelisted ? 'active' : ''}" title="${isWhitelisted ? 'Nonaktifkan perlindungan hibernasi' : 'Lindungi dari hibernasi otomatis'}" onclick="toggleWhitelist('${store.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="${isWhitelisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -222,6 +252,84 @@ function renderSettingsList() {
       </div>`;
   }).join('');
 }
+
+// ── Cache Actions Handler ────────────────────────────────────────────────────
+
+// Opsi 2: Clear cache khusus 1 toko & reload
+async function clearStoreCacheAndReload(storeId) {
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+
+  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
+  showToast(`Membersihkan cache "${store.name}"...`, '');
+
+  try {
+    const res = await window.electronAPI.clearStoreCache({ partition: actualPartition });
+    if (res.success) {
+      // Reload webviews untuk toko ini jika aktif
+      const tabs = storeTabs[storeId] || [];
+      tabs.forEach(tab => {
+        const wvEntry = webviewMap[tab.id];
+        if (wvEntry && wvEntry.webview) {
+          try {
+            wvEntry.webview.reloadIgnoringCache();
+          } catch (e) {
+            wvEntry.webview.src = tab.url;
+          }
+        }
+      });
+      updateCacheSizeDisplay();
+      showToast(`Cache "${store.name}" berhasil dibersihkan & dimuat ulang ✓ (Login Tetap Aman)`, 'success');
+    } else {
+      showToast('Gagal membersihkan cache toko: ' + (res.error || ''), 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  }
+}
+
+// Opsi 3: Reset total sesi 1 toko (Logout)
+async function deepCleanStoreAndConfirm(storeId) {
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+
+  const confirmed = confirm(
+    `⚠️ Reset Total Sesi Toko "${store.name}"?\n\nSemua cache, cookies, dan data login untuk toko ini akan dihapus.\nAnda harus login ulang di marketplace tersebut.\n\nLanjutkan?`
+  );
+  if (!confirmed) return;
+
+  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
+  showToast(`Mereset data sesi "${store.name}"...`, '');
+
+  try {
+    const res = await window.electronAPI.deepCleanStore({ partition: actualPartition });
+    if (res.success) {
+      // Reload webviews untuk toko ini
+      const tabs = storeTabs[storeId] || [];
+      tabs.forEach(tab => {
+        const wvEntry = webviewMap[tab.id];
+        if (wvEntry && wvEntry.webview) {
+          try {
+            wvEntry.webview.reloadIgnoringCache();
+          } catch (e) {
+            wvEntry.webview.src = tab.url;
+          }
+        }
+      });
+      updateCacheSizeDisplay();
+      showToast(`Sesi "${store.name}" telah di-reset total. Silakan login kembali.`, 'success');
+    } else {
+      showToast('Gagal reset sesi: ' + (res.error || ''), 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  }
+}
+
+// Expose fungsi ke window
+window.clearStoreCacheAndReload = clearStoreCacheAndReload;
+window.deepCleanStoreAndConfirm = deepCleanStoreAndConfirm;
+window.updateCacheSizeDisplay   = updateCacheSizeDisplay;
 
 // ── Toggle Whitelist Hibernasi ─────────────────────────────────────────────────
 async function toggleWhitelist(storeId) {

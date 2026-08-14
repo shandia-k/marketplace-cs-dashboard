@@ -20,7 +20,7 @@
     <div class="titlebar-drag-region"></div>
     <div class="titlebar-title">
       <div class="titlebar-logo">
-        <img src="assets/icon.png" alt="Logo" width="18" height="18" style="object-fit: contain;">
+        <img src="assets/icon.ico" alt="Logo" width="18" height="18" style="object-fit: contain;">
       </div>
       <span>CS Marketplace Dashboard</span>
     </div>
@@ -55,7 +55,7 @@
   <div class="login-layout" id="login-layout">
     <div class="login-container" id="login-container">
       <div class="login-header">
-        <img src="assets/icon.png" alt="Logo" width="48" height="48">
+        <img src="assets/icon.ico" alt="Logo" width="48" height="48">
         <h2>Dashboard Login</h2>
         <p id="login-subtitle">Memuat data pengguna...</p>
       </div>
@@ -74,6 +74,8 @@
             <button type="submit" class="btn-primary" id="btn-login" style="width: 100%;">Masuk</button>
           </div>
           <div class="login-footer">
+            <a href="#" id="link-forgot-password">Lupa PIN?</a>
+            &nbsp;&middot;&nbsp;
             <a href="#" id="link-to-register">Tambah Pengguna Baru</a>
           </div>
         </form>
@@ -91,11 +93,54 @@
             <label for="reg-password-confirm">Konfirmasi PIN</label>
             <input type="password" id="reg-password-confirm" placeholder="Ulangi PIN" required>
           </div>
+          <div class="form-group">
+            <label for="reg-security-question">Pertanyaan Keamanan <span style="font-weight:400;color:var(--text-muted)">(untuk reset PIN)</span></label>
+            <select id="reg-security-question">
+              <option value="">-- Pilih pertanyaan --</option>
+              <option value="Nama hewan peliharaan pertama Anda?">Nama hewan peliharaan pertama Anda?</option>
+              <option value="Nama jalan tempat Anda tumbuh besar?">Nama jalan tempat Anda tumbuh besar?</option>
+              <option value="Nama sekolah dasar Anda?">Nama sekolah dasar Anda?</option>
+              <option value="Makanan favorit Anda?">Makanan favorit Anda?</option>
+              <option value="Kota kelahiran ibu Anda?">Kota kelahiran ibu Anda?</option>
+            </select>
+          </div>
+          <div class="form-group" id="reg-security-answer-group" style="display:none;">
+            <label for="reg-security-answer">Jawaban</label>
+            <input type="text" id="reg-security-answer" placeholder="Jawaban (tidak case sensitive)">
+          </div>
           <div class="login-actions">
             <button type="submit" class="btn-primary" id="btn-register" style="width: 100%;">Buat Akun</button>
           </div>
           <div class="login-footer" id="reg-footer-back" style="display: none;">
             <a href="#" id="link-to-login">Kembali ke Login</a>
+          </div>
+        </form>
+
+        <!-- Reset Password Form -->
+        <form id="reset-form" style="display: none;">
+          <div class="form-group" id="reset-step-1">
+            <label for="reset-username">Pilih Pengguna</label>
+            <select id="reset-username"></select>
+            <div style="margin-top:8px;">
+              <button type="button" class="btn-primary" id="btn-get-question" style="width:100%;">Lanjut &rarr;</button>
+            </div>
+          </div>
+          <div id="reset-step-2" style="display:none;">
+            <div class="reset-question-box" id="reset-question-box"></div>
+            <div class="form-group">
+              <label for="reset-security-answer">Jawaban Keamanan</label>
+              <input type="text" id="reset-security-answer" placeholder="Jawaban Anda">
+            </div>
+            <div class="form-group">
+              <label for="reset-new-password">PIN Baru</label>
+              <input type="password" id="reset-new-password" placeholder="PIN baru">
+            </div>
+            <div class="login-actions">
+              <button type="submit" class="btn-primary" id="btn-reset-password" style="width:100%;">Reset PIN</button>
+            </div>
+          </div>
+          <div class="login-footer">
+            <a href="#" id="link-reset-to-login">Kembali ke Login</a>
           </div>
         </form>
       </div>
@@ -193,7 +238,7 @@
       <!-- Empty State -->
       <div class="empty-state" id="empty-state">
         <div class="empty-icon">
-          <img src="assets/icon.png" alt="VIVA Logo" width="80" height="80"
+          <img src="assets/icon.ico" alt="VIVA Logo" width="80" height="80"
             style="object-fit: contain; filter: drop-shadow(0 4px 12px rgba(223, 22, 131, 0.3));">
         </div>
         <h2>Selamat Datang di CS Dashboard</h2>
@@ -338,8 +383,115 @@
           <!-- Diisi oleh renderer.js -->
         </div>
       </div>
+
+      <!-- Panel Pengaturan Bawah (Cache & Akun) -->
+      <div class="modal-account-panel">
+        
+        <!-- Section: Manajemen Cache & Penyimpanan -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="btn-toggle-cache-section">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+              <path d="M12 12v9"/>
+              <path d="m8 17 4 4 4-4"/>
+            </svg>
+            <span>Pembersihan Cache & Data</span>
+            <span class="settings-cache-badge" id="settings-cache-size-badge">...</span>
+            <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="settings-section-body" id="cache-section-body" style="display:none;">
+            <!-- Opsi 1: Safe Cache Clear -->
+            <div class="settings-subsection">
+              <h4>1. Bersihkan Cache Aman (Global)</h4>
+              <p class="settings-hint">Menghapus file temporary, cache gambar/stiker, dan shader GPU. <strong>Sesi login toko 100% aman (tidak logout)</strong>.</p>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn-primary" id="btn-clear-safe-cache" style="flex: 1;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                  Bersihkan Cache Aman
+                </button>
+                <button class="btn-icon" id="btn-refresh-cache-size" title="Hitung Ulang Ukuran Cache">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Opsi 3: Deep Clean / Reset Sesi Penuh -->
+            <div class="settings-subsection" style="margin-top: 4px;">
+              <h4 style="color: #f87171;">3. Reset Sesi & Data Total (Deep Clean)</h4>
+              <p class="settings-hint">Menghapus seluruh cache, cookies, dan data login pada <strong>semua marketplace</strong>. Gunakan jika ada kendala fatal.</p>
+              <button class="btn-secondary" id="btn-deep-clean-all" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171; width: 100%;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Reset Total Semua Sesi Toko
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Akun Saya -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="btn-toggle-account-section">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Akun Saya (<span id="settings-current-user">-</span>)</span>
+            <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        <div class="settings-section-body" id="account-section-body" style="display:none;">
+          <div class="settings-subsection">
+            <h4>Ganti PIN</h4>
+            <div class="form-group">
+              <label for="acc-current-password">PIN Saat Ini</label>
+              <input type="password" id="acc-current-password" placeholder="Masukkan PIN saat ini">
+            </div>
+            <div class="form-group">
+              <label for="acc-new-password">PIN Baru</label>
+              <input type="password" id="acc-new-password" placeholder="PIN baru">
+            </div>
+            <div class="form-group">
+              <label for="acc-new-password-confirm">Konfirmasi PIN Baru</label>
+              <input type="password" id="acc-new-password-confirm" placeholder="Ulangi PIN baru">
+            </div>
+            <button class="btn-secondary" id="btn-change-password">Simpan PIN Baru</button>
+          </div>
+          <div class="settings-subsection">
+            <h4>Pertanyaan Keamanan <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(untuk reset PIN jika lupa)</span></h4>
+            <div class="form-group">
+              <label for="acc-security-question">Pertanyaan</label>
+              <select id="acc-security-question">
+                <option value="">-- Pilih pertanyaan --</option>
+                <option value="Nama hewan peliharaan pertama Anda?">Nama hewan peliharaan pertama Anda?</option>
+                <option value="Nama jalan tempat Anda tumbuh besar?">Nama jalan tempat Anda tumbuh besar?</option>
+                <option value="Nama sekolah dasar Anda?">Nama sekolah dasar Anda?</option>
+                <option value="Makanan favorit Anda?">Makanan favorit Anda?</option>
+                <option value="Kota kelahiran ibu Anda?">Kota kelahiran ibu Anda?</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="acc-security-answer">Jawaban</label>
+              <input type="text" id="acc-security-answer" placeholder="Jawaban (tidak case sensitive)">
+            </div>
+            <div class="form-group">
+              <label for="acc-pin-for-security">Konfirmasi PIN Saat Ini</label>
+              <input type="password" id="acc-pin-for-security" placeholder="Masukkan PIN untuk konfirmasi">
+            </div>
+            <button class="btn-secondary" id="btn-save-security-question">Simpan Pertanyaan Keamanan</button>
+          </div>
+        </div>
+      </div>
       <div class="modal-footer settings-footer">
         <div class="settings-footer-left">
+          <button class="btn-icon-text" id="btn-check-updates-settings" onclick="if (typeof window.checkAppUpdates === 'function') window.checkAppUpdates(true);" title="Cek pembaruan aplikasi">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Cek Update
+          </button>
           <button class="btn-icon-text" id="btn-hibernate-all" onclick="hibernateAll()" title="Hibernasi semua tab (kecuali yang dilindungi)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -464,27 +616,66 @@
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div class="toast" id="toast"></div>
-
-  <!-- RAM Warning Popup -->
-  <div class="ram-alert-overlay" id="ram-alert-overlay" style="display:none;" role="alertdialog" aria-labelledby="ram-alert-title" aria-modal="true">
-    <div class="ram-alert-card" id="ram-alert-card">
-      <div class="ram-alert-icon" id="ram-alert-icon">⚠️</div>
-      <div class="ram-alert-body">
-        <div class="ram-alert-title" id="ram-alert-title">Peringatan RAM Sistem</div>
-        <div class="ram-alert-desc" id="ram-alert-desc">RAM sistem hampir penuh.</div>
-        <div class="ram-alert-bar-wrap">
-          <div class="ram-alert-bar">
-            <div class="ram-alert-bar-fill" id="ram-alert-bar-fill" style="width: 0%;"></div>
-          </div>
-          <span class="ram-alert-bar-label" id="ram-alert-bar-label">0%</span>
+  <!-- Auto-Updater Modal (Startup & Manual) -->
+  <div class="modal-overlay" id="updater-modal" style="z-index: 10000;">
+    <div class="modal modal-update" id="modal-update" role="dialog" aria-labelledby="updater-status-title" aria-modal="true">
+      <div class="modal-header">
+        <div class="updater-header-title">
+          <img src="assets/icon.ico" width="20" height="20" style="object-fit:contain;" alt="Logo">
+          <h3 id="updater-modal-title">Pembaruan Aplikasi</h3>
         </div>
-        <ul class="ram-alert-tips" id="ram-alert-tips"></ul>
+        <button class="modal-close" id="updater-modal-close" aria-label="Tutup Modal">&times;</button>
       </div>
-      <button class="ram-alert-dismiss" id="ram-alert-dismiss" title="Tutup peringatan ini">✕</button>
+      <div class="modal-body updater-modal-body">
+        <div class="updater-status-icon-wrapper status-checking" id="updater-icon-wrapper">
+          <svg class="updater-svg-spin" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+        </div>
+        <div class="updater-info">
+          <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
+          <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
+          <div class="updater-version-info">
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.4</span>
+            <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
+          </div>
+        </div>
+
+        <!-- Progress bar (shown during download) -->
+        <div class="updater-progress-container" id="updater-progress-container" style="display:none;">
+          <div class="updater-progress-bar-bg">
+            <div class="updater-progress-bar-fill" id="updater-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div class="updater-progress-text">
+            <span id="updater-progress-percent">0%</span>
+            <span id="updater-progress-speed">-</span>
+          </div>
+        </div>
+
+        <!-- Release Notes (if update available) -->
+        <div class="updater-release-notes" id="updater-release-notes" style="display:none;">
+          <h5>Catatan Rilis:</h5>
+          <div class="updater-release-notes-content" id="updater-release-notes-content"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer updater-modal-footer">
+        <div class="updater-footer-left">
+          <label class="updater-checkbox-label">
+            <input type="checkbox" id="updater-auto-check-toggle" checked>
+            <span>Cek otomatis saat aplikasi dibuka</span>
+          </label>
+        </div>
+        <div class="updater-footer-right" id="updater-footer-actions">
+          <button class="btn-secondary" id="btn-updater-skip">Lewati</button>
+          <button class="btn-primary" id="btn-updater-action" style="display:none;">Lanjutkan</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
 
   <script src="js/config.js"></script>
   <script src="js/state.js"></script>
@@ -497,6 +688,7 @@
   <script src="js/statusbar.js"></script>
   <script src="js/app.js"></script>
   <script src="js/login.js"></script>
+  <script src="js/updater.js"></script>
 </body>
 
 </html>

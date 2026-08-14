@@ -105,7 +105,7 @@ function createWindow() {
     frame: false,          // Custom title bar
     titleBarStyle: 'hidden',
     backgroundColor: '#0f1117',
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -147,12 +147,18 @@ ipcMain.handle('get-users', () => {
   return users.map(u => ({ username: u.username }));
 });
 
-ipcMain.handle('create-user', (event, { username, password }) => {
+ipcMain.handle('create-user', (event, { username, password, securityQuestion, securityAnswer }) => {
   const users = readUsers();
   if (users.find(u => u.username === username)) {
     return { success: false, error: 'Username sudah digunakan' };
   }
-  users.push({ username, passwordHash: hashPassword(password) });
+  const newUser = {
+    username,
+    passwordHash: hashPassword(password),
+    securityQuestion: securityQuestion || null,
+    securityAnswerHash: securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim()) : null
+  };
+  users.push(newUser);
   saveUsers(users);
   return { success: true };
 });
@@ -169,8 +175,206 @@ ipcMain.handle('login-user', (event, { username, password }) => {
   }
 });
 
+ipcMain.handle('get-security-question', (event, { username }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  if (!user.securityQuestion) return { success: false, error: 'Tidak ada pertanyaan keamanan yang diset' };
+  return { success: true, question: user.securityQuestion };
+});
+
+ipcMain.handle('reset-user-password', (event, { username, securityAnswer, newPassword }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  if (!user.securityAnswerHash) return { success: false, error: 'Tidak ada pertanyaan keamanan yang diset untuk akun ini' };
+  
+  if (user.securityAnswerHash !== hashPassword(securityAnswer.toLowerCase().trim())) {
+    return { success: false, error: 'Jawaban keamanan salah' };
+  }
+  
+  user.passwordHash = hashPassword(newPassword);
+  saveUsers(users);
+  return { success: true };
+});
+
 ipcMain.handle('get-app-path', () => {
   return __dirname;
+});
+
+ipcMain.handle('update-security-question', (event, { username, password, securityQuestion, securityAnswer }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  if (user.passwordHash !== hashPassword(password)) {
+    return { success: false, error: 'PIN saat ini salah' };
+  }
+  user.securityQuestion    = securityQuestion || null;
+  user.securityAnswerHash  = securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim()) : null;
+  saveUsers(users);
+  return { success: true };
+});
+
+ipcMain.handle('change-password', (event, { username, currentPassword, newPassword }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  if (user.passwordHash !== hashPassword(currentPassword)) {
+    return { success: false, error: 'PIN saat ini salah' };
+  }
+  user.passwordHash = hashPassword(newPassword);
+  saveUsers(users);
+  return { success: true };
+});
+
+// ── Helper & IPC Cache Management ──────────────────────────────────────────────
+function getDirSize(dirPath) {
+  let total = 0;
+  try {
+    if (!fs.existsSync(dirPath)) return 0;
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      try {
+        if (entry.isDirectory()) {
+          total += getDirSize(fullPath);
+        } else if (entry.isFile()) {
+          const stat = fs.statSync(fullPath);
+          total += stat.size;
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return total;
+}
+
+function formatBytes(bytes, decimals = 1) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function calculateAppCacheSize() {
+  const cacheDirs = [
+    path.join(userDataPath, 'Cache'),
+    path.join(userDataPath, 'GPUCache'),
+    path.join(userDataPath, 'Code Cache'),
+    path.join(userDataPath, 'DawnCache'),
+    path.join(userDataPath, 'Partitions')
+  ];
+  let total = 0;
+  for (const dir of cacheDirs) {
+    total += getDirSize(dir);
+  }
+  return total;
+}
+
+ipcMain.handle('get-cache-size', () => {
+  const total = calculateAppCacheSize();
+  return { bytes: total, formatted: formatBytes(total) };
+});
+
+// Opsi 1: Bersihkan Cache Aman (Global, Cookies & Login Tetap Aman)
+ipcMain.handle('clear-safe-cache', async () => {
+  try {
+    // 1. Bersihkan default session
+    await session.defaultSession.clearCache();
+    await session.defaultSession.clearStorageData({
+      storages: ['shadercache', 'serviceworkers', 'cachestorage', 'websql', 'indexdb']
+    });
+
+    // 2. Bersihkan partisi semua toko
+    const stores = readStores();
+    const users = readUsers();
+    const partitions = new Set();
+
+    stores.forEach(s => {
+      if (s.partition) partitions.add(s.partition);
+      if (s.id) {
+        partitions.add(`persist:${s.id}`);
+        users.forEach(u => partitions.add(`persist:user_${u.username}_${s.id}`));
+      }
+    });
+
+    for (const part of partitions) {
+      try {
+        const ses = session.fromPartition(part);
+        await ses.clearCache();
+        await ses.clearStorageData({
+          storages: ['shadercache', 'serviceworkers', 'cachestorage']
+        });
+      } catch (e) {}
+    }
+
+    const newSize = calculateAppCacheSize();
+    return { success: true, newFormatted: formatBytes(newSize), message: 'Cache aman berhasil dibersihkan! Sesi login toko tetap terjaga.' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Opsi 2: Bersihkan Cache Khusus Toko Tertentu (Per-Store Cache Clear & Reload)
+ipcMain.handle('clear-store-cache', async (event, { partition }) => {
+  try {
+    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    const ses = session.fromPartition(partition);
+    await ses.clearCache();
+    await ses.clearStorageData({
+      storages: ['shadercache', 'serviceworkers', 'cachestorage']
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Opsi 3: Deep Clean / Reset Toko (Termasuk Logout / Sesi Dihapus)
+ipcMain.handle('deep-clean-store', async (event, { partition }) => {
+  try {
+    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    const ses = session.fromPartition(partition);
+    await ses.clearCache();
+    await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Opsi 3 Global: Deep Clean Semua Data Toko
+ipcMain.handle('deep-clean-all', async () => {
+  try {
+    await session.defaultSession.clearCache();
+    await session.defaultSession.clearStorageData();
+
+    const stores = readStores();
+    const users = readUsers();
+    const partitions = new Set();
+
+    stores.forEach(s => {
+      if (s.partition) partitions.add(s.partition);
+      if (s.id) {
+        partitions.add(`persist:${s.id}`);
+        users.forEach(u => partitions.add(`persist:user_${u.username}_${s.id}`));
+      }
+    });
+
+    for (const part of partitions) {
+      try {
+        const ses = session.fromPartition(part);
+        await ses.clearCache();
+        await ses.clearStorageData();
+      } catch (e) {}
+    }
+
+    const newSize = calculateAppCacheSize();
+    return { success: true, newFormatted: formatBytes(newSize) };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 // Export konfigurasi toko ke file JSON
@@ -225,16 +429,6 @@ ipcMain.handle('get-app-memory-mb', () => {
 // Mengembalikan metrik lengkap termasuk ID webContents untuk pemetaan per tab
 ipcMain.handle('get-app-metrics-full', () => {
   return app.getAppMetrics();
-});
-
-// Mengembalikan info RAM sistem (bukan hanya RAM aplikasi)
-ipcMain.handle('get-system-ram', () => {
-  const os = require('os');
-  const totalMB = os.totalmem() / 1024 / 1024;
-  const freeMB  = os.freemem()  / 1024 / 1024;
-  const usedMB  = totalMB - freeMB;
-  const usedPct = (usedMB / totalMB) * 100;
-  return { totalMB, freeMB, usedMB, usedPct };
 });
 
 // Scratchpad IPC Handlers
@@ -393,8 +587,45 @@ ipcMain.on('window-close', () => {
 });
 
 // Auto Updater IPC Handlers
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
 ipcMain.on('check-for-updates', () => {
-  autoUpdater.checkForUpdates();
+  if (!app.isPackaged) {
+    // Mode Development (npm start)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater-message', {
+        status: 'checking',
+        currentVersion: app.getVersion()
+      });
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('updater-message', {
+            status: 'not-available',
+            version: app.getVersion(),
+            currentVersion: app.getVersion(),
+            message: 'Aplikasi sudah versi terbaru (Mode Dev: v' + app.getVersion() + ')',
+            isDev: true
+          });
+        }
+      }, 1200);
+    }
+    return;
+  }
+
+  // Mode Production (Packed .exe)
+  try {
+    autoUpdater.checkForUpdates();
+  } catch (err) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater-message', {
+        status: 'error',
+        message: err.message || 'Gagal memulai pengecekan update',
+        currentVersion: app.getVersion()
+      });
+    }
+  }
 });
 
 ipcMain.on('restart-to-update', () => {
@@ -407,27 +638,65 @@ function setupAutoUpdater(window) {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('checking-for-update', () => {
-    window.webContents.send('updater-message', { status: 'checking', message: 'Mengecek pembaruan...' });
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-message', {
+        status: 'checking',
+        currentVersion: app.getVersion()
+      });
+    }
   });
 
   autoUpdater.on('update-available', (info) => {
-    window.webContents.send('updater-message', { status: 'available', message: 'Pembaruan tersedia. Mengunduh...' });
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-message', {
+        status: 'available',
+        version: info.version,
+        currentVersion: app.getVersion(),
+        releaseNotes: info.releaseNotes || null,
+        releaseDate: info.releaseDate || null
+      });
+    }
   });
 
   autoUpdater.on('update-not-available', (info) => {
-    window.webContents.send('updater-message', { status: 'not-available', message: 'Aplikasi sudah versi terbaru.' });
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-message', {
+        status: 'not-available',
+        version: app.getVersion(),
+        currentVersion: app.getVersion()
+      });
+    }
   });
 
   autoUpdater.on('error', (err) => {
-    window.webContents.send('updater-message', { status: 'error', message: 'Error pembaruan: ' + err.message });
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-message', {
+        status: 'error',
+        message: err.message || 'Terjadi kesalahan saat memeriksa update',
+        currentVersion: app.getVersion()
+      });
+    }
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
-    window.webContents.send('updater-progress', progressObj);
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-progress', {
+        percent: Math.round(progressObj.percent || 0),
+        transferred: progressObj.transferred || 0,
+        total: progressObj.total || 0,
+        bytesPerSecond: progressObj.bytesPerSecond || 0
+      });
+    }
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    window.webContents.send('updater-message', { status: 'downloaded', message: 'Pembaruan siap diinstal.' });
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('updater-message', {
+        status: 'downloaded',
+        version: info.version,
+        currentVersion: app.getVersion()
+      });
+    }
   });
 }
 
@@ -459,8 +728,6 @@ app.whenReady().then(() => {
 
   // Setup auto updater setelah window dibuat
   setupAutoUpdater(mainWindow);
-  // Langsung cek saat pertama kali buka
-  autoUpdater.checkForUpdatesAndNotify();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
