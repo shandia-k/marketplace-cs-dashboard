@@ -61,18 +61,18 @@ function renderTabBar() {
   // Nav controls (kiri) + tabs (tengah) + add button (kanan)
   const navHtml = `
     <div class="tab-nav-controls">
-      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+←)" aria-label="Kembali (Alt+←)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+\u2192)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+→)" aria-label="Maju (Alt+→)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M5 12h14M12 5l7 7-7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)" aria-label="Refresh (F5)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
         </svg>
@@ -86,11 +86,11 @@ function renderTabBar() {
     const isCurTab = tab.id === curTabId;
     return `
     <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''}" data-tab-id="${tab.id}" title="${isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title)}">
-      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
+      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
-      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ini">&#x1F343;</button>` : ''}
+      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </button>
@@ -98,8 +98,8 @@ function renderTabBar() {
   }).join('');
 
   const addBtnHtml = `
-    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru untuk ${escapeHtml(store.name)}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
         <path d="M12 5v14M5 12h14"/>
       </svg>
     </button>`;
