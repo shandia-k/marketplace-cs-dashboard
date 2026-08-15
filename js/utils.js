@@ -56,3 +56,16 @@ function showZoomIndicator(percent) {
     indicator?.classList.remove('visible');
   }, 1800);
 }
+
+// ── Debounce ──────────────────────────────────────────────────────────────────
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
