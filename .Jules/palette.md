@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility on dynamically generated UI elements
+**Learning:** String-based dynamic HTML components (e.g. inside `js/tabs.js` or `js/modal.js`) often miss accessibility attributes because they are hidden inside JavaScript templates. Icon-only buttons created this way must be specifically targeted to include `aria-label` attributes to ensure full screen reader support.
+**Action:** When adding or modifying string-based UI element generation, always ensure `aria-label` attributes are added to any interactive components that lack visible text, alongside adding `aria-hidden="true"` and `focusable="false"` to their inner `<svg>` icons.
