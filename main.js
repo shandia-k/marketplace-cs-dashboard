@@ -37,9 +37,16 @@ const defaultStores = [
   }
 ];
 
+function sanitizeUsername(username) {
+  if (!username) return username;
+  // Hanya izinkan alphanumeric, underscore, dan dash untuk mencegah path traversal
+  return username.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     if (fs.existsSync(filePath)) {
@@ -56,7 +63,8 @@ function readStores(username) {
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
+  const safeUsername = sanitizeUsername(username);
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   const filePath = path.join(userDataPath, fileName);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
