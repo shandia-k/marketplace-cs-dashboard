@@ -3,7 +3,7 @@ const btnScratchpad = document.getElementById('btn-scratchpad');
 const scratchpadWindow = document.getElementById('scratchpad-window');
 const scratchpadHeader = document.getElementById('scratchpad-header');
 const scratchpadTabsContainer = document.getElementById('scratchpad-tabs');
-const btnAddTab = document.getElementById('btn-add-tab');
+const btnAddTab = document.getElementById('btn-sp-add-tab');
 const btnScratchpadClose = document.getElementById('btn-scratchpad-close');
 const btnSpLoad = document.getElementById('btn-sp-load');
 const btnSpSave = document.getElementById('btn-sp-save');
@@ -18,21 +18,12 @@ let scratchpadTabs = [];
 let activeScratchpadTabId = null;
 
 function loadScratchpadState() {
-  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
-  const saved = localStorage.getItem('scratchpadTabs' + userPrefix);
-  if (saved) {
-    try {
-      scratchpadTabs = JSON.parse(saved);
-    } catch(e) {}
-  }
+  const saved = Storage.get('scratchpadTabs', null);
+  scratchpadTabs = Array.isArray(saved) && saved.length > 0 ? saved : [
+    { id: 'tab-' + Date.now(), name: 'Catatan 1', content: '' }
+  ];
   
-  if (!scratchpadTabs || scratchpadTabs.length === 0) {
-    scratchpadTabs = [
-      { id: 'tab-' + Date.now(), name: 'Catatan 1', content: '' }
-    ];
-  }
-  
-  const savedActive = localStorage.getItem('activeScratchpadTabId' + userPrefix);
+  const savedActive = Storage.get('activeScratchpadTabId', null);
   if (savedActive && scratchpadTabs.find(t => t.id === savedActive)) {
     activeScratchpadTabId = savedActive;
   } else {
@@ -41,9 +32,8 @@ function loadScratchpadState() {
 }
 
 function saveScratchpadState() {
-  const userPrefix = window.currentUser ? ('_' + window.currentUser) : '';
-  localStorage.setItem('scratchpadTabs' + userPrefix, JSON.stringify(scratchpadTabs));
-  localStorage.setItem('activeScratchpadTabId' + userPrefix, activeScratchpadTabId);
+  Storage.set('scratchpadTabs', scratchpadTabs);
+  Storage.set('activeScratchpadTabId', activeScratchpadTabId);
 }
 
 loadScratchpadState();
@@ -185,24 +175,42 @@ btnAddTab.addEventListener('click', (e) => {
 });
 
 // Toggle scratchpad
-btnScratchpad.addEventListener('click', () => {
-  if (scratchpadWindow.style.display === 'none') {
-    scratchpadWindow.style.display = 'flex';
-    // Posisikan di tengah jika baru pertama kali dibuka, atau tetap di tempat asalnya
-    renderScratchpadTabs();
-    const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
-    if (currentTab) {
-      spTextarea.value = currentTab.content;
-    }
-  } else {
-    scratchpadWindow.style.display = 'none';
+function openScratchpad() {
+  if (!scratchpadWindow) return;
+  scratchpadWindow.style.display = 'flex';
+  renderScratchpadTabs();
+  const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
+  if (currentTab && spTextarea) {
+    spTextarea.value = currentTab.content;
   }
-});
+  if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
+    window.OnboardingManager.notifyAction('open_scratchpad');
+  }
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('scratchpad_opened');
+  }
+}
 
-// Close scratchpad (hide)
-btnScratchpadClose.addEventListener('click', () => {
+function closeScratchpad() {
+  if (!scratchpadWindow) return;
   scratchpadWindow.style.display = 'none';
-});
+}
+
+function toggleScratchpad() {
+  if (!scratchpadWindow) return;
+  if (scratchpadWindow.style.display === 'none' || !scratchpadWindow.style.display) {
+    openScratchpad();
+  } else {
+    closeScratchpad();
+  }
+}
+
+btnScratchpad?.addEventListener('click', toggleScratchpad);
+btnScratchpadClose?.addEventListener('click', closeScratchpad);
+
+window.openScratchpad = openScratchpad;
+window.closeScratchpad = closeScratchpad;
+window.toggleScratchpad = toggleScratchpad;
 
 // Dragging logic
 scratchpadWindow.addEventListener('mousedown', () => {
@@ -293,3 +301,97 @@ btnSpSave.addEventListener('click', async () => {
     showToast('Gagal menyimpan file: ' + err.message, 'error');
   }
 });
+
+// ── Scratchpad Multi-Directional Resizing (Top-Left & All Edges) ─────────────
+function initScratchpadResizer() {
+  if (!scratchpadWindow) return;
+
+  const handles = [
+    { type: 'tl', class: 'handle-tl', title: 'Tarik sudut kiri-atas untuk ubah ukuran' },
+    { type: 't',  class: 'handle-t' },
+    { type: 'l',  class: 'handle-l' },
+    { type: 'tr', class: 'handle-tr' },
+    { type: 'bl', class: 'handle-bl' },
+    { type: 'br', class: 'handle-br' },
+    { type: 'r',  class: 'handle-r' },
+    { type: 'b',  class: 'handle-b' }
+  ];
+
+  handles.forEach(h => {
+    const el = document.createElement('div');
+    el.className = `scratchpad-resize-handle ${h.class}`;
+    if (h.title) el.title = h.title;
+    el.dataset.handle = h.type;
+
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      document.querySelectorAll('webview').forEach(w => w.style.pointerEvents = 'none');
+      document.body.style.userSelect = 'none';
+
+      const rect = scratchpadWindow.getBoundingClientRect();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = rect.width;
+      const startHeight = rect.height;
+      const startLeft = rect.left;
+      const startTop = rect.top;
+      const startRight = rect.right;
+      const startBottom = rect.bottom;
+      const handleType = h.type;
+
+      const onMouseMove = (moveEvent) => {
+        moveEvent.preventDefault();
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        let newLeft = startLeft;
+        let newTop = startTop;
+
+        const minW = 260;
+        const minH = 180;
+        const maxW = window.innerWidth - 30;
+        const maxH = window.innerHeight - 30;
+
+        if (handleType.includes('w') || handleType === 'l' || handleType === 'tl' || handleType === 'bl') {
+          newWidth = Math.max(minW, Math.min(maxW, startWidth - dx));
+          newLeft = startRight - newWidth;
+        } else if (handleType.includes('e') || handleType === 'r' || handleType === 'tr' || handleType === 'br') {
+          newWidth = Math.max(minW, Math.min(maxW, startWidth + dx));
+        }
+
+        if (handleType.includes('n') || handleType === 't' || handleType === 'tl' || handleType === 'tr') {
+          newHeight = Math.max(minH, Math.min(maxH, startHeight - dy));
+          newTop = startBottom - newHeight;
+        } else if (handleType.includes('s') || handleType === 'b' || handleType === 'bl' || handleType === 'br') {
+          newHeight = Math.max(minH, Math.min(maxH, startHeight + dy));
+        }
+
+        scratchpadWindow.style.position = 'fixed';
+        scratchpadWindow.style.left = `${newLeft}px`;
+        scratchpadWindow.style.top = `${newTop}px`;
+        scratchpadWindow.style.right = 'auto';
+        scratchpadWindow.style.bottom = 'auto';
+        scratchpadWindow.style.width = `${newWidth}px`;
+        scratchpadWindow.style.height = `${newHeight}px`;
+      };
+
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        document.querySelectorAll('webview').forEach(w => w.style.pointerEvents = '');
+        document.body.style.userSelect = '';
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    scratchpadWindow.appendChild(el);
+  });
+}
+
+initScratchpadResizer();

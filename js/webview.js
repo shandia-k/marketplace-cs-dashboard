@@ -4,6 +4,9 @@ function hibernateTab(storeId, tabId) {
   const wvEntry = webviewMap[tabId];
   if (!wvEntry || wvEntry.hibernated || !wvEntry.webview) return;
 
+  // Jangan hibernasi tab yang sedang aktif menyinkronkan riwayat chat
+  if (wvEntry.isSyncing) return;
+
   if (wvEntry.hasDraft) {
     // Soft hibernate: user is typing something, keep DOM to prevent data loss
     wvEntry.webview.style.display = 'none';
@@ -26,16 +29,15 @@ function hibernateTab(storeId, tabId) {
 async function checkAndHibernateIfNeeded() {
   try {
     ramUsageMB = await window.electronAPI.getAppMemoryMB();
-    updateRamIndicator(ramUsageMB);
 
     if (ramUsageMB < RAM_THRESHOLD_MB) return;
 
-    // Cari kandidat: webview aktif yang BUKAN tab aktif saat ini & bukan whitelist
+    // Cari kandidat: webview aktif yang BUKAN tab aktif saat ini & bukan whitelist & tidak sedang sync
     const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
 
     const candidates = [];
     for (const [tabId, entry] of Object.entries(webviewMap)) {
-      if (entry.hibernated || !entry.webview) continue;
+      if (entry.hibernated || !entry.webview || entry.isSyncing) continue;
       if (tabId === activeTabId) continue;
       // Skip toko yang di-whitelist dari hibernasi
       const storeId = Object.keys(storeTabs).find(sid =>
@@ -77,6 +79,11 @@ function hibernateAll() {
     if (entry.hibernated || !entry.webview) continue;
     if (tabId === activeTabId) continue; // Jangan hibernate tab yang sedang aktif
 
+    if (entry.isSyncing) {
+      skipped++;
+      continue;
+    }
+
     const storeId = Object.keys(storeTabs).find(sid =>
       storeTabs[sid].some(t => t.id === tabId)
     );
@@ -94,10 +101,10 @@ function hibernateAll() {
   if (count === 0 && skipped === 0) {
     showToast('Tidak ada tab yang perlu dihibernasi.', '');
   } else if (count === 0 && skipped > 0) {
-    showToast(`Semua tab dilindungi whitelist (${skipped} toko).`, '');
+    showToast(`Semua tab dilindungi (${skipped} tab aktif / sinkronisasi).`, '');
   } else {
     const msg = skipped > 0
-      ? `${count} tab dihibernasi. ${skipped} toko dilindungi whitelist.`
+      ? `${count} tab dihibernasi. ${skipped} tab dilindungi.`
       : `${count} tab berhasil dihibernasi.`;
     showToast(msg, 'success');
   }
@@ -121,7 +128,7 @@ function createWebview(store, tab) {
   webviewCont.appendChild(loadingEl);
 
   // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
-  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
+  const actualPartition = getStorePartition(store);
   const wv = document.createElement('webview');
   wv.className = 'store-webview visible';
   wv.setAttribute('src', tab.url);
@@ -171,11 +178,99 @@ function createWebview(store, tab) {
         else total += (webviewMap[t.id]?.unreadCount || 0);
       });
       if (webviewMap[tab.id]) webviewMap[tab.id].unreadCount = count;
+
+      const prevTotal = unreadMap[store.id] || 0;
       unreadMap[store.id] = total;
+
+      // Pemicu Notifikasi Audio & Taskbar Flash jika ada pesan baru bertambah
+      if (total > prevTotal && total > 0) {
+        if (typeof playNotificationSound === 'function') {
+          playNotificationSound();
+        }
+        if (window.electronAPI && typeof window.electronAPI.flashWindow === 'function') {
+          window.electronAPI.flashWindow(true);
+        }
+        showToast(`💬 Pesan baru di ${store.name} (${total} belum dibaca)`, 'warning');
+      }
+
       renderSidebar(getFilteredStores());
 
-    } else if (event.channel === 'memory-usage') {
-      if (webviewMap[tab.id]) webviewMap[tab.id].memKB = event.args[0] || 0;
+    } else if (event.channel === 'open-quick-reply') {
+      if (typeof openQuickReplyDrawer === 'function') {
+        openQuickReplyDrawer();
+      }
+
+    } else if (event.channel === 'switch-store-index') {
+      const idx = (event.args[0] || 1) - 1;
+      const ordered = typeof getOrderedStores === 'function' ? getOrderedStores() : stores;
+      if (ordered && ordered[idx]) {
+        activateStore(ordered[idx].id);
+      }
+
+    } else if (event.channel === 'switch-store-relative') {
+      const delta = event.args[0] || 1;
+      const ordered = typeof getOrderedStores === 'function' ? getOrderedStores() : stores;
+      if (ordered && ordered.length > 0) {
+        const curIdx = ordered.findIndex(s => s.id === activeStoreId);
+        let nextIdx = curIdx + delta;
+        if (nextIdx < 0) nextIdx = ordered.length - 1;
+        if (nextIdx >= ordered.length) nextIdx = 0;
+        activateStore(ordered[nextIdx].id);
+      }
+
+    } else if (event.channel === 'clipboard-copied') {
+      if (typeof setCapturedClipboard === 'function' && event.args[0]) {
+        setCapturedClipboard(event.args[0]);
+      }
+
+    } else if (event.channel === 'inline-popup-opened') {
+      document.body.classList.add('has-quickreply-open');
+
+    } else if (event.channel === 'inline-popup-closed') {
+      document.body.classList.remove('has-quickreply-open');
+
+    } else if (event.channel === 'request-quickreply-data') {
+      const theme = typeof currentTheme !== 'undefined' ? currentTheme : (document.documentElement.getAttribute('data-theme') || 'dark');
+      const clip = typeof currentClipboardValue !== 'undefined' && currentClipboardValue ? currentClipboardValue : (localStorage.getItem('globalCapturedClipboard') || '');
+      const hist = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
+      wv.send('sync-smart-templates', {
+        templates: typeof smartTemplates !== 'undefined' ? smartTemplates : [],
+        storeName: store.name || '',
+        clipboard: clip,
+        history: hist,
+        theme: theme
+      });
+
+    } else if (event.channel === 'sync-status') {
+      const data = event.args[0] || {};
+      const entry = webviewMap[tab.id];
+      if (!entry) return;
+
+      const wasSyncing = entry.isSyncing;
+      const prevProgress = entry.syncProgress;
+      entry.isSyncing = !!data.isSyncing;
+      entry.syncProgress = data.progress;
+
+      // Munculkan popup edukasi saat pertama kali sinkronisasi terdeteksi
+      if (data.isSyncing && !wasSyncing && data.type === 'whatsapp') {
+        if (typeof showWaSyncEduModalIfNeeded === 'function') {
+          showWaSyncEduModalIfNeeded();
+        }
+      }
+
+      if (data.completed && wasSyncing) {
+        showToast(`✅ ${store.name} selesai disinkronkan & siap digunakan!`, 'success');
+      }
+
+      // Render ulang HANYA jika status sinkronisasi atau progres berubah
+      if (wasSyncing !== entry.isSyncing || prevProgress !== entry.syncProgress || data.completed) {
+        if (activeStoreId === store.id && typeof renderTabBar === 'function') {
+          renderTabBar();
+        }
+        if (typeof renderSidebar === 'function') {
+          renderSidebar(getFilteredStores());
+        }
+      }
     }
   });
 
@@ -196,12 +291,17 @@ function createWebview(store, tab) {
   });
 
   // ── Loading done & Nav state update ──────────────────────────────────────
-  wv.addEventListener('did-attach', () => {
-    if (webviewMap[tab.id] && wv.getWebContentsId) {
-      webviewMap[tab.id].wcId = wv.getWebContentsId();
-    }
-  });
+  const captureWcId = () => {
+    try {
+      if (webviewMap[tab.id] && typeof wv.getWebContentsId === 'function') {
+        webviewMap[tab.id].wcId = wv.getWebContentsId();
+      }
+    } catch (e) {}
+  };
+  wv.addEventListener('did-attach', captureWcId);
+  wv.addEventListener('dom-ready', captureWcId);
   wv.addEventListener('did-finish-load', () => {
+    captureWcId();
     loadingEl.classList.add('hidden');
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
     if (tabEntry?.zoom && tabEntry.zoom !== 1.0) {
@@ -211,6 +311,18 @@ function createWebview(store, tab) {
     if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
       updateNavButtonStates();
     }
+
+    // Sync templates, theme, clipboard, dan history ke webview
+    const theme = typeof currentTheme !== 'undefined' ? currentTheme : (document.documentElement.getAttribute('data-theme') || 'dark');
+    const clip = typeof currentClipboardValue !== 'undefined' && currentClipboardValue ? currentClipboardValue : (localStorage.getItem('globalCapturedClipboard') || '');
+    const hist = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
+    wv.send('sync-smart-templates', {
+      templates: typeof smartTemplates !== 'undefined' ? smartTemplates : [],
+      storeName: store.name || '',
+      clipboard: clip,
+      history: hist,
+      theme: theme
+    });
   });
 
   // Update nav state saat navigasi dalam halaman (SPA routing)
@@ -244,3 +356,169 @@ function createWebview(store, tab) {
   webviewCont.appendChild(wv);
   webviewMap[tab.id] = { webview: wv, loading: loadingEl };
 }
+
+// ── Smart Staggered Background Ping ──────────────────────────────────────────
+let pingQueue = [];
+let isPingRunning = false;
+let pingInterval = null;
+
+function runNextBackgroundPing() {
+  if (isPingRunning) return;
+
+  // Kumpulkan tab yang saat ini sedang di-hard hibernate
+  if (pingQueue.length === 0) {
+    const hibernatedTabs = [];
+    Object.entries(storeTabs).forEach(([storeId, tabs]) => {
+      tabs.forEach(tab => {
+        const entry = webviewMap[tab.id];
+        if (entry && entry.hibernated && !entry.webview) {
+          hibernatedTabs.push({ storeId, tab });
+        }
+      });
+    });
+    pingQueue = hibernatedTabs;
+  }
+
+  if (pingQueue.length === 0) return;
+
+  const item = pingQueue.shift();
+  const { storeId, tab } = item;
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+
+  isPingRunning = true;
+
+  // Buat webview ping tersembunyi
+  const preloadPath = appPath.replace(/\\/g, '/');
+  const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
+  const actualPartition = getStorePartition(store);
+
+  const pingWv = document.createElement('webview');
+  pingWv.className = 'store-webview-ping';
+  pingWv.style.cssText = 'position:fixed; left:-9999px; top:-9999px; width:400px; height:400px; opacity:0; pointer-events:none; visibility:hidden;';
+  pingWv.setAttribute('src', tab.url);
+  pingWv.setAttribute('partition', actualPartition);
+  pingWv.setAttribute('preload', preloadUrl);
+
+  let unreadDetected = 0;
+  let hasCleanedUp = false;
+
+  const cleanupPing = (keepAlive = false) => {
+    if (hasCleanedUp) return;
+    hasCleanedUp = true;
+    isPingRunning = false;
+
+    // Jika tab sudah dibuka/diaktifkan secara manual oleh user saat ping berjalan
+    const currentEntry = webviewMap[tab.id];
+    if (currentEntry && currentEntry.webview && !currentEntry.hibernated) {
+      if (unreadDetected > 0) {
+        currentEntry.unreadCount = unreadDetected;
+        unreadMap[store.id] = unreadDetected;
+        if (typeof playNotificationSound === 'function') playNotificationSound();
+        if (window.electronAPI?.flashWindow) window.electronAPI.flashWindow(true);
+        showToast(`💬 Pesan baru masuk di ${store.name}! (${unreadDetected} pesan)`, 'warning');
+        renderSidebar(getFilteredStores());
+        if (activeStoreId === store.id) renderTabBar();
+      }
+      try { pingWv.remove(); } catch (e) {}
+      return;
+    }
+
+    if (keepAlive) {
+      // Ada chat masuk! Pindahkan webview ke dalam webviewCont dan jadikan webview resmi
+      pingWv.className = 'store-webview';
+      pingWv.style.cssText = '';
+      if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
+        pingWv.classList.add('visible');
+      }
+
+      // Pastikan webview dipindahkan dari document.body ke webviewCont
+      webviewCont.appendChild(pingWv);
+
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'webview-loading hidden';
+      webviewCont.appendChild(loadingEl);
+
+      webviewMap[tab.id] = {
+        webview: pingWv,
+        loading: loadingEl,
+        hibernated: false,
+        unreadCount: unreadDetected
+      };
+
+      const prevTotal = unreadMap[store.id] || 0;
+      unreadMap[store.id] = unreadDetected;
+
+      if (unreadDetected > prevTotal && unreadDetected > 0) {
+        if (typeof playNotificationSound === 'function') playNotificationSound();
+        if (window.electronAPI?.flashWindow) window.electronAPI.flashWindow(true);
+        showToast(`💬 Pesan baru masuk di ${store.name}! (${unreadDetected} pesan)`, 'warning');
+      }
+
+      renderSidebar(getFilteredStores());
+      if (activeStoreId === store.id) renderTabBar();
+    } else {
+      // Tidak ada chat baru, hancurkan webview ping agar RAM tetap bersih
+      try {
+        pingWv.remove();
+      } catch (e) {}
+    }
+  };
+
+  pingWv.addEventListener('ipc-message', (e) => {
+    if (e.channel === 'unread-count') {
+      const count = e.args[0] || 0;
+      if (count > 0) {
+        unreadDetected = count;
+        cleanupPing(true); // Keep alive karena ada chat baru
+      }
+    }
+  });
+
+  // Timeout maksimal 12 detik per ping
+  const pingTimeout = setTimeout(() => {
+    cleanupPing(false);
+  }, 12000);
+
+  pingWv.addEventListener('did-finish-load', () => {
+    // Beri waktu 3.5 detik setelah load untuk mendeteksi chat badge/title
+    setTimeout(() => {
+      if (unreadDetected === 0) {
+        clearTimeout(pingTimeout);
+        cleanupPing(false);
+      }
+    }, 3500);
+  });
+
+  pingWv.addEventListener('did-fail-load', () => {
+    clearTimeout(pingTimeout);
+    cleanupPing(false);
+  });
+
+  document.body.appendChild(pingWv);
+}
+
+function cancelPendingPing(tabId) {
+  if (!tabId) return;
+  pingQueue = pingQueue.filter(item => item.tab && item.tab.id !== tabId);
+}
+
+function startStaggeredBackgroundPing() {
+  if (pingInterval) clearInterval(pingInterval);
+  // Jalankan background ping setiap 45 detik secara bergantian untuk tab tidur
+  pingInterval = setInterval(runNextBackgroundPing, 45000);
+}
+
+function stopStaggeredBackgroundPing() {
+  if (pingInterval) {
+    clearInterval(pingInterval);
+    pingInterval = null;
+  }
+  pingQueue = [];
+  isPingRunning = false;
+}
+
+// Expose ke global
+window.cancelPendingPing            = cancelPendingPing;
+window.startStaggeredBackgroundPing = startStaggeredBackgroundPing;
+window.stopStaggeredBackgroundPing  = stopStaggeredBackgroundPing;

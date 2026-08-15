@@ -5,11 +5,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Store management
   getStores: (username) => ipcRenderer.invoke('get-stores', username),
   saveStores: (stores, username) => ipcRenderer.invoke('save-stores', stores, username),
-  getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
-  getAppMetrics: () => ipcRenderer.invoke('get-app-metrics-full'),
+  getAppMetricsDetails: () => ipcRenderer.invoke('get-app-metrics-details'),
   submitFeedback: (data) => ipcRenderer.invoke('submit-feedback', data),
+  sendTelemetry: (data) => ipcRenderer.invoke('send-telemetry', data),
   getUsers: () => ipcRenderer.invoke('get-users'),
   createUser: (data) => ipcRenderer.invoke('create-user', data),
   loginUser: (data) => ipcRenderer.invoke('login-user', data),
@@ -24,17 +24,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowMinimize: () => ipcRenderer.send('window-minimize'),
   windowMaximize: () => ipcRenderer.send('window-maximize'),
   windowClose: () => ipcRenderer.send('window-close'),
+  flashWindow: (flag) => ipcRenderer.send('flash-frame', flag),
   
   // Scratchpad
   loadScratchpadFile: () => ipcRenderer.invoke('load-scratchpad-file'),
   saveScratchpadFile: (content) => ipcRenderer.invoke('save-scratchpad-file', content),
 
+  // Clipboard Helper (Smart Template)
+  readClipboard: () => ipcRenderer.invoke('read-clipboard'),
+  writeClipboard: (text) => ipcRenderer.invoke('write-clipboard', text),
+  onClipboardChanged: (callback) => ipcRenderer.on('clipboard-changed', (_event, value) => callback(value)),
+
   // Cache & Storage Management
   getCacheSize: () => ipcRenderer.invoke('get-cache-size'),
-  clearSafeCache: () => ipcRenderer.invoke('clear-safe-cache'),
+  clearSafeCache: (username) => ipcRenderer.invoke('clear-safe-cache', username),
   clearStoreCache: (data) => ipcRenderer.invoke('clear-store-cache', data),
   deepCleanStore: (data) => ipcRenderer.invoke('deep-clean-store', data),
-  deepCleanAll: () => ipcRenderer.invoke('deep-clean-all'),
+  deepCleanAll: (username) => ipcRenderer.invoke('deep-clean-all', username),
 
   // Auto Updater
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, clipboard, webContents } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
@@ -7,9 +7,15 @@ const docx = require('docx');
 const { autoUpdater } = require('electron-updater');
 const crypto = require('crypto');
 
+// ── Chromium Memory & Performance Switches ──────────────────────────────────
+// Berikan headroom V8 heap hingga 1024 MB agar sinkronisasi chat besar (WA/Shopee) tidak memicu GC thrashing
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024');
+app.commandLine.appendSwitch('disable-gpu-memory-buffer-video-frames');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+
 // Path untuk menyimpan data toko dan user
 const userDataPath = app.getPath('userData');
-const storesFilePath = path.join(userDataPath, 'stores.json');
 const usersFilePath = path.join(userDataPath, 'users.json');
 
 // Default stores jika belum ada data
@@ -37,10 +43,15 @@ const defaultStores = [
   }
 ];
 
+function getStoresFilePath(username) {
+  const safeUsername = username ? String(username).trim().replace(/[/\\?%*:|"<>]/g, '_') : '';
+  const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
+  return path.join(userDataPath, fileName);
+}
+
 // Baca stores dari file JSON
 function readStores(username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
-  const filePath = path.join(userDataPath, fileName);
+  const filePath = getStoresFilePath(username);
   try {
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
@@ -49,15 +60,18 @@ function readStores(username) {
   } catch (err) {
     console.error('Error reading stores:', err);
   }
-  // Buat file default jika belum ada
-  fs.writeFileSync(filePath, JSON.stringify(defaultStores, null, 2));
+  // Buat file default jika belum ada (aman dalam try-catch)
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(defaultStores, null, 2));
+  } catch (err) {
+    console.error('Error creating default stores file:', err);
+  }
   return defaultStores;
 }
 
 // Simpan stores ke file JSON
 function saveStores(stores, username) {
-  const fileName = username ? `stores_${username}.json` : 'stores.json';
-  const filePath = path.join(userDataPath, fileName);
+  const filePath = getStoresFilePath(username);
   try {
     fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
     return true;
@@ -126,6 +140,10 @@ function createWindow() {
       }
     });
   });
+
+  mainWindow.on('focus', () => {
+    if (typeof checkClipboardNow === 'function') checkClipboardNow();
+  });
 }
 
 // IPC Handlers
@@ -137,9 +155,6 @@ ipcMain.handle('save-stores', (event, stores, username) => {
   return saveStores(stores, username);
 });
 
-ipcMain.handle('get-user-data-path', () => {
-  return userDataPath;
-});
 
 // IPC Users
 ipcMain.handle('get-users', () => {
@@ -201,6 +216,38 @@ ipcMain.handle('reset-user-password', (event, { username, securityAnswer, newPas
 ipcMain.handle('get-app-path', () => {
   return __dirname;
 });
+
+ipcMain.handle('read-clipboard', () => {
+  try {
+    return clipboard.readText();
+  } catch (e) {
+    return '';
+  }
+});
+
+ipcMain.handle('write-clipboard', (event, text) => {
+  try {
+    clipboard.writeText(text || '');
+    return true;
+  } catch (e) {
+    return false;
+  }
+});
+
+// Auto-Watcher Clipboard Windows (Real-Time Background Polling for Copy & Cut)
+let lastClipboardText = '';
+function checkClipboardNow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    const text = clipboard.readText()?.trim();
+    if (text && text !== lastClipboardText) {
+      lastClipboardText = text;
+      mainWindow.webContents.send('clipboard-changed', text);
+    }
+  } catch (e) {}
+}
+
+setInterval(checkClipboardNow, 350);
 
 ipcMain.handle('update-security-question', (event, { username, password, securityQuestion, securityAnswer }) => {
   const users = readUsers();
@@ -278,24 +325,23 @@ ipcMain.handle('get-cache-size', () => {
 });
 
 // Opsi 1: Bersihkan Cache Aman (Global, Cookies & Login Tetap Aman)
-ipcMain.handle('clear-safe-cache', async () => {
+ipcMain.handle('clear-safe-cache', async (event, username) => {
   try {
-    // 1. Bersihkan default session
+    // 1. Bersihkan default session cache
     await session.defaultSession.clearCache();
     await session.defaultSession.clearStorageData({
-      storages: ['shadercache', 'serviceworkers', 'cachestorage', 'websql', 'indexdb']
+      storages: ['shadercache', 'serviceworkers', 'cachestorage', 'websql', 'indexeddb']
     });
 
-    // 2. Bersihkan partisi semua toko
-    const stores = readStores();
-    const users = readUsers();
+    // 2. Bersihkan partisi toko HANYA untuk user yang sedang aktif
+    const stores = readStores(username);
     const partitions = new Set();
 
     stores.forEach(s => {
-      if (s.partition) partitions.add(s.partition);
-      if (s.id) {
-        partitions.add(`persist:${s.id}`);
-        users.forEach(u => partitions.add(`persist:user_${u.username}_${s.id}`));
+      if (username && s.id) {
+        partitions.add(`persist:user_${username}_${s.id}`);
+      } else if (s.partition) {
+        partitions.add(s.partition);
       }
     });
 
@@ -344,21 +390,18 @@ ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   }
 });
 
-// Opsi 3 Global: Deep Clean Semua Data Toko
-ipcMain.handle('deep-clean-all', async () => {
+// Opsi 3 Global: Deep Clean Semua Data Toko Milik Pengguna yang Sedang Aktif
+ipcMain.handle('deep-clean-all', async (event, username) => {
   try {
-    await session.defaultSession.clearCache();
-    await session.defaultSession.clearStorageData();
-
-    const stores = readStores();
-    const users = readUsers();
+    // Bersihkan partisi HANYA milik user yang sedang aktif
+    const stores = readStores(username);
     const partitions = new Set();
 
     stores.forEach(s => {
-      if (s.partition) partitions.add(s.partition);
-      if (s.id) {
-        partitions.add(`persist:${s.id}`);
-        users.forEach(u => partitions.add(`persist:user_${u.username}_${s.id}`));
+      if (username && s.id) {
+        partitions.add(`persist:user_${username}_${s.id}`);
+      } else if (s.partition) {
+        partitions.add(s.partition);
       }
     });
 
@@ -416,20 +459,41 @@ ipcMain.handle('import-stores-config', async () => {
 });
 
 ipcMain.handle('get-app-memory-mb', () => {
-  const metrics = app.getAppMetrics();
-  // metrics adalah array object berisi { type, memory: { privateBytes } }
-  // privateBytes = Private Working Set (same as Task Manager "Memory" column)
-  if (metrics && metrics.length > 0) {
-    const totalKB = metrics.reduce((sum, m) => sum + (m.memory?.privateBytes || 0), 0);
-    return totalKB / 1024; // Return MB
-  }
+  try {
+    const metrics = app.getAppMetrics();
+    // metrics adalah array object berisi { type, memory: { privateBytes, workingSetSize } }
+    // privateBytes = Private Working Set (same as Task Manager "Memory" column)
+    if (metrics && metrics.length > 0) {
+      const totalKB = metrics.reduce((sum, m) => sum + (m.memory?.privateBytes || m.memory?.workingSetSize || 0), 0);
+      return totalKB / 1024; // Return MB
+    }
+  } catch (e) {}
   return 0;
 });
 
-// Mengembalikan metrik lengkap termasuk ID webContents untuk pemetaan per tab
-ipcMain.handle('get-app-metrics-full', () => {
-  return app.getAppMetrics();
+ipcMain.handle('get-app-metrics-details', () => {
+  try {
+    const metrics = app.getAppMetrics() || [];
+    const allContents = webContents ? webContents.getAllWebContents() : [];
+    
+    return allContents
+      .filter(wc => !wc.isDestroyed())
+      .map(wc => {
+        const pid = wc.getOSProcessId();
+        const metric = metrics.find(m => m.pid === pid);
+        const memKB = metric ? (metric.memory?.privateBytes || metric.memory?.workingSetSize || 0) : 0;
+        return {
+          wcId: wc.id,
+          type: wc.getType(),
+          pid: pid,
+          memoryKB: memKB
+        };
+      });
+  } catch (e) {
+    return [];
+  }
 });
+
 
 // Scratchpad IPC Handlers
 ipcMain.handle('load-scratchpad-file', async () => {
@@ -569,6 +633,46 @@ Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem(
   }
 });
 
+// Telemetry & Product Analytics Handler
+ipcMain.handle('send-telemetry', async (event, data) => {
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxX7AEaLnjhY4jNmnrOGxF_BR0Qwu7P03-5xhNiRmxn3OZTnWG89GtxMol8z6DD1uhKSQ/exec";
+
+  if (!GAS_WEB_APP_URL) return { success: false, message: 'URL belum diatur' };
+
+  try {
+    const os = require('os');
+    const systemInfo = `${os.type()} ${os.release()} (${os.arch()}) | RAM: ${(os.totalmem() / 1024 / 1024 / 1024).toFixed(1)} GB`;
+
+    const response = await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'TELEMETRY',
+        appVersion: app.getVersion(),
+        durationMinutes: data.durationMinutes || 0,
+        storeCount: data.storeCount || 0,
+        marketplaces: data.marketplaces || '-',
+        events: data.events || {},
+        systemInfo: systemInfo
+      })
+    });
+
+    const respText = await response.text();
+    let respJson = null;
+    try {
+      respJson = JSON.parse(respText);
+    } catch (e) {
+      respJson = { raw: respText };
+    }
+
+    console.log('[Telemetry Response from GAS]:', respJson);
+    return { success: response.ok, data: respJson };
+  } catch (error) {
+    console.error('[Telemetry Error]:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Window controls
 ipcMain.on('window-minimize', () => {
   mainWindow.minimize();
@@ -584,6 +688,12 @@ ipcMain.on('window-maximize', () => {
 
 ipcMain.on('window-close', () => {
   mainWindow.close();
+});
+
+ipcMain.on('flash-frame', (event, flag) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.flashFrame(flag !== false);
+  }
 });
 
 // Auto Updater IPC Handlers
@@ -634,6 +744,7 @@ ipcMain.on('restart-to-update', () => {
 
 // Setup Auto Updater Events
 function setupAutoUpdater(window) {
+  autoUpdater.removeAllListeners();
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -703,14 +814,22 @@ function setupAutoUpdater(window) {
 // Setup webview permissions untuk semua partisi
 app.on('web-contents-created', (event, contents) => {
   if (contents.getType() === 'webview') {
-    // Izinkan notifikasi, kamera, dll. yang mungkin dibutuhkan marketplace
+    const allowedPermissions = [
+      'notifications',
+      'media',
+      'geolocation',
+      'fullscreen',
+      'clipboard-read',
+      'clipboard-sanitized-write'
+    ];
+
+    // Izinkan notifikasi, kamera, clipboard, dll. yang dibutuhkan marketplace
     contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-      const allowedPermissions = ['notifications', 'media', 'geolocation', 'fullscreen'];
-      if (allowedPermissions.includes(permission)) {
-        callback(true);
-      } else {
-        callback(false);
-      }
+      callback(allowedPermissions.includes(permission));
+    });
+
+    contents.session.setPermissionCheckHandler((webContents, permission) => {
+      return allowedPermissions.includes(permission);
     });
 
     // Tangani navigasi di webview agar tetap di domain marketplace

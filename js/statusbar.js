@@ -2,17 +2,26 @@
 const statusBarEl = document.getElementById('status-bar');
 let sessionStartTime = Date.now();
 let statusBarInterval = null;
-let lastAppMetrics = [];
+let isUpdatingStatusBar = false;
 
 async function updateStatusBar() {
-  if (!statusBarEl) return;
+  if (!statusBarEl || isUpdatingStatusBar) return;
+  isUpdatingStatusBar = true;
 
-  const totalStores = stores.length;
-  if (totalStores === 0) {
-    statusBarEl.style.display = 'none';
-    return;
-  }
-  statusBarEl.style.display = 'flex';
+  try {
+    if (window.electronAPI && typeof window.electronAPI.getAppMemoryMB === 'function') {
+      try {
+        const mb = await window.electronAPI.getAppMemoryMB();
+        if (typeof mb === 'number' && mb > 0) ramUsageMB = mb;
+      } catch (e) {}
+    }
+
+    const totalStores = stores.length;
+    if (totalStores === 0) {
+      statusBarEl.style.display = 'none';
+      return;
+    }
+    statusBarEl.style.display = 'flex';
 
   // Initialize DOM once to avoid flicker on hover
   if (!statusBarEl.hasAttribute('data-init')) {
@@ -51,11 +60,13 @@ async function updateStatusBar() {
         <span id="sb-session-text">Sesi: 00:00:00</span>
       </div>
       <div class="status-bar-sep"></div>
-      <div class="status-bar-group" id="btn-feedback" title="Lapor Bug / Feedback" style="cursor:pointer;">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      <div class="status-bar-group has-tooltip has-clipboard-history" id="sb-clipboard-group" style="cursor:pointer; color: #fbbf24; font-weight: 500;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
         </svg>
-        <span>Feedback</span>
+        <span id="sb-clipboard-text" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Clip: ...</span>
+        <div class="status-tooltip clipboard-history-tooltip" id="sb-clipboard-tooltip"></div>
       </div>
     `;
   }
@@ -68,10 +79,11 @@ async function updateStatusBar() {
   const activeTabsList = [];
   const sleepingTabsList = [];
   
-  Object.values(storeTabs).forEach(tabs => {
+  Object.entries(storeTabs).forEach(([storeId, tabs]) => {
     totalTabs += tabs.length;
+    const store = stores.find(s => s.id === storeId);
+    const storeName = store?.name || 'Toko';
     tabs.forEach(tab => {
-      const storeName = stores.find(s => s.id === tab.id.split('-')[0])?.name || 'Toko';
       if (webviewMap[tab.id]?.hibernated) {
         sleepingTabsCount++;
         sleepingTabsList.push(`${storeName} - ${tab.title || 'Chat'}`);
@@ -127,18 +139,44 @@ async function updateStatusBar() {
   document.getElementById('sb-tabs-tooltip').innerHTML = tabsHtml;
 
   // 3. RAM Tooltip
-  // Calculate RAM per tab using data from webview-preload.js
+  // Calculate RAM per tab using data from Chromium Process Metrics
+  let processMetrics = [];
+  try {
+    if (window.electronAPI && typeof window.electronAPI.getAppMetricsDetails === 'function') {
+      processMetrics = await window.electronAPI.getAppMetricsDetails();
+    }
+  } catch (e) {}
+
   const ramList = [];
-  Object.values(storeTabs).forEach(tabs => {
+  Object.entries(storeTabs).forEach(([storeId, tabs]) => {
+    const store = stores.find(s => s.id === storeId);
+    const storeName = store?.name || 'Toko';
     tabs.forEach(tab => {
       const entry = webviewMap[tab.id];
-      const storeName = stores.find(s => s.id === tab.id.split('-')[0])?.name || 'Toko';
       
       let memMB = 0;
       if (entry && entry.hibernated) {
         memMB = 0; // Sleeping takes almost 0 memory in renderer
-      } else if (entry && entry.memKB) {
-        memMB = entry.memKB / 1024;
+      } else {
+        let wcId = entry?.wcId;
+        if (!wcId && entry?.webview && typeof entry.webview.getWebContentsId === 'function') {
+          try {
+            wcId = entry.webview.getWebContentsId();
+            if (entry) entry.wcId = wcId;
+          } catch (e) {}
+        }
+
+        if (wcId && processMetrics.length > 0) {
+          const metric = processMetrics.find(m => m.wcId === wcId);
+          if (metric && metric.memoryKB) {
+            memMB = metric.memoryKB / 1024;
+            if (entry) entry.memKB = metric.memoryKB;
+          } else if (entry && entry.memKB) {
+            memMB = entry.memKB / 1024;
+          }
+        } else if (entry && entry.memKB) {
+          memMB = entry.memKB / 1024;
+        }
       }
       
       ramList.push({ name: `${storeName} - ${tab.title || 'Chat'}`, mb: memMB, hibernated: entry?.hibernated });
@@ -150,7 +188,7 @@ async function updateStatusBar() {
   
   let ramHtml = '<strong>Penggunaan RAM:</strong><br>';
   ramHtml += ramList.length > 0 ? ramList.map(r => {
-    if (r.hibernated) return `<div style="color:#10b981; display:flex; justify-content:space-between"><span>• ${escapeHtml(r.name)}</span><span>0 MB (Tidur)</span></div>`;
+    if (r.hibernated) return `<div style="color:#10b981; display:flex; justify-content:space-between; gap: 20px;"><span>• ${escapeHtml(r.name)}</span><span>0 MB (Tidur)</span></div>`;
     const mbStr = r.mb > 1024 ? `${(r.mb/1024).toFixed(1)} GB` : `${Math.round(r.mb)} MB`;
     return `<div style="display:flex; justify-content:space-between; gap: 20px;"><span>• ${escapeHtml(r.name)}</span><span>${mbStr}</span></div>`;
   }).join('') : '<div style="color:var(--text-secondary)">Tidak ada tab</div>';
@@ -158,8 +196,119 @@ async function updateStatusBar() {
   ramHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between;"><strong>Total Aplikasi:</strong><strong>${ramStr}</strong></div>`;
   
   document.getElementById('sb-ram-tooltip').innerHTML = ramHtml;
+
+  // 4. Update Clipboard History Tooltip
+  updateStatusBarClipboard();
+  } finally {
+    isUpdatingStatusBar = false;
+  }
 }
 
-// Jalankan setiap 1.5 detik
-statusBarInterval = setInterval(updateStatusBar, 1500);
-updateStatusBar();
+let lastRenderedClipKey = null;
+
+function updateStatusBarClipboard(force = false) {
+  const textEl = document.getElementById('sb-clipboard-text');
+  const tooltipEl = document.getElementById('sb-clipboard-tooltip');
+  if (!textEl || !tooltipEl) return;
+
+  const clipVal = typeof currentClipboardValue !== 'undefined' ? currentClipboardValue.trim() : '';
+  const cleanClip = clipVal.replace(/[\r\n\t]+/g, ' ').trim();
+  const displaySnippet = cleanClip ? (cleanClip.length > 16 ? cleanClip.substring(0, 14) + '…' : cleanClip) : 'Kosong';
+  textEl.textContent = `Clip: ${displaySnippet}`;
+
+  const history = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
+
+  // Hindari render ulang DOM tooltip jika data tidak berubah agar tidak flicker/hilang saat hover
+  const renderKey = `${clipVal}|${history.length}|${history.map(h => h.id).join(',')}`;
+  if (!force && renderKey === lastRenderedClipKey) {
+    return;
+  }
+  lastRenderedClipKey = renderKey;
+
+  if (history.length === 0) {
+    tooltipEl.innerHTML = `
+      <div class="clip-history-flyout">
+        <div class="clip-history-header">
+          <div class="clip-history-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            <span>Riwayat Smart Clipboard</span>
+          </div>
+        </div>
+        <div class="clip-history-empty">
+          Belum ada riwayat clipboard.<br>
+          <span style="font-size:11px; opacity:0.7;">Copy / Cut nomor pesanan atau resi untuk mulai.</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="clip-history-flyout">
+      <div class="clip-history-header">
+        <div class="clip-history-title">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          <span>Riwayat Clipboard (${history.length})</span>
+        </div>
+        <button class="btn-clear-clip-history" onclick="clearClipboardHistory();" title="Bersihkan riwayat">Hapus Semua</button>
+      </div>
+      <div class="clip-history-list">
+  `;
+
+  history.forEach(item => {
+    const isActive = item.text === clipVal;
+    const relTime = typeof formatRelativeTime === 'function' ? formatRelativeTime(item.time) : '';
+    const rawText = (item.text || '').trim();
+    const cleanText = rawText.replace(/[\r\n\t]+/g, ' ');
+    // Batasi teks penampilan agar tidak membludak jika isi clipboard sangat panjang
+    const previewText = cleanText.length > 90 ? cleanText.substring(0, 87) + '…' : cleanText;
+    const safeText = escapeHtml(previewText);
+    const tooltipTitle = escapeHtml(rawText.length > 200 ? rawText.substring(0, 197) + '…' : rawText);
+    const sourceLabel = escapeHtml(item.source || 'Aplikasi Luar');
+
+    html += `
+      <div class="clip-history-item ${isActive ? 'active' : ''}" onclick="selectClipboardFromHistory('${item.id}');" title="${tooltipTitle}">
+        <div class="clip-history-item-top">
+          <span class="clip-history-text">${safeText}</span>
+          ${isActive ? '<span class="clip-active-badge">✓ AKTIF</span>' : '<span class="clip-pick-badge">Pilih</span>'}
+        </div>
+        <div class="clip-history-meta">
+          <span class="clip-source-badge">${sourceLabel}</span>
+          <span class="clip-time">${relTime}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+      </div>
+      <div class="clip-history-footer">
+        <span>⚡ Klik item untuk langsung mengaktifkannya</span>
+      </div>
+    </div>
+  `;
+
+  tooltipEl.innerHTML = html;
+}
+
+window.updateStatusBarClipboard = updateStatusBarClipboard;
+window.updateStatusBar          = updateStatusBar;
+
+function startStatusBarTimer() {
+  if (statusBarInterval) clearInterval(statusBarInterval);
+  statusBarInterval = setInterval(updateStatusBar, 1500);
+  updateStatusBar();
+}
+
+function stopStatusBarTimer() {
+  if (statusBarInterval) {
+    clearInterval(statusBarInterval);
+    statusBarInterval = null;
+  }
+}
+
+window.startStatusBarTimer = startStatusBarTimer;
+window.stopStatusBarTimer  = stopStatusBarTimer;
+
+// Jalankan otomatis
+startStatusBarTimer();

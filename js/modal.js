@@ -131,12 +131,18 @@ async function saveStore() {
   btnSave.innerHTML = originalText;
   btnSave.removeAttribute('aria-busy');
   if (ok) {
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track(editingStoreId ? 'store_edited' : 'store_added');
+    }
     closeModal();
     renderSidebar(getFilteredStores());
     renderTabBar();
     renderSettingsList();
     updateEmptyState();
     showToast(editingStoreId ? 'Toko berhasil diperbarui ✓' : 'Toko baru ditambahkan ✓', 'success');
+    if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
+      window.OnboardingManager.notifyAction('add_store');
+    }
   } else {
     showToast('Gagal menyimpan. Coba lagi.', 'error');
   }
@@ -146,7 +152,14 @@ async function deleteStore(storeId) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
 
-  const confirmed = confirm(`Hapus toko "${store.name}"?\n\nSesi login akan tetap tersimpan.`);
+  const confirmed = await showConfirmDialog({
+    title: 'Hapus Toko',
+    message: `Apakah Anda yakin ingin menghapus toko <strong>"${escapeHtml(store.name)}"</strong> dari daftar toko?<br><br><span style="color:var(--text-muted); font-size:12px;">ℹ️ Sesi login akan tetap tersimpan di perangkat.</span>`,
+    type: 'danger',
+    icon: '🗑️',
+    confirmText: 'Hapus Toko',
+    cancelText: 'Batal'
+  });
   if (!confirmed) return;
 
   // Remove all tab webviews for this store
@@ -160,6 +173,7 @@ async function deleteStore(storeId) {
   });
   delete storeTabs[storeId];
   delete activeTabMap[storeId];
+  delete unreadMap[storeId];
 
   if (activeStoreId === storeId) {
     activeStoreId = null;
@@ -177,10 +191,18 @@ async function deleteStore(storeId) {
 
 // ── Settings Modal ─────────────────────────────────────────────────────────────
 function openSettings() {
+  document.getElementById('tab-btn-stores')?.click();
   renderSettingsList();
   updateCacheSizeDisplay();
   settingsOverlay.classList.add('active');
 }
+
+function closeSettings() {
+  const overlay = document.getElementById('settings-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
 
 async function updateCacheSizeDisplay() {
   const badge = document.getElementById('settings-cache-size-badge');
@@ -199,58 +221,77 @@ async function updateCacheSizeDisplay() {
 }
 
 function renderSettingsList() {
-  if (stores.length === 0) {
+  const ordered = typeof getOrderedStores === 'function' ? getOrderedStores() : stores;
+  if (ordered.length === 0) {
     storesListSettings.innerHTML = `<div class="no-stores-msg">Belum ada toko yang ditambahkan.</div>`;
     return;
   }
-  storesListSettings.innerHTML = stores.map(store => {
-    const cfg      = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
-    const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
-    const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
-    const isWhitelisted = store.hibernationWhitelisted === true;
-    return `
-      <div class="settings-store-item">
-        <div class="settings-store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}</div>
-        <div class="settings-store-info">
-          <div class="settings-store-name">${escapeHtml(store.name)}</div>
-          <div class="settings-store-url">${escapeHtml(store.url || cfg.url)}</div>
-        </div>
-        <div class="settings-store-actions">
-          <!-- Opsi 2: Clear Cache & Reload Toko -->
-          <button class="btn-icon" title="Clear Cache & Reload Toko Ini (Login Tetap Aman)" onclick="clearStoreCacheAndReload('${store.id}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-            </svg>
-          </button>
-          <!-- Opsi 3: Reset Sesi Toko (Logout) -->
-          <button class="btn-icon" title="Reset Total Sesi Toko Ini (Logout)" onclick="deepCleanStoreAndConfirm('${store.id}')" style="color: #f59e0b;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-              <line x1="12" y1="2" x2="12" y2="12"/>
-            </svg>
-          </button>
-          <button class="btn-icon btn-whitelist ${isWhitelisted ? 'active' : ''}" title="${isWhitelisted ? 'Nonaktifkan perlindungan hibernasi' : 'Lindungi dari hibernasi otomatis'}" onclick="toggleWhitelist('${store.id}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="${isWhitelisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </button>
-          <button class="btn-icon" title="Edit" onclick="openEditModal('${store.id}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
-          <button class="btn-icon danger" title="Hapus" onclick="deleteStore('${store.id}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6M14 11v6"/>
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-            </svg>
-          </button>
-        </div>
+
+  // Group by marketplace (sama persis dengan urutan dan pengelompokan di Sidebar)
+  const groups = {};
+  ordered.forEach(store => {
+    if (!groups[store.marketplace]) groups[store.marketplace] = [];
+    groups[store.marketplace].push(store);
+  });
+
+  let html = '';
+  for (const [mp, mpStores] of Object.entries(groups)) {
+    const cfg = MARKETPLACE_CONFIG[mp] || MARKETPLACE_CONFIG.custom;
+    html += `
+      <div class="settings-group-header">
+        <span class="settings-group-dot" style="background:${cfg.groupColor || '#DF1683'};"></span>
+        ${cfg.label || mp}
       </div>`;
-  }).join('');
+    
+    mpStores.forEach(store => {
+      const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
+      const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
+      const isWhitelisted = store.hibernationWhitelisted === true;
+      html += `
+        <div class="settings-store-item">
+          <div class="settings-store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}</div>
+          <div class="settings-store-info">
+            <div class="settings-store-name">${escapeHtml(store.name)}</div>
+            <div class="settings-store-url">${escapeHtml(store.url || cfg.url)}</div>
+          </div>
+          <div class="settings-store-actions">
+            <!-- Opsi 2: Clear Cache & Reload Toko -->
+            <button class="btn-icon" title="Clear Cache & Reload Toko Ini (Login Tetap Aman)" onclick="clearStoreCacheAndReload('${store.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+            </button>
+            <!-- Opsi 3: Reset Sesi Toko (Logout) -->
+            <button class="btn-icon" title="Reset Total Sesi Toko Ini (Logout)" onclick="deepCleanStoreAndConfirm('${store.id}')" style="color: #f59e0b;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                <line x1="12" y1="2" x2="12" y2="12"/>
+              </svg>
+            </button>
+            <button class="btn-icon btn-whitelist ${isWhitelisted ? 'active' : ''}" title="${isWhitelisted ? 'Nonaktifkan perlindungan hibernasi' : 'Lindungi dari hibernasi otomatis'}" onclick="toggleWhitelist('${store.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="${isWhitelisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </button>
+            <button class="btn-icon" title="Edit" onclick="openEditModal('${store.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn-icon danger" title="Hapus" onclick="deleteStore('${store.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>`;
+    });
+  }
+  storesListSettings.innerHTML = html;
 }
 
 // ── Cache Actions Handler ────────────────────────────────────────────────────
@@ -260,7 +301,7 @@ async function clearStoreCacheAndReload(storeId) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
 
-  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
+  const actualPartition = getStorePartition(store);
   showToast(`Membersihkan cache "${store.name}"...`, '');
 
   try {
@@ -293,12 +334,18 @@ async function deepCleanStoreAndConfirm(storeId) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
 
-  const confirmed = confirm(
-    `⚠️ Reset Total Sesi Toko "${store.name}"?\n\nSemua cache, cookies, dan data login untuk toko ini akan dihapus.\nAnda harus login ulang di marketplace tersebut.\n\nLanjutkan?`
-  );
+  const confirmed = await showConfirmDialog({
+    title: 'Reset Sesi Toko',
+    message: `Reset total sesi toko <strong>"${escapeHtml(store.name)}"</strong>?<br><br>Semua cache, cookies, dan data login untuk toko ini akan dihapus. Anda harus login ulang di marketplace tersebut.`,
+    type: 'warning',
+    icon: '⚠️',
+    confirmText: 'Reset Sesi Toko',
+    cancelText: 'Batal',
+    confirmBtnClass: 'btn-warning'
+  });
   if (!confirmed) return;
 
-  const actualPartition = window.currentUser ? `persist:user_${window.currentUser}_${store.id}` : store.partition;
+  const actualPartition = getStorePartition(store);
   showToast(`Mereset data sesi "${store.name}"...`, '');
 
   try {
@@ -369,21 +416,41 @@ async function importConfig() {
   try {
     const result = await window.electronAPI.importStoresConfig();
     if (!result) return; // dibatalkan user
-    const confirmed = confirm(
-      `Impor ${result.length} toko dari file?\n\nSemua toko yang ada sekarang akan digantikan.`
-    );
+    const confirmed = await showConfirmDialog({
+      title: 'Impor Konfigurasi Toko',
+      message: `Ditemukan <strong>${result.length} toko</strong> dari file konfigurasi.<br><br><strong>⚠️ Perhatian:</strong> Seluruh daftar toko Anda saat ini akan digantikan dengan konfigurasi baru ini. Lanjutkan impor?`,
+      type: 'warning',
+      icon: '📥',
+      confirmText: 'Impor & Gantikan',
+      cancelText: 'Batal',
+      confirmBtnClass: 'btn-warning'
+    });
     if (!confirmed) return;
     
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Impor...';
     btn.setAttribute('aria-busy', 'true');
     
+    // 1. Bersihkan seluruh webview lama dari DOM & state untuk mencegah memory leak
+    Object.keys(webviewMap).forEach(tabId => {
+      webviewMap[tabId]?.webview?.remove();
+      webviewMap[tabId]?.loading?.remove();
+      delete webviewMap[tabId];
+    });
+    Object.keys(storeTabs).forEach(sid => delete storeTabs[sid]);
+    Object.keys(activeTabMap).forEach(sid => delete activeTabMap[sid]);
+    Object.keys(unreadMap).forEach(sid => delete unreadMap[sid]);
+    activeStoreId = null;
+
     stores = result;
     await window.electronAPI.saveStores(stores, window.currentUser);
     renderSidebar(getFilteredStores());
     renderSettingsList();
     updateEmptyState();
     showToast(`${result.length} toko berhasil diimpor ✓`, 'success');
+    if (result.length > 0 && window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
+      window.OnboardingManager.notifyAction('add_store');
+    }
   } catch (err) {
     showToast('Gagal impor: ' + err.message, 'error');
   } finally {
@@ -404,3 +471,33 @@ function updateEmptyState() {
     tabBar.style.display = 'none';
   }
 }
+
+// ── WhatsApp Sync Education Modal ───────────────────────────────────────────
+function openWaSyncEduModal() {
+  const modal = document.getElementById('wa-sync-modal');
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeWaSyncEduModal() {
+  const modal = document.getElementById('wa-sync-modal');
+  const chk = document.getElementById('chk-dont-show-wa-sync');
+  if (chk && chk.checked) {
+    Storage.set('dontShowWaSyncEdu', true, !!window.currentUser);
+  }
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+function showWaSyncEduModalIfNeeded() {
+  const dontShow = Storage.get('dontShowWaSyncEdu', false, !!window.currentUser);
+  if (dontShow) return;
+
+  openWaSyncEduModal();
+}
+
+window.openWaSyncEduModal = openWaSyncEduModal;
+window.closeWaSyncEduModal = closeWaSyncEduModal;
+window.showWaSyncEduModalIfNeeded = showWaSyncEduModalIfNeeded;

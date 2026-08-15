@@ -122,7 +122,7 @@
 
 .tab-title {
   font-size: 13px;
-  font-weight: 300;
+  font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -187,7 +187,6 @@
   border-color: var(--border-hover);
 }
 
-
 /* Empty State */
 .empty-state {
   display: flex;
@@ -219,8 +218,8 @@
 }
 
 .empty-state p {
-  font-size: 15px;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--text-secondary);
   max-width: 400px;
   line-height: 1.6;
@@ -294,8 +293,6 @@ webview {
   font-size: 14px;
 }
 
-
-
 /* ==============
    ZOOM INDICATOR
    ============================================= */
@@ -326,8 +323,6 @@ webview {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
-
-
 
 /* ==============
    TAB HIBERNATE BUTTON (per-tab leaf button)

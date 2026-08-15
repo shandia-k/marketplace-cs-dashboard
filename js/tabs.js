@@ -10,6 +10,10 @@ function activateStore(storeId) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
 
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('store_switched');
+  }
+
   emptyState.style.display = 'none';
   webviewCont.classList.add('active');
 
@@ -25,6 +29,11 @@ function activateStore(storeId) {
 
   renderTabBar();
   renderSidebar(getFilteredStores());
+
+  // Sinkronkan clipboard global & templates ke webview toko yang baru aktif
+  if (typeof broadcastTemplatesToWebviews === 'function') {
+    broadcastTemplatesToWebviews();
+  }
 }
 
 // ── Tab System ────────────────────────────────────────────────────────────────
@@ -82,13 +91,36 @@ function renderTabBar() {
 
   const leafIcon = '&#x1F343;';
   const tabsHtml = tabs.map(tab => {
-    const isHibernated = webviewMap[tab.id]?.hibernated;
+    const entry = webviewMap[tab.id];
+    const isHibernated = entry?.hibernated;
+    const isSyncing = entry?.isSyncing;
+    const syncProgress = entry?.syncProgress;
     const isCurTab = tab.id === curTabId;
+
+    let syncBadgeHtml = '';
+    if (isSyncing) {
+      const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
+      const progStr = hasPercent ? ` ${syncProgress}%` : '';
+      const tooltipMsg = hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...';
+      syncBadgeHtml = `
+        <span class="tab-sync-badge" title="${tooltipMsg}">
+          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>${progStr}
+        </span>`;
+    }
+
+    const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
+    const tabTooltip = isSyncing 
+      ? (hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...') 
+      : (isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title));
+
     return `
-    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''}" data-tab-id="${tab.id}" title="${isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title)}">
+    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}">
       <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
-      ${!isHibernated && !isCurTab ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
+      ${syncBadgeHtml}
+      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
       <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -104,7 +136,13 @@ function renderTabBar() {
       </svg>
     </button>`;
 
-  tabBar.innerHTML = navHtml + tabsHtml + addBtnHtml;
+  const fullHtml = navHtml + tabsHtml + addBtnHtml;
+  if (tabBar.dataset.lastHtml === fullHtml && tabBar.style.display === 'flex') {
+    updateNavButtonStates();
+    return;
+  }
+  tabBar.dataset.lastHtml = fullHtml;
+  tabBar.innerHTML = fullHtml;
   tabBar.style.display = 'flex';
 
   // Bind nav buttons
@@ -123,8 +161,18 @@ function renderTabBar() {
   // Bind tab click (not close)
   tabBar.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', e => {
-      if (!e.target.closest('.tab-close') && !e.target.closest('.tab-hibernate-btn')) {
+      if (!e.target.closest('.tab-close') && !e.target.closest('.tab-hibernate-btn') && !e.target.closest('.tab-sync-badge')) {
         switchTab(activeStoreId, el.dataset.tabId);
+      }
+    });
+  });
+
+  // Bind click pada badge sinkronisasi untuk membuka modal info edukasi
+  tabBar.querySelectorAll('.tab-sync-badge').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      if (typeof openWaSyncEduModal === 'function') {
+        openWaSyncEduModal();
       }
     });
   });
@@ -192,6 +240,9 @@ function addTab(storeId, url, title) {
   });
 
   switchTab(storeId, tabId);
+  if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
+    window.OnboardingManager.notifyAction('open_tab');
+  }
 }
 
 // Buka URL sebagai tab baru — dipanggil dari Ctrl+Click atau new-window event
@@ -217,6 +268,7 @@ function closeTab(storeId, tabId) {
     webviewMap[tabId].loading?.remove();
     delete webviewMap[tabId];
   }
+  delete lastAccessed[tabId];
 
   storeTabs[storeId] = tabs.filter(t => t.id !== tabId);
 
@@ -250,6 +302,11 @@ function showTab(storeId, tabId) {
   const tab   = storeTabs[storeId]?.find(t => t.id === tabId);
   if (!store || !tab) return;
 
+  // Batalkan pending background ping untuk tab ini jika ada
+  if (typeof cancelPendingPing === 'function') {
+    cancelPendingPing(tabId);
+  }
+
   lastAccessed[tabId] = Date.now();
 
   if (webviewMap[tabId]?.hibernated) {
@@ -282,7 +339,9 @@ function showTab(storeId, tabId) {
       webviewMap[tabId].loading.style.display = '';
     }
     if (tab.zoom && tab.zoom !== 1.0) {
-      webviewMap[tabId].webview?.setZoomFactor(tab.zoom);
+      try {
+        webviewMap[tabId].webview?.setZoomFactor(tab.zoom);
+      } catch (e) {}
     }
   }
 }

@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/onboarding.css">
 </head>
 
 <body>
@@ -174,7 +175,7 @@
 
       <!-- Store Groups -->
       <div class="sidebar-content" id="sidebar-content">
-        <!-- Diisi oleh renderer.js -->
+        <!-- Diisi oleh sidebar.js -->
         <div class="loading-stores">
           <div class="spinner"></div>
           <span>Memuat toko...</span>
@@ -205,35 +206,9 @@
 
       <!-- Tab Bar -->
       <div class="tab-bar" id="tab-bar" style="display:none;">
-        <!-- Tab items rendered by renderer.js -->
+        <!-- Tab items rendered by tabs.js -->
       </div>
 
-      <!-- Update Banner -->
-      <div class="update-banner" id="update-banner" style="display:none;">
-        <div class="update-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-        </div>
-        <div class="update-content">
-          <div class="update-text" id="update-text">Mengecek pembaruan...</div>
-          <div class="update-progress-bar" id="update-progress-bar" style="display:none;">
-            <div class="update-progress-fill" id="update-progress-fill" style="width: 0%;"></div>
-          </div>
-        </div>
-        <div class="update-actions">
-          <button class="btn-update-restart" id="btn-update-restart" style="display:none;">Restart & Update</button>
-          <button class="btn-update-close" id="btn-update-close" title="Tutup">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </div>
 
       <!-- Empty State -->
       <div class="empty-state" id="empty-state">
@@ -254,7 +229,7 @@
 
       <!-- Webview Container -->
       <div class="webview-container" id="webview-container">
-        <!-- Webview ditambahkan secara dinamis oleh renderer.js -->
+        <!-- Webview ditambahkan secara dinamis oleh webview.js -->
       </div>
 
     </main>
@@ -369,8 +344,31 @@
   <!-- Modal: Settings -->
   <div class="modal-overlay" id="settings-overlay">
     <div class="modal modal-wide" id="modal-settings" role="dialog" aria-labelledby="settings-title" aria-modal="true">
-      <div class="modal-header">
-        <h3 id="settings-title">Kelola Semua Toko</h3>
+      <div class="modal-header settings-modal-header">
+        <div class="settings-nav-tabs" role="tablist">
+          <button type="button" class="settings-tab-btn active" data-tab="stores" id="tab-btn-stores">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Kelola Toko
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="account" id="tab-btn-account">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Akun Saya (<span id="settings-current-user">-</span>)
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="cache" id="tab-btn-cache">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+              <path d="M12 12v9"></path>
+              <path d="m8 17 4 4 4-4"></path>
+            </svg>
+            Cache & Data
+          </button>
+        </div>
         <button class="modal-close" id="settings-close" aria-label="Tutup Pengaturan">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -378,73 +376,22 @@
           </svg>
         </button>
       </div>
-      <div class="modal-body">
-        <div class="stores-list" id="settings-stores-list">
-          <!-- Diisi oleh renderer.js -->
-        </div>
-      </div>
 
-      <!-- Panel Pengaturan Bawah (Cache & Akun) -->
-      <div class="modal-account-panel">
-        
-        <!-- Section: Manajemen Cache & Penyimpanan -->
-        <div class="settings-section">
-          <div class="settings-section-header" id="btn-toggle-cache-section">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-              <path d="M12 12v9"/>
-              <path d="m8 17 4 4 4-4"/>
-            </svg>
-            <span>Pembersihan Cache & Data</span>
-            <span class="settings-cache-badge" id="settings-cache-size-badge">...</span>
-            <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </div>
-          <div class="settings-section-body" id="cache-section-body" style="display:none;">
-            <!-- Opsi 1: Safe Cache Clear -->
-            <div class="settings-subsection">
-              <h4>1. Bersihkan Cache Aman (Global)</h4>
-              <p class="settings-hint">Menghapus file temporary, cache gambar/stiker, dan shader GPU. <strong>Sesi login toko 100% aman (tidak logout)</strong>.</p>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button class="btn-primary" id="btn-clear-safe-cache" style="flex: 1;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                  </svg>
-                  Bersihkan Cache Aman
-                </button>
-                <button class="btn-icon" id="btn-refresh-cache-size" title="Hitung Ulang Ukuran Cache">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Opsi 3: Deep Clean / Reset Sesi Penuh -->
-            <div class="settings-subsection" style="margin-top: 4px;">
-              <h4 style="color: #f87171;">3. Reset Sesi & Data Total (Deep Clean)</h4>
-              <p class="settings-hint">Menghapus seluruh cache, cookies, dan data login pada <strong>semua marketplace</strong>. Gunakan jika ada kendala fatal.</p>
-              <button class="btn-secondary" id="btn-deep-clean-all" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171; width: 100%;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                Reset Total Semua Sesi Toko
-              </button>
-            </div>
+      <div class="modal-body settings-modal-body">
+        <!-- Tab 1: Kelola Toko -->
+        <div class="settings-tab-pane" id="settings-pane-stores">
+          <div class="stores-list" id="settings-stores-list">
+            <!-- Diisi oleh renderSettingsList() -->
           </div>
         </div>
 
-        <!-- Section: Akun Saya -->
-        <div class="settings-section">
-          <div class="settings-section-header" id="btn-toggle-account-section">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>Akun Saya (<span id="settings-current-user">-</span>)</span>
-            <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </div>
-        <div class="settings-section-body" id="account-section-body" style="display:none;">
-          <div class="settings-subsection">
-            <h4>Ganti PIN</h4>
+        <!-- Tab 2: Akun Saya -->
+        <div class="settings-tab-pane" id="settings-pane-account" style="display: none;">
+          <div class="settings-card">
+            <h4>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Ganti PIN
+            </h4>
             <div class="form-group">
               <label for="acc-current-password">PIN Saat Ini</label>
               <input type="password" id="acc-current-password" placeholder="Masukkan PIN saat ini">
@@ -457,10 +404,14 @@
               <label for="acc-new-password-confirm">Konfirmasi PIN Baru</label>
               <input type="password" id="acc-new-password-confirm" placeholder="Ulangi PIN baru">
             </div>
-            <button class="btn-secondary" id="btn-change-password">Simpan PIN Baru</button>
+            <button class="btn-primary" id="btn-change-password" style="align-self: flex-start; margin-top: 4px;">Simpan PIN Baru</button>
           </div>
-          <div class="settings-subsection">
-            <h4>Pertanyaan Keamanan <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(untuk reset PIN jika lupa)</span></h4>
+
+          <div class="settings-card">
+            <h4>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              Pertanyaan Keamanan <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(untuk reset PIN jika lupa)</span>
+            </h4>
             <div class="form-group">
               <label for="acc-security-question">Pertanyaan</label>
               <select id="acc-security-question">
@@ -480,29 +431,148 @@
               <label for="acc-pin-for-security">Konfirmasi PIN Saat Ini</label>
               <input type="password" id="acc-pin-for-security" placeholder="Masukkan PIN untuk konfirmasi">
             </div>
-            <button class="btn-secondary" id="btn-save-security-question">Simpan Pertanyaan Keamanan</button>
+            <button class="btn-secondary" id="btn-save-security-question" style="align-self: flex-start; margin-top: 4px;">Simpan Pertanyaan Keamanan</button>
+          </div>
+
+          <div class="settings-card">
+            <h4>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#df1683" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+              Panduan & Onboarding Aplikasi
+            </h4>
+            <p class="settings-hint" style="margin: 4px 0 10px;">Pelajari kembali cara menggunakan fitur dashboard atau pantau progres tugas onboarding.</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn-primary" onclick="if (typeof window.startOnboardingTour === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.startOnboardingTour(); }" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Mulai Tur Panduan 🎯
+              </button>
+              <button type="button" class="btn-secondary" onclick="if (typeof window.reopenOnboardingChecklist === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.reopenOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Buka Checklist Tugas 📋
+              </button>
+              <button type="button" class="btn-secondary" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Info Sistem & Changelog v1.0.5 🚀
+              </button>
+              <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Reset Checklist 🔄
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+              <div>
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                  Versi & Pembaruan Aplikasi
+                </h4>
+                <p class="settings-hint" style="margin: 4px 0 0;">Periksa apakah ada pembaruan fitur atau perbaikan terbaru.</p>
+              </div>
+              <button class="btn-icon-text" id="btn-check-updates-settings" onclick="if (typeof window.checkAppUpdates === 'function') window.checkAppUpdates(true);" title="Cek pembaruan aplikasi">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                Cek Pembaruan
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+              <div>
+                <h4 style="color: #f87171; margin-bottom: 4px;">Keluar dari Akun</h4>
+                <p class="settings-hint" style="margin: 0;">Keluar dari sesi akun saat ini dan kembali ke menu login.</p>
+              </div>
+              <button class="btn-secondary" id="btn-logout" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Keluar / Ganti Akun
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Cache & Data -->
+        <div class="settings-tab-pane" id="settings-pane-cache" style="display: none;">
+          <div class="settings-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h4>Ukuran Cache Aplikasi</h4>
+                <p class="settings-hint" style="margin: 4px 0 0;">Total data sementara, cache gambar dan partisi user tersimpan.</p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="settings-cache-badge" id="settings-cache-size-badge" style="font-size: 13px; padding: 4px 12px;">...</span>
+                <button class="btn-icon" id="btn-refresh-cache-size" title="Hitung Ulang Ukuran Cache">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+              <div>
+                <h4>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  Hibernasi Tab Toko
+                </h4>
+                <p class="settings-hint" style="margin: 4px 0 0;">Tidurkan seluruh tab toko yang sedang tidak aktif untuk menghemat RAM (toko berstatus 🛡️ tetap aktif).</p>
+              </div>
+              <button class="btn-icon-text" id="btn-hibernate-all" onclick="hibernateAll()" title="Hibernasi semua tab (kecuali yang dilindungi)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Hibernasi Semua Tab
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <h4>1. Bersihkan Cache Aman (Global)</h4>
+            <p class="settings-hint">Menghapus file temporary, cache gambar/stiker, dan shader GPU. <strong>Sesi login toko 100% aman (tidak logout)</strong>.</p>
+            <div>
+              <button class="btn-primary" id="btn-clear-safe-cache">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Bersihkan Cache Aman
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.03);">
+            <h4 style="color: #f87171;">2. Reset Sesi & Data Total (Deep Clean)</h4>
+            <p class="settings-hint">Menghapus seluruh cache, cookies, dan data login pada <strong>semua marketplace akun ini</strong>. Gunakan jika ada kendala fatal.</p>
+            <div>
+              <button class="btn-secondary" id="btn-deep-clean-all" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Reset Total Semua Sesi Toko
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      <div class="modal-footer settings-footer">
+
+      <div class="modal-footer settings-footer" id="settings-stores-footer">
         <div class="settings-footer-left">
-          <button class="btn-icon-text" id="btn-check-updates-settings" onclick="if (typeof window.checkAppUpdates === 'function') window.checkAppUpdates(true);" title="Cek pembaruan aplikasi">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-            </svg>
-            Cek Update
-          </button>
-          <button class="btn-icon-text" id="btn-hibernate-all" onclick="hibernateAll()" title="Hibernasi semua tab (kecuali yang dilindungi)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            Hibernasi Semua
-          </button>
-        </div>
-        <div class="settings-footer-right">
           <button class="btn-icon-text" id="btn-import-config" onclick="importConfig()" title="Impor konfigurasi dari file">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -519,6 +589,8 @@
             </svg>
             Ekspor
           </button>
+        </div>
+        <div class="settings-footer-right">
           <button class="btn-primary" id="btn-settings-add">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
               <path d="M12 5v14M5 12h14"/>
@@ -529,15 +601,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Floating Scratchpad Button -->
-  <button class="btn-scratchpad-floating" id="btn-scratchpad" title="Catatan / Scratchpad" aria-label="Buka Catatan Scratchpad">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-    </svg>
-  </button>
 
   <!-- Floating Scratchpad -->
   <div class="floating-scratchpad" id="scratchpad-window" style="display: none;" role="dialog" aria-label="Catatan">
@@ -553,7 +616,7 @@
       <div class="scratchpad-tabs" id="scratchpad-tabs" role="tablist">
         <!-- Tabs will be rendered here -->
       </div>
-      <button class="btn-add-tab" id="btn-add-tab" title="Tambah Tab" aria-label="Tambah Tab Catatan Baru">+</button>
+      <button class="btn-add-tab" id="btn-sp-add-tab" title="Tambah Tab" aria-label="Tambah Tab Catatan Baru">+</button>
       <button class="scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize" aria-label="Tutup Catatan">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -589,13 +652,22 @@
 
   <!-- Feedback Modal -->
   <div class="modal-overlay" id="feedback-modal">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-labelledby="feedback-modal-title" aria-modal="true">
       <div class="modal-header">
-        <h3>Lapor Bug / Feedback</h3>
-        <button class="modal-close" id="btn-feedback-close" aria-label="Tutup Form">&times;</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">💡</span>
+          <h3 id="feedback-modal-title">Lapor Bug / Feedback</h3>
+        </div>
+        <button class="modal-close" id="btn-feedback-close" aria-label="Tutup Form">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
-        <p style="color:var(--text-muted); font-size: 13px; margin-bottom:12px; line-height: 1.5;">Sistem secara otomatis menyertakan RAM, OS, dan konfigurasi tab aktif (tanpa password) untuk membantu perbaikan.</p>
+        <div class="modal-card" style="padding: 12px 14px;">
+          <p class="settings-hint" style="margin: 0;">Sistem secara otomatis menyertakan RAM, OS, dan konfigurasi tab aktif (tanpa password) untuk membantu perbaikan.</p>
+        </div>
         <div class="form-group">
           <label for="feedback-type">Jenis Laporan</label>
           <select id="feedback-type">
@@ -611,7 +683,13 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" id="btn-feedback-cancel">Batal</button>
-        <button class="btn-primary" id="btn-feedback-submit">Kirim Feedback</button>
+        <button class="btn-primary" id="btn-feedback-submit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          Kirim Feedback
+        </button>
       </div>
     </div>
   </div>
@@ -624,7 +702,11 @@
           <img src="assets/icon.ico" width="20" height="20" style="object-fit:contain;" alt="Logo">
           <h3 id="updater-modal-title">Pembaruan Aplikasi</h3>
         </div>
-        <button class="modal-close" id="updater-modal-close" aria-label="Tutup Modal">&times;</button>
+        <button class="modal-close" id="updater-modal-close" aria-label="Tutup Modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
       <div class="modal-body updater-modal-body">
         <div class="updater-status-icon-wrapper status-checking" id="updater-icon-wrapper">
@@ -636,7 +718,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.4</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.5</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -674,18 +756,586 @@
     </div>
   </div>
 
+  <!-- WhatsApp Sync Education Modal -->
+  <div class="modal-overlay" id="wa-sync-modal" style="z-index: 9995;">
+    <div class="modal" style="max-width: 520px;" role="dialog" aria-labelledby="wa-sync-modal-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 211, 102, 0.15); display: flex; align-items: center; justify-content: center; color: #25d366; font-size: 18px;">
+            💬
+          </div>
+          <div>
+            <h3 id="wa-sync-modal-title" style="margin: 0; font-size: 16px;">Informasi Sinkronisasi WhatsApp</h3>
+            <span style="font-size: 12px; color: var(--text-secondary);">Proses sinkronisasi riwayat obrolan & customer</span>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-wa-sync-close" aria-label="Tutup Informasi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 20px;">
+        
+        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 10px; padding: 14px; display: flex; gap: 12px; align-items: flex-start;">
+          <div style="font-size: 20px; line-height: 1;">⏳</div>
+          <div style="font-size: 13px; line-height: 1.5; color: var(--text-primary);">
+            <strong>Proses sinkronisasi butuh waktu cukup lama</strong><br>
+            Pengunduhan riwayat chat WhatsApp membutuhkan waktu yang cukup lama (tergantung banyaknya riwayat percakapan) dan <strong>akan berimbas pada performa aplikasi</strong> serta lonjakan RAM & Disk (SSD) <strong>selama proses sinkronisasi</strong>.
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: #f59e0b; font-size: 16px;">💡</span>
+            <div>
+              <strong style="color: var(--text-primary);">Mengecek Progres Sinkronisasi:</strong><br>
+              Untuk mengecek persentase progres unduhan pesan, silakan buka <strong>Profil</strong> atau <strong>Pengaturan</strong> di dalam WhatsApp Web.
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: #10b981; font-size: 16px;">🛡️</span>
+            <div>
+              <strong style="color: var(--text-primary);">Anti-Hibernasi Otomatis:</strong><br>
+              Aplikasi secara otomatis melindungi tab ini agar tidak masuk mode tidur (hibernasi) selama proses sinkronisasi berlangsung.
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <span style="color: #38bdf8; font-size: 16px;">⚡</span>
+            <div>
+              <strong style="color: var(--text-primary);">Setelah Selesai:</strong><br>
+              Begitu proses sinkronisasi selesai 100%, penggunaan resource akan kembali normal dan performa aplikasi kembali ringan.
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="chk-dont-show-wa-sync" style="accent-color: #df1683; cursor: pointer;">
+            <span>Jangan tampilkan pesan ini lagi</span>
+          </label>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button class="btn-primary" id="btn-wa-sync-understand" style="min-width: 130px;">
+          Saya Mengerti
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating CS Toolkit Button & Speed Dial Menu -->
+  <div class="cs-toolkit-fab-container" id="cs-toolkit-fab-container">
+    <!-- Backdrop to close popup on click outside -->
+    <div class="cs-toolkit-backdrop" id="cs-toolkit-backdrop"></div>
+
+    <!-- Toolkit Menu Popup -->
+    <div class="cs-toolkit-menu" id="cs-toolkit-menu" role="menu" aria-label="CS Toolkit Menu">
+      <div class="cs-toolkit-menu-header">
+        <div class="cs-toolkit-menu-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <span>CS Toolkit & Productivity</span>
+        </div>
+      </div>
+
+      <div class="cs-toolkit-menu-list">
+        <!-- 1. Smart Quick Reply -->
+        <div class="cs-toolkit-item" id="tool-item-quickreply" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Smart Quick Reply</div>
+            <div class="cs-toolkit-item-desc">Template balasan otomatis & variabel order</div>
+          </div>
+          <span class="cs-toolkit-item-badge">Ctrl+Space</span>
+        </div>
+
+        <!-- 2. Scratchpad Multi-Tab -->
+        <div class="cs-toolkit-item" id="tool-item-scratchpad" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Scratchpad Catatan</div>
+            <div class="cs-toolkit-item-desc">Draft teks, multi-tab & tempel data tabel</div>
+          </div>
+        </div>
+
+        <!-- 3. Logistics Tracker (Cek Resi) - Disabled (Dalam Pengembangan) -->
+        <div class="cs-toolkit-item disabled" id="tool-item-tracking" role="menuitem" tabindex="-1" aria-disabled="true" title="Fitur Pelacak Resi sedang dalam tahap pengembangan (Segera Hadir)">
+          <div class="cs-toolkit-item-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Pelacak Resi (Cek Resi)</div>
+            <div class="cs-toolkit-item-desc">SPX, J&T, SiCepat, dll + auto-ketik status</div>
+          </div>
+          <span class="cs-toolkit-item-badge badge-dev">Segera Hadir</span>
+        </div>
+
+        <!-- 4. Calculator CS - Disabled (Dalam Pengembangan) -->
+        <div class="cs-toolkit-item disabled" id="tool-item-calc" role="menuitem" tabindex="-1" aria-disabled="true" title="Fitur Kalkulator Marketplace sedang dalam tahap pengembangan (Segera Hadir)">
+          <div class="cs-toolkit-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Kalkulator Diskon & Margin</div>
+            <div class="cs-toolkit-item-desc">Hitung fee admin marketplace & profit HPP</div>
+          </div>
+          <span class="cs-toolkit-item-badge badge-dev">Segera Hadir</span>
+        </div>
+
+        <!-- 5. Customer Notes -->
+        <div class="cs-toolkit-item" id="tool-item-cnotes" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Catatan Pembeli & Warning COD</div>
+            <div class="cs-toolkit-item-desc">Database pelanggan VIP & riwayat retur</div>
+          </div>
+        </div>
+
+        <!-- 6. Feedback / Bug Report -->
+        <div class="cs-toolkit-item" id="tool-item-feedback" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(100, 116, 139, 0.15); color: var(--text-secondary);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Feedback & Bantuan</div>
+            <div class="cs-toolkit-item-desc">Kirim saran pengembangan atau laporkan bug</div>
+          </div>
+        </div>
+
+        <!-- 7. Onboarding & Tour Guide -->
+        <div class="cs-toolkit-item" id="tool-item-onboarding" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
+            <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
+          </div>
+          <span class="cs-toolkit-item-badge">v1.0.5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main FAB Trigger Button -->
+    <button class="btn-cs-toolkit-fab" id="btn-cs-toolkit-fab" title="Buka CS Toolkit" aria-label="CS Toolkit">
+      <svg class="icon-fab-main" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+      </svg>
+      <span class="fab-label">Tools CS</span>
+    </button>
+  </div>
+
+  <!-- Quick Reply Backdrop & Drawer -->
+  <div class="quickreply-backdrop" id="quickreply-backdrop"></div>
+  <aside class="quickreply-drawer" id="quickreply-drawer" role="dialog" aria-labelledby="qr-drawer-title" aria-modal="true">
+    <div class="qr-drawer-header">
+      <div class="qr-title-box">
+        <div class="qr-title-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 id="qr-drawer-title">Smart Quick Reply</h3>
+          <span class="qr-shortcut-hint">Shortcut: <kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
+        </div>
+      </div>
+      <button class="qr-close-btn" id="qr-drawer-close" aria-label="Tutup Smart Reply">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Live Clipboard Variable Bar -->
+    <div class="qr-clipboard-bar">
+      <div class="qr-clip-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span>Variabel <code>{clipboard}</code> aktif:</span>
+      </div>
+      <div class="qr-clip-input-wrapper">
+        <input type="text" id="qr-clipboard-input" placeholder="Salin nomor order/resi di sini...">
+        <button id="btn-qr-history-clip" title="Pilih dari Riwayat Clipboard" class="btn-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </button>
+        <button id="btn-qr-refresh-clip" title="Refresh dari Clipboard" class="btn-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search & Category Filters -->
+    <div class="qr-filter-section">
+      <div class="qr-search-wrapper">
+        <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="qr-search-input" placeholder="Cari template (resi, order, salam, dll)...">
+      </div>
+      <div class="qr-category-tabs" role="tablist">
+        <button class="qr-tab-btn active" data-category="all">Semua</button>
+        <button class="qr-tab-btn" data-category="greeting">Sapaan</button>
+        <button class="qr-tab-btn" data-category="order">Pesanan & Resi</button>
+        <button class="qr-tab-btn" data-category="complaint">Komplain</button>
+        <button class="qr-tab-btn" data-category="product">Produk</button>
+      </div>
+    </div>
+
+    <!-- Templates List Container -->
+    <div class="qr-templates-list" id="qr-templates-list">
+      <!-- Diisi oleh renderQuickReplyList() -->
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="qr-drawer-footer">
+      <button class="btn-secondary" id="btn-qr-reset-default" title="Kembalikan template ke bawaan">
+        Reset Bawaan
+      </button>
+      <button class="btn-primary" id="btn-qr-add-template">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Tambah Template
+      </button>
+    </div>
+  </aside>
+
+  <!-- Modal: Add/Edit Smart Template -->
+  <div class="modal-overlay" id="modal-template-overlay">
+    <div class="modal modal-template" role="dialog" aria-labelledby="modal-tpl-title" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modal-tpl-title">Tambah Template Smart Reply</h3>
+        <button class="modal-close" id="modal-tpl-close" aria-label="Tutup Modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="tpl-name-input">Judul Template <span style="color:#ef4444;">*</span></label>
+          <input type="text" id="tpl-name-input" placeholder="Cth: Cek Resi Cepat">
+        </div>
+        <div class="form-group">
+          <label for="tpl-cat-select">Kategori</label>
+          <select id="tpl-cat-select">
+            <option value="greeting">Sapaan & Ramah Tamah</option>
+            <option value="order">Pesanan & Resi</option>
+            <option value="complaint">Komplain & Retur</option>
+            <option value="product">Informasi Produk / Stok</option>
+            <option value="custom">Kustom / Lainnya</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="tpl-content-input">Isi Pesan Template <span style="color:#ef4444;">*</span></label>
+          <div class="qr-var-helper-bar">
+            <span class="qr-var-helper-label">Klik untuk sisipkan variabel dinamis:</span>
+            <div class="qr-var-pills">
+              <button type="button" class="var-pill-btn" data-var="{clipboard}" title="Nomor order / resi yang sedang di-copy CS">{clipboard}</button>
+              <button type="button" class="var-pill-btn" data-var="{toko}" title="Nama toko marketplace saat ini">{toko}</button>
+              <button type="button" class="var-pill-btn" data-var="{waktu}" title="Pagi/Siang/Sore/Malam">{waktu}</button>
+            </div>
+          </div>
+          <textarea id="tpl-content-input" rows="4" placeholder="Tulis kalimat template di sini. Gunakan {clipboard} untuk memasukkan nomor order/resi otomatis..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-tpl-modal-cancel">Batal</button>
+        <button class="btn-primary" id="btn-tpl-modal-save">Simpan Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Logistics Tracker (Cek Resi) -->
+  <div class="modal-overlay" id="modal-tracking-overlay">
+    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-tracking-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">🚚</span>
+          <h3 id="modal-tracking-title">Pelacak Resi Multi-Ekspedisi</h3>
+        </div>
+        <button class="modal-close" id="btn-tracking-close" aria-label="Tutup Pelacak Resi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="tracking-search-bar" style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+          <input type="text" id="tracking-resi-input" placeholder="Masukkan nomor resi (SPX, J&T, SiCepat, JNE, dll)..." style="flex:2; min-width:200px;">
+          <select id="tracking-courier-select" style="flex:1; min-width:140px;">
+            <option value="spx">Shopee Xpress (SPX)</option>
+            <option value="jnt">J&T Express</option>
+            <option value="sicepat">SiCepat</option>
+            <option value="jne">JNE Express</option>
+            <option value="anteraja">Anteraja</option>
+            <option value="idexpress">ID Express</option>
+            <option value="ninja">Ninja Xpress</option>
+            <option value="lion">Lion Parcel</option>
+          </select>
+          <button class="btn-primary" id="btn-do-tracking" style="padding:0 18px;">Cek Resi</button>
+        </div>
+        <div class="courier-quick-pills" style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+          <span style="font-size:11px; color:var(--text-muted); align-self:center;">Pilih Cepat:</span>
+          <button type="button" class="btn-pill-courier" data-courier="spx">SPX</button>
+          <button type="button" class="btn-pill-courier" data-courier="jnt">J&T</button>
+          <button type="button" class="btn-pill-courier" data-courier="sicepat">SiCepat</button>
+          <button type="button" class="btn-pill-courier" data-courier="jne">JNE</button>
+          <button type="button" class="btn-pill-courier" data-courier="anteraja">Anteraja</button>
+          <button type="button" class="btn-pill-courier" data-courier="idexpress">ID Express</button>
+          <button type="button" class="btn-pill-courier" data-courier="ninja">Ninja</button>
+          <button type="button" class="btn-pill-courier" data-courier="lion">Lion Parcel</button>
+        </div>
+
+        <div id="tracking-results-box">
+          <div class="qr-empty-state" style="padding:32px 20px;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            <p>Masukkan nomor resi di atas untuk melacak status paket.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: CS Fee & Discount Calculator -->
+  <div class="modal-overlay" id="modal-calculator-overlay">
+    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-calc-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">🧮</span>
+          <h3 id="modal-calc-title">Kalkulator Diskon & Biaya Admin CS</h3>
+        </div>
+        <button class="modal-close" id="btn-calc-close" aria-label="Tutup Kalkulator">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="calc-grid-layout">
+          <div class="calc-form-pane">
+            <div class="form-group">
+              <label for="calc-base-price">Harga Normal Produk (Rp)</label>
+              <input type="number" id="calc-base-price" placeholder="Cth: 150000" value="100000">
+            </div>
+            <div class="form-row" style="display:flex; gap:10px;">
+              <div class="form-group" style="flex:1;">
+                <label for="calc-disc-percent">Diskon (%)</label>
+                <input type="number" id="calc-disc-percent" placeholder="Cth: 10" max="100" min="0">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label for="calc-disc-nominal">Atau Diskon (Rp)</label>
+                <input type="number" id="calc-disc-nominal" placeholder="Cth: 10000" min="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="calc-admin-fee-select">Skema Admin Marketplace</label>
+              <select id="calc-admin-fee-select">
+                <option value="shopee_star">Shopee (Star / Star+ ~6.5%)</option>
+                <option value="shopee_xtra">Shopee (Star + Gratis Ongkir XTRA ~10.5%)</option>
+                <option value="shopee_nonstar">Shopee (Non-Star ~4.0%)</option>
+                <option value="shopee_mall">Shopee (Mall ~7.5%)</option>
+                <option value="tokopedia_pm">Tokopedia (Power Merchant ~5.5%)</option>
+                <option value="tokopedia_pm_pro">Tokopedia (PM PRO + Bebas Ongkir ~9.5%)</option>
+                <option value="tokopedia_reg">Tokopedia (Reguler ~4.5%)</option>
+                <option value="tiktok_shop">TikTok Shop (~5.0% - 7.5%)</option>
+                <option value="lazada">Lazada (~4.0% - 6.0%)</option>
+                <option value="custom">Biaya Kustom</option>
+              </select>
+            </div>
+            <div class="form-group" id="calc-custom-fee-group" style="display:none;">
+              <label for="calc-custom-fee">Persentase Fee Kustom (%)</label>
+              <input type="number" id="calc-custom-fee" placeholder="Cth: 5" value="5">
+            </div>
+            <div class="form-row" style="display:flex; gap:10px;">
+              <div class="form-group" style="flex:1;">
+                <label for="calc-cost-price">Modal / HPP (Opsional)</label>
+                <input type="number" id="calc-cost-price" placeholder="Cth: 60000" value="0">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label for="calc-subsidy">Subsidi Ongkir / Potongan (Rp)</label>
+                <input type="number" id="calc-subsidy" placeholder="0" value="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-results-pane">
+            <h4 class="calc-results-title">Ringkasan Perhitungan</h4>
+            <div class="calc-result-row main">
+              <span>Harga Bayar Pembeli:</span>
+              <strong id="calc-res-final-price">Rp 100.000</strong>
+            </div>
+            <div class="calc-result-row">
+              <span>Nominal Diskon:</span>
+              <span id="calc-res-discount-amount" style="color:#ef4444;">Rp 0</span>
+            </div>
+            <div class="calc-result-row">
+              <span>Potongan Admin:</span>
+              <span id="calc-res-admin-fee" style="color:#f59e0b;">Rp 6.500 (6.5%)</span>
+            </div>
+            <div class="calc-result-row highlight">
+              <span>Dana Bersih Diterima:</span>
+              <strong id="calc-res-net-earnings" style="color:#10b981;">Rp 93.500</strong>
+            </div>
+            <div class="calc-result-row" id="calc-res-profit-row" style="display:none;">
+              <span>Estimasi Profit Bersih:</span>
+              <strong id="calc-res-profit" style="color:#3b82f6;">Rp 0 (0%)</strong>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+              <button class="btn-primary" id="btn-calc-insert-offer" style="width:100%;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Ketik Penawaran Diskon ke Chat
+              </button>
+              <button class="btn-secondary" id="btn-calc-insert-invoice" style="width:100%;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Ketik Rincian Harga ke Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Customer Notes (Catatan Pelanggan) -->
+  <div class="modal-overlay" id="modal-cnotes-overlay">
+    <div class="modal modal-tool modal-wide" role="dialog" aria-labelledby="modal-cnotes-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">📝</span>
+          <h3 id="modal-cnotes-title">Catatan Khusus Pelanggan & Warning</h3>
+        </div>
+        <button class="modal-close" id="btn-cnotes-close" aria-label="Tutup Catatan Pelanggan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+          <input type="text" id="cnotes-search-input" placeholder="Cari nama, username, no HP, atau isi catatan pembeli..." style="flex:1; min-width:220px;">
+          <button class="btn-primary" id="btn-cnotes-add">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Tambah Catatan Baru
+          </button>
+        </div>
+        <div class="cnotes-filter-tabs" style="display:flex; gap:6px; margin-bottom:12px; overflow-x:auto;">
+          <button type="button" class="btn-cnotes-tab active" data-tag="all">Semua</button>
+          <button type="button" class="btn-cnotes-tab" data-tag="vip">🌟 VIP Buyer</button>
+          <button type="button" class="btn-cnotes-tab" data-tag="warning">⚠️ Perhatian / COD</button>
+          <button type="button" class="btn-cnotes-tab" data-tag="return">📦 Riwayat Retur</button>
+          <button type="button" class="btn-cnotes-tab" data-tag="info">ℹ️ Catatan Biasa</button>
+        </div>
+        <div class="cnotes-list" id="cnotes-list">
+          <!-- Diisi oleh renderCustomerNotesList() -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Sub: Form Tambah/Edit Catatan Pelanggan -->
+  <div class="modal-overlay" id="modal-cnote-form-overlay">
+    <div class="modal modal-template" role="dialog" aria-labelledby="modal-cnote-form-title" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modal-cnote-form-title">Tambah Catatan Pelanggan</h3>
+        <button class="modal-close" id="modal-cnote-form-close" aria-label="Tutup Form">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="form-cnote-buyer">Nama / Username Pembeli <span style="color:#ef4444;">*</span></label>
+          <input type="text" id="form-cnote-buyer" placeholder="Cth: Budi (budi_store99)">
+        </div>
+        <div class="form-row" style="display:flex; gap:10px;">
+          <div class="form-group" style="flex:1;">
+            <label for="form-cnote-phone">Nomor HP / WhatsApp</label>
+            <input type="text" id="form-cnote-phone" placeholder="08xxxxxxxxxx">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label for="form-cnote-tag">Status / Label</label>
+            <select id="form-cnote-tag">
+              <option value="info">ℹ️ Catatan Biasa</option>
+              <option value="vip">🌟 VIP Buyer (Prioritas)</option>
+              <option value="warning">⚠️ Perhatian (Pernah Tolak COD)</option>
+              <option value="return">📦 Riwayat Retur / Komplain</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="form-cnote-text">Isi Catatan <span style="color:#ef4444;">*</span></label>
+          <textarea id="form-cnote-text" rows="3" placeholder="Tulis riwayat transaksi, catatan khusus, atau instruksi penanganan pembeli ini..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cnote-form-cancel">Batal</button>
+        <button class="btn-primary" id="btn-cnote-form-save">Simpan Catatan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modern Custom Confirmation Modal & Danger Zone -->
+  <div class="modal-overlay" id="confirm-modal-overlay" style="z-index: 10050;">
+    <div class="modal modal-confirm" id="confirm-modal" role="dialog" aria-labelledby="confirm-modal-title" aria-modal="true">
+      <div class="confirm-modal-header">
+        <div class="confirm-icon-box" id="confirm-modal-icon">⚠️</div>
+        <div class="confirm-title-box">
+          <h3 id="confirm-modal-title">Konfirmasi Tindakan</h3>
+        </div>
+      </div>
+      <div class="confirm-modal-body">
+        <div class="confirm-modal-message" id="confirm-modal-message"></div>
+        <div class="confirm-modal-input-group" id="confirm-modal-input-group" style="display:none;">
+          <label class="confirm-input-label" id="confirm-modal-input-hint" for="confirm-modal-input"></label>
+          <input type="text" id="confirm-modal-input" class="confirm-keyword-input" autocomplete="off" spellcheck="false" placeholder="Ketik kata konfirmasi di sini...">
+        </div>
+      </div>
+      <div class="modal-footer confirm-modal-footer">
+        <button class="btn-secondary" id="btn-confirm-cancel">Batal</button>
+        <button class="btn-danger" id="btn-confirm-ok">Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
 
   <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
   <script src="js/state.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/telemetry.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/tabs.js"></script>
   <script src="js/webview.js"></script>
   <script src="js/modal.js"></script>
   <script src="js/scratchpad.js"></script>
+  <script src="js/quickreply.js"></script>
+  <script src="js/tools.js"></script>
   <script src="js/statusbar.js"></script>
+  <script src="js/onboarding.js"></script>
   <script src="js/app.js"></script>
   <script src="js/login.js"></script>
   <script src="js/updater.js"></script>

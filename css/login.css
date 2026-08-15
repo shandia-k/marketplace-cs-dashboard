@@ -1,10 +1,10 @@
 .login-layout {
   position: fixed;
-  top: 36px; /* Below titlebar */
+  top: var(--titlebar-height, 38px);
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--bg-base);
+  background-color: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,13 +12,13 @@
 }
 
 .login-container {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--modal-radius, 16px);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
   animation: slideUpFade 0.4s ease-out forwards;
 }
 
@@ -29,23 +29,45 @@
 
 .login-header img {
   margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .login-header h2 {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 4px;
-  color: var(--text-base);
+  color: var(--text-primary);
 }
 
 .login-header p {
-  font-size: 14px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .login-body .form-group {
   margin-bottom: 16px;
+}
+
+.login-body select,
+.login-body input[type="text"],
+.login-body input[type="password"] {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-body select:focus,
+.login-body input[type="text"]:focus,
+.login-body input[type="password"]:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(223, 22, 131, 0.15);
 }
 
 .login-actions {
@@ -55,17 +77,20 @@
 .login-footer {
   margin-top: 16px;
   text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .login-footer a {
-  color: var(--primary-base);
+  color: var(--accent-primary);
   text-decoration: none;
   font-size: 13px;
+  font-weight: 500;
   transition: color 0.2s ease;
 }
 
 .login-footer a:hover {
-  color: var(--primary-hover);
+  color: var(--accent-secondary);
   text-decoration: underline;
 }
 
@@ -81,13 +106,13 @@
 }
 
 .reset-question-box {
-  background: var(--bg-raised, rgba(255,255,255,0.06));
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px 14px;
   margin-bottom: 16px;
   font-size: 13px;
-  color: var(--text-base);
+  color: var(--text-primary);
   line-height: 1.5;
 }
 

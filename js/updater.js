@@ -6,7 +6,8 @@
 (function () {
   let isManualCheck = false;
   let autoCloseTimer = null;
-  let currentAppVersion = '1.0.4';
+  let countdownInterval = null;
+  let currentAppVersion = '1.0.5';
 
   const SVGS = {
     spinner: `
@@ -69,6 +70,10 @@
       clearTimeout(autoCloseTimer);
       autoCloseTimer = null;
     }
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
     const { modal } = getElements();
     if (modal) {
       modal.classList.remove('active');
@@ -80,6 +85,10 @@
     if (autoCloseTimer) {
       clearTimeout(autoCloseTimer);
       autoCloseTimer = null;
+    }
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
     }
 
     const els = getElements();
@@ -94,7 +103,7 @@
       console.warn('Could not fetch app version:', e);
     }
 
-    // Set UI State: Checking
+    // Tampilkan modal UI saat memeriksa pembaruan (baik startup maupun manual)
     els.modal.classList.add('active');
     els.iconWrapper.innerHTML = SVGS.spinner;
     els.iconWrapper.className = 'updater-status-icon-wrapper status-checking';
@@ -155,9 +164,12 @@
 
   function handleUpdaterMessage(data) {
     const els = getElements();
-    if (!els.modal || !els.modal.classList.contains('active')) return;
+    if (!els.modal) return;
 
     const status = data.status;
+
+    // Pastikan modal aktif saat pesan status pembaruan diterima
+    els.modal.classList.add('active');
 
     if (status === 'checking') {
       els.iconWrapper.innerHTML = SVGS.spinner;
@@ -170,18 +182,35 @@
       els.iconWrapper.className = 'updater-status-icon-wrapper status-success';
       els.title.textContent = 'Aplikasi Sudah Versi Terbaru';
       els.desc.textContent = data.message || `Anda sudah menggunakan versi terbaru (v${data.version || currentAppVersion}).`;
-      
+
       els.btnSkip.style.display = 'none';
       els.btnAction.style.display = 'inline-flex';
-      els.btnAction.textContent = 'Lanjutkan ke Aplikasi';
       els.btnAction.className = 'btn-primary';
       els.btnAction.onclick = closeUpdaterModal;
 
-      // Auto close after 2.2 seconds if opened automatically on startup
       if (!isManualCheck) {
-        autoCloseTimer = setTimeout(() => {
-          closeUpdaterModal();
-        }, 2200);
+        // Startup otomatis: Countdown 3 detik dengan indikator waktu di tombol
+        let secondsLeft = 3;
+        els.btnAction.textContent = `Tutup (${secondsLeft}s)`;
+
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+        }
+
+        countdownInterval = setInterval(() => {
+          secondsLeft--;
+          if (secondsLeft > 0) {
+            els.btnAction.textContent = `Tutup (${secondsLeft}s)`;
+          } else {
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+              countdownInterval = null;
+            }
+            closeUpdaterModal();
+          }
+        }, 1000);
+      } else {
+        els.btnAction.textContent = 'Tutup';
       }
     } else if (status === 'available') {
       // New update available
@@ -189,7 +218,7 @@
       els.iconWrapper.className = 'updater-status-icon-wrapper status-available';
       els.title.textContent = `Versi Baru v${data.version} Tersedia!`;
       els.desc.textContent = 'Pembaruan sedang diunduh secara otomatis di latar belakang.';
-      
+
       els.targetVer.textContent = `Versi baru: v${data.version}`;
       els.targetVer.style.display = 'inline-block';
 

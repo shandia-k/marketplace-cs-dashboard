@@ -278,5 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Start ──────────────────────────────────────────────────────────────────────
+  window.initLoginScreen = initLoginScreen;
   initLoginScreen();
 });

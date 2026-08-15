@@ -42,20 +42,24 @@
   --bukalapak-color: #e12b2b;
   --custom-color: #DF1683;
 
-  /* Sidebar */
+  /* Layout & Radii */
   --sidebar-width: 240px;
-
-  /* Titlebar */
   --titlebar-height: 38px;
+  --modal-radius: 16px;
+  --card-radius: 12px;
+  --btn-radius: 8px;
+  --input-radius: 8px;
 
   /* Transitions */
   --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s ease;
+  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Shadows */
+  /* Shadows & Glows */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 0 20px rgba(0,0,0,0.25);
+  --accent-glow: 0 4px 14px rgba(223, 22, 131, 0.35);
+  --accent-glow-hover: 0 6px 20px rgba(223, 22, 131, 0.5);
 
   /* A11y */
   --focus-ring-color: #3b82f6; /* Tailwind blue-500 */
