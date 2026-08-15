@@ -1,5 +1,18 @@
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
+// ── Debounce ──────────────────────────────────────────────────────────────────
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')

@@ -160,11 +160,12 @@ function closeScratchpadTab(tabId) {
 }
 
 // Update current tab content on input
+const debouncedSaveScratchpadState = debounce(saveScratchpadState, 500);
 spTextarea.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveScratchpadState();
   }
 });
 
