@@ -270,3 +270,24 @@ function showConfirmDialog(options = {}) {
 }
 
 window.showConfirmDialog = showConfirmDialog;
+
+// ── Debounce ──────────────────────────────────────────────────────────────────
+/**
+ * Creates a debounced function that delays invoking func until after wait milliseconds
+ * have elapsed since the last time the debounced function was invoked.
+ * @param {Function} func The function to debounce.
+ * @param {number} wait The number of milliseconds to delay.
+ * @returns {Function} Returns the new debounced function.
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const context = this;
+    const later = () => {
+      func.apply(context, args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+window.debounce = debounce;

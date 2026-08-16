@@ -641,7 +641,7 @@ function bindToolsEvents() {
   // 3. Customer Notes modal trigger & events
   document.getElementById('btn-cnotes-tool')?.addEventListener('click', openCustomerNotesModal);
   document.getElementById('btn-cnotes-close')?.addEventListener('click', closeCustomerNotesModal);
-  document.getElementById('cnotes-search-input')?.addEventListener('input', renderCustomerNotesList);
+  document.getElementById('cnotes-search-input')?.addEventListener('input', debounce(renderCustomerNotesList, 300));
   document.getElementById('btn-cnotes-add')?.addEventListener('click', openAddNoteFormModal);
   document.getElementById('btn-cnote-form-cancel')?.addEventListener('click', closeAddNoteFormModal);
   document.getElementById('modal-cnote-form-close')?.addEventListener('click', closeAddNoteFormModal);
