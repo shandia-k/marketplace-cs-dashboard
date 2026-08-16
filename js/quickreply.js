@@ -567,7 +567,7 @@ function bindQuickReplyEvents() {
   document.getElementById('quickreply-backdrop')?.addEventListener('click', closeQuickReplyDrawer);
 
   // Search input
-  document.getElementById('qr-search-input')?.addEventListener('input', renderQuickReplyList);
+  document.getElementById('qr-search-input')?.addEventListener('input', debounce(renderQuickReplyList, 300));
 
   // Live Clipboard Value change manual
   document.getElementById('qr-clipboard-input')?.addEventListener('input', (e) => {
