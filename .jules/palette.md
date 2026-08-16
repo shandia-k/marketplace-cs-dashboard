@@ -1,0 +1,3 @@
+## $(date +%Y-%m-%d) - Adding ARIA attributes to dynamically generated SVG elements
+**Learning:** In string-based HTML generation contexts (e.g. innerHTML rendering in tabs and settings modals), explicitly configuring screen reader accessibility for icon-only buttons is crucial. While a standard `title` attribute works for sighted mouse users, `aria-label` provides correct semantic naming for screen readers, and applying `aria-hidden="true"` and `focusable="false"` to inner SVG elements prevents redundant or confusing readouts.
+**Action:** Always include `aria-label` along with `aria-hidden="true"` and `focusable="false"` on the SVGs for any interactable UI element that relies primarily on icons for meaning.
