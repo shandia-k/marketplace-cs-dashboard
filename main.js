@@ -18,6 +18,21 @@ app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 const userDataPath = app.getPath('userData');
 const usersFilePath = path.join(userDataPath, 'users.json');
 
+// Security Helpers
+function isValidPartition(partition) {
+  if (typeof partition !== 'string') return false;
+  // Mencegah Path Traversal di session partition
+  if (partition.includes('..') || partition.includes('/') || partition.includes('\\')) {
+    return false;
+  }
+  return true;
+}
+
+function sanitizeUsername(username) {
+  if (typeof username !== 'string') return '';
+  return username.trim().replace(/[/\\?%*:|"<>]/g, '_');
+}
+
 // Default stores jika belum ada data
 const defaultStores = [
   {
@@ -44,7 +59,7 @@ const defaultStores = [
 ];
 
 function getStoresFilePath(username) {
-  const safeUsername = username ? String(username).trim().replace(/[/\\?%*:|"<>]/g, '_') : '';
+  const safeUsername = username ? sanitizeUsername(String(username)) : '';
   const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   return path.join(userDataPath, fileName);
 }
@@ -347,6 +362,10 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) {
+          console.warn(`Invalid partition rejected: ${part}`);
+          continue;
+        }
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData({
@@ -366,6 +385,7 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 ipcMain.handle('clear-store-cache', async (event, { partition }) => {
   try {
     if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Format partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData({
@@ -381,6 +401,7 @@ ipcMain.handle('clear-store-cache', async (event, { partition }) => {
 ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   try {
     if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Format partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
@@ -407,6 +428,10 @@ ipcMain.handle('deep-clean-all', async (event, username) => {
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) {
+          console.warn(`Invalid partition rejected: ${part}`);
+          continue;
+        }
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData();
