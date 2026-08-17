@@ -399,10 +399,23 @@ ipcMain.handle('get-user-profile', (event, username) => {
 
 ipcMain.handle('create-user', (event, { username, password, displayName, role, avatarColor, avatarIcon, securityQuestion, securityAnswer, adminApprovalPin }) => {
   const users = readUsers();
-  const cleanUsername = String(username || '').trim();
-  if (!cleanUsername) return { success: false, error: 'Username tidak boleh kosong' };
-  if (users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase())) {
-    return { success: false, error: 'Username sudah digunakan' };
+  const cleanDisplayName = String(displayName || username || '').trim();
+  if (!cleanDisplayName) return { success: false, error: 'Nama pengguna tidak boleh kosong' };
+
+  let cleanUsername = String(username || '').trim();
+  if (!cleanUsername) {
+    const base = cleanDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '') || 'cs';
+    let candidate = base;
+    let counter = 2;
+    while (users.some(u => u.username.toLowerCase() === candidate.toLowerCase())) {
+      candidate = `${base}_${counter}`;
+      counter++;
+    }
+    cleanUsername = candidate;
+  } else {
+    if (users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase())) {
+      return { success: false, error: 'Nama pengguna sudah digunakan' };
+    }
   }
 
   const isFirstUser = users.length === 0;
@@ -424,7 +437,7 @@ ipcMain.handle('create-user', (event, { username, password, displayName, role, a
 
   const newUser = {
     username: cleanUsername,
-    displayName: displayName ? String(displayName).trim() : cleanUsername,
+    displayName: cleanDisplayName,
     role: isSuperAdminRole ? 'Super Admin' : (role || 'Customer Service'),
     isSuperAdmin: isSuperAdminRole,
     avatarColor: avatarColor || (isSuperAdminRole ? '#e11d48' : '#df1683'),
@@ -690,10 +703,23 @@ ipcMain.handle('admin-create-user', async (event, { requestingUsername, password
     return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat menambahkan pengguna baru dari panel admin.' };
   }
 
-  const cleanNewUser = String(newUsername || '').trim();
-  if (!cleanNewUser) return { success: false, error: 'Username tidak boleh kosong' };
-  if (users.find(u => u.username.toLowerCase() === cleanNewUser.toLowerCase())) {
-    return { success: false, error: 'Username sudah digunakan' };
+  const cleanNewDisplayName = String(newDisplayName || newUsername || '').trim();
+  if (!cleanNewDisplayName) return { success: false, error: 'Nama pengguna tidak boleh kosong' };
+
+  let cleanNewUser = String(newUsername || '').trim();
+  if (!cleanNewUser) {
+    const base = cleanNewDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '') || 'cs';
+    let candidate = base;
+    let counter = 2;
+    while (users.some(u => u.username.toLowerCase() === candidate.toLowerCase())) {
+      candidate = `${base}_${counter}`;
+      counter++;
+    }
+    cleanNewUser = candidate;
+  } else {
+    if (users.find(u => u.username.toLowerCase() === cleanNewUser.toLowerCase())) {
+      return { success: false, error: 'Nama pengguna sudah digunakan' };
+    }
   }
 
   const cleanNewPin = String(newPassword || '').trim();
@@ -705,7 +731,7 @@ ipcMain.handle('admin-create-user', async (event, { requestingUsername, password
 
   const newUser = {
     username: cleanNewUser,
-    displayName: newDisplayName ? String(newDisplayName).trim() : cleanNewUser,
+    displayName: cleanNewDisplayName,
     role: isSuperAdminRole ? 'Super Admin' : 'Customer Service',
     isSuperAdmin: isSuperAdminRole,
     avatarColor: avatarColor || (isSuperAdminRole ? '#e11d48' : '#df1683'),
@@ -1883,13 +1909,18 @@ app.on('web-contents-created', (event, contents) => {
       }
     });
 
-    // Cegah popup arbitrary atau skema tidak valid
-    contents.setWindowOpenHandler(({ url }) => {
+    // Cegah popup arbitrary, skema tidak valid, atau sub-widget iframe yang mencoba membuka window liar
+    contents.setWindowOpenHandler(({ url, disposition }) => {
       try {
         const parsed = new URL(url);
-        if (['http:', 'https:'].includes(parsed.protocol)) {
-          return { action: 'allow' };
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return { action: 'deny' };
         }
+        // Tolak pembukaan window dari internal widget hovercard Google Contacts
+        if (url.includes('/widget/hovercard') || url.includes('contacts.google.com/widget')) {
+          return { action: 'deny' };
+        }
+        return { action: 'allow' };
       } catch (e) {}
       return { action: 'deny' };
     });

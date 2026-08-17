@@ -15,6 +15,7 @@ const { ipcRenderer } = require('electron');
 // ── STATE & TEMPLATES (Synced from host dashboard) ───────────────────────────
 let smartTemplates = [];
 let currentStoreName = '';
+let currentCsName = '';
 let currentClipboardValue = '';
 let inlineClipboardHistory = [];
 let currentTheme = 'dark';
@@ -26,13 +27,14 @@ let inlineFilteredTemplates = [];
 let inlineQuery = '';
 let popupElement = null;
 
-// Sinkronisasi data template, store, clipboard, riwayat, & tema dari host dashboard
+// Sinkronisasi data template, store, cs, clipboard, riwayat, & tema dari host dashboard
 ipcRenderer.on('sync-smart-templates', (event, data) => {
   if (data) {
     if (Array.isArray(data.templates) && data.templates.length > 0) {
       smartTemplates = data.templates;
     }
     if (data.storeName) currentStoreName = data.storeName;
+    if (data.csName) currentCsName = data.csName;
     if (typeof data.clipboard === 'string') {
       currentClipboardValue = data.clipboard;
     }
@@ -88,6 +90,66 @@ function captureClipboardFromDOM() {
 document.addEventListener('copy', captureClipboardFromDOM, true);
 document.addEventListener('cut', captureClipboardFromDOM, true);
 
+// ── CUSTOMER / BUYER NAME AUTO-DETECTOR ──────────────────────────────────────
+function detectActiveCustomerName() {
+  const selectors = [
+    // WhatsApp Web
+    '#main header span[dir="auto"]',
+    'header span[data-testid="conversation-info-header-chat-title"]',
+    'header [data-testid="chat-title"]',
+    'header span[title]',
+    // Tokopedia Seller
+    '[data-testid="chat-header-name"]',
+    '[data-testid="header-chat-name"]',
+    '[data-testid*="chat-header"] [class*="name" i]',
+    'h6[data-testid*="name" i]',
+    '.css-header-name',
+    // Shopee Seller Centre
+    '.chat-header-title',
+    '.chat-header .user-name',
+    '.shopee-chat-header__name',
+    '.conversation-header-name',
+    '[class*="chat-header"] [class*="name" i]',
+    '[class*="conversation-header"] [class*="title" i]',
+    // TikTok Shop Seller Center
+    '[class*="chat-header"] [class*="user-name" i]',
+    '[class*="session-header"] [class*="title" i]',
+    '.im-chat-header__title',
+    // Lazada Seller Center
+    '.im-header-title',
+    '.chat-header-user',
+    '.chat-user-name',
+    // Active chat conversation item fallback
+    '[class*="chat-item"][class*="active" i] [class*="name" i]',
+    '[class*="conversation-item"][class*="selected" i] [class*="name" i]'
+  ];
+
+  for (const sel of selectors) {
+    try {
+      const list = document.querySelectorAll(sel);
+      for (const el of list) {
+        if (el.offsetParent !== null) {
+          let text = (el.getAttribute('title') || el.innerText || el.textContent || '').trim();
+          if (text && text.length > 0 && text.length < 50) {
+            const lower = text.toLowerCase();
+            if (lower.includes('search') || lower.includes('cari') || lower.includes('online') || lower.includes('ketik')) {
+              continue;
+            }
+            // Bersihkan format nama: ambil baris pertama jika multi-baris
+            text = text.split('\n')[0].replace(/[\r\t]+/g, ' ').trim();
+            // Jika ada format "Budi (Buyer VIP)" atau "Andi - Jakarta", ambil nama utama jika terlalu panjang
+            if (text.length > 25 && text.includes('(')) {
+              text = text.split('(')[0].trim();
+            }
+            if (text) return text;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  return '';
+}
+
 // ── VARIABLE RESOLVER ────────────────────────────────────────────────────────
 function getGreetingTime() {
   const hour = new Date().getHours();
@@ -102,11 +164,15 @@ function resolveVariables(rawText, overrideClipboard) {
   const clip = (overrideClipboard !== undefined ? overrideClipboard : currentClipboardValue).trim();
   const store = currentStoreName || 'Toko Kami';
   const waktu = getGreetingTime();
+  const cs = currentCsName || 'CS';
+  const customer = detectActiveCustomerName() || 'Kak';
 
   return rawText
     .replace(/\{(clipboard|order|resi)\}/gi, () => clip || '...')
     .replace(/\{toko\}/gi, () => store)
-    .replace(/\{waktu\}/gi, () => waktu);
+    .replace(/\{waktu\}/gi, () => waktu)
+    .replace(/\{(cs|nama_cs|nama|cs_name|nama_pengguna|user)\}/gi, () => cs)
+    .replace(/\{(pembeli|customer|buyer|nama_pembeli|nama_customer)\}/gi, () => customer);
 }
 
 function escapeHtml(str) {
@@ -135,16 +201,22 @@ function highlightVariablesHtml(rawText, overrideClipboard, query) {
   const clip = (overrideClipboard !== undefined ? overrideClipboard : currentClipboardValue).trim();
   const store = currentStoreName || 'Toko Kami';
   const waktu = getGreetingTime();
+  const cs = currentCsName || 'CS';
+  const customer = detectActiveCustomerName() || 'Kak';
 
   let escaped = escapeHtml(rawText);
 
   const clipPill = `<span class="cs-clip-pill">${escapeHtml(clip || '{clipboard}')}</span>`;
   const storePill = `<span class="cs-var-pill">${escapeHtml(store)}</span>`;
   const waktuPill = `<span class="cs-var-pill">${escapeHtml(waktu)}</span>`;
+  const csPill = `<span class="cs-var-pill" style="color:#10b981;font-weight:600;">${escapeHtml(cs)}</span>`;
+  const custPill = `<span class="cs-var-pill" style="color:#38bdf8;font-weight:600;">${escapeHtml(customer)}</span>`;
 
   escaped = escaped.replace(/\{(clipboard|order|resi)\}/gi, '___CS_CLIP_VAR___');
   escaped = escaped.replace(/\{toko\}/gi, '___CS_STORE_VAR___');
   escaped = escaped.replace(/\{waktu\}/gi, '___CS_WAKTU_VAR___');
+  escaped = escaped.replace(/\{(cs|nama_cs|nama|cs_name|nama_pengguna|user)\}/gi, '___CS_NAME_VAR___');
+  escaped = escaped.replace(/\{(pembeli|customer|buyer|nama_pembeli|nama_customer)\}/gi, '___CS_CUST_VAR___');
 
   if (query && query.trim()) {
     try {
@@ -157,6 +229,8 @@ function highlightVariablesHtml(rawText, overrideClipboard, query) {
   escaped = escaped.replace(/___CS_CLIP_VAR___/g, clipPill);
   escaped = escaped.replace(/___CS_STORE_VAR___/g, storePill);
   escaped = escaped.replace(/___CS_WAKTU_VAR___/g, waktuPill);
+  escaped = escaped.replace(/___CS_NAME_VAR___/g, csPill);
+  escaped = escaped.replace(/___CS_CUST_VAR___/g, custPill);
 
   return escaped;
 }
@@ -764,13 +838,24 @@ function renderInlineItems() {
   updateClipboardBtnText();
 }
 
-function selectInlineTemplate(index) {
-  const tpl = inlineFilteredTemplates[index];
-  if (!tpl || !activeTargetInput) return;
+let isInsertingTemplate = false;
 
-  const resolved = resolveVariables(tpl.content);
-  insertTextIntoTarget(activeTargetInput, resolved, inlineQuery);
-  closeInlineSmartQuickReply();
+function selectInlineTemplate(index) {
+  if (isInsertingTemplate) return;
+  isInsertingTemplate = true;
+
+  try {
+    const tpl = inlineFilteredTemplates[index];
+    if (!tpl || !activeTargetInput) return;
+
+    const resolved = resolveVariables(tpl.content);
+    insertTextIntoTarget(activeTargetInput, resolved, inlineQuery);
+    closeInlineSmartQuickReply();
+  } finally {
+    setTimeout(() => {
+      isInsertingTemplate = false;
+    }, 250);
+  }
 }
 
 function setNativeValue(element, value) {
@@ -804,11 +889,15 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
         try { document.execCommand('delete', false, null); } catch (e) {}
       }
     }
+
     let inserted = false;
     try {
       inserted = document.execCommand('insertText', false, text);
-    } catch (e) {}
+    } catch (e) {
+      inserted = false;
+    }
 
+    // Fallback hanya jika browser execCommand tidak didukung
     if (!inserted) {
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
@@ -823,13 +912,12 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
       } else {
         target.textContent += text;
       }
-    }
 
-    try {
-      target.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, cancelable: true }));
-      target.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
-      target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    } catch (e) {}
+      try {
+        target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      } catch (e) {}
+    }
   } else if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
     target.focus();
     const val = target.value || '';
@@ -845,13 +933,9 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
     target.selectionStart = target.selectionEnd = start + text.length;
 
     try {
-      target.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, cancelable: true }));
-      target.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
+      target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
       target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    } catch (e) {
-      target.dispatchEvent(new Event('input', { bubbles: true }));
-      target.dispatchEvent(new Event('change', { bubbles: true }));
-    }
+    } catch (e) {}
   }
 }
 
@@ -1145,7 +1229,9 @@ ipcRenderer.on('insert-chat-text', (event, text) => {
   if (!text) return;
   const target = findChatInput() || document.activeElement;
   if (target) {
-    insertTextIntoTarget(target, text, '');
+    const custName = detectActiveCustomerName() || 'Kak';
+    const resolved = text.replace(/\{(pembeli|customer|buyer|nama_pembeli|nama_customer)\}/gi, custName);
+    insertTextIntoTarget(target, resolved, '');
   }
 });
 
@@ -1172,18 +1258,57 @@ let lastSentUnread = 0;
 let unreadDebounceTimer = null;
 
 function parseUnreadFromTitle(title) {
-  if (!title) return 0;
+  if (!title || typeof title !== 'string') return 0;
   let m = title.match(/\((\d+)\+?\)/);
   if (m) return parseInt(m[1], 10);
   m = title.match(/\[(\d+)\+?\]/);
   if (m) return parseInt(m[1], 10);
-  m = title.match(/(\d+)\+?\s*(?:pesan|message|msg|chat|unread)/i);
+  m = title.match(/(\d+)\+?\s*(?:pesan|message|msg|chat|unread|email)/i);
   if (m) return parseInt(m[1], 10);
   return 0;
 }
 
 function parseUnreadFromDOM() {
   try {
+    // 1. Deteksi Gmail Inbox (.bsU badge dan baris email belum dibaca tr.zA.zE)
+    const gmailBsU = document.querySelectorAll('.bsU, a[href*="#inbox"] .bsU, div[data-tooltip*="Inbox"] .bsU, div[data-tooltip*="Kotak Masuk"] .bsU');
+    if (gmailBsU && gmailBsU.length > 0) {
+      let bsuSum = 0;
+      gmailBsU.forEach(el => {
+        const text = el.textContent.trim().replace(/[^0-9]/g, '');
+        const num = parseInt(text, 10);
+        if (!isNaN(num) && num > 0) bsuSum += num;
+      });
+      if (bsuSum > 0) return bsuSum;
+    }
+
+    const gmailUnreadRows = document.querySelectorAll('tr.zA.zE, tr.zE');
+    if (gmailUnreadRows && gmailUnreadRows.length > 0) {
+      return gmailUnreadRows.length;
+    }
+
+    // 2. Deteksi WhatsApp Web (akumulasi total angka di seluruh badge chat aktif)
+    const waBadges = document.querySelectorAll('span[data-testid="icon-unread-count"], span[data-icon="unread-count"], [data-testid="unread-count"], span[aria-label*="unread" i], span[aria-label*="belum dibaca" i]');
+    if (waBadges && waBadges.length > 0) {
+      let waSum = 0;
+      waBadges.forEach(el => {
+        const text = el.textContent.trim();
+        if (/^\d{1,4}\+?$/.test(text)) {
+          const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+          if (!isNaN(num) && num > 0) waSum += num;
+        } else {
+          const aria = el.getAttribute('aria-label') || '';
+          const m = aria.match(/(\d+)/);
+          if (m) {
+            const num = parseInt(m[1], 10);
+            if (!isNaN(num) && num > 0) waSum += num;
+          }
+        }
+      });
+      if (waSum > 0) return waSum;
+    }
+
+    // 3. Deteksi Marketplace (Shopee, Tokopedia, Lazada, TikTok Shop, Blibli, Bukalapak)
     const badgeSelectors = [
       '.chat-list-item__unread',
       '.shopee-badge',
@@ -1199,8 +1324,10 @@ function parseUnreadFromDOM() {
       let sum = 0;
       els.forEach(el => {
         const text = el.textContent.trim();
-        const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-        if (!isNaN(num) && num > 0) sum += num;
+        if (/^\d{1,4}\+?$/.test(text)) {
+          const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+          if (!isNaN(num) && num > 0 && num < 1000) sum += num;
+        }
       });
       if (sum > 0) return sum;
     }
@@ -1209,13 +1336,13 @@ function parseUnreadFromDOM() {
 }
 
 function checkUnread() {
-  // 1. Cek title terlebih dahulu (sangat ringan & 100x lebih cepat)
-  let count = parseUnreadFromTitle(document.title);
+  // 1. Cek DOM terlebih dahulu untuk akurasi jumlah pesan total (mendukung akumulasi multi-pesan WA & baris Gmail)
+  let count = parseUnreadFromDOM();
   
-  // 2. Jika title tidak memuat badge, baru periksa DOM secara selektif
+  // 2. Jika DOM belum memuat badge, baru periksa title sebagai fallback
   if (count === 0) {
-    const domCount = parseUnreadFromDOM();
-    if (domCount > 0) count = domCount;
+    const titleCount = parseUnreadFromTitle(document.title);
+    if (titleCount > 0) count = titleCount;
   }
   
   if (count !== lastSentUnread) {
@@ -1226,7 +1353,7 @@ function checkUnread() {
   }
 }
 
-function scheduleUnreadCheck(delay = 1500) {
+function scheduleUnreadCheck(delay = 1000) {
   if (unreadDebounceTimer) return;
   unreadDebounceTimer = setTimeout(() => {
     unreadDebounceTimer = null;
@@ -1241,8 +1368,8 @@ if (titleEl) {
   titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
 }
 
-// Observe DOM body mutations (diberi debounce 2 detik agar tidak memberatkan CPU saat sinkronisasi chat besar)
-const bodyObserver = new MutationObserver(() => scheduleUnreadCheck(2000));
+// Observe DOM body mutations (diberi debounce 1 detik agar responsif terhadap pesan masuk baru)
+const bodyObserver = new MutationObserver(() => scheduleUnreadCheck(1000));
 if (document.body) {
   bodyObserver.observe(document.body, { childList: true, subtree: false });
 } else {
@@ -1251,7 +1378,7 @@ if (document.body) {
   });
 }
 
-setInterval(checkUnread, 5000);
+setInterval(checkUnread, 2000);
 window.addEventListener('load', () => setTimeout(checkUnread, 1500));
 
 // ── SYNC STATUS DETECTION (WhatsApp & Marketplace Initial Sync) ─────────────

@@ -166,8 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="user-single-info">
             <div class="user-single-name">${escapeHtml(name)}</div>
             <div class="user-single-meta">
-              <span class="user-single-username">@${escapeHtml(u.username)}</span>
-              <span class="role-badge ${isSuperAdmin ? 'superadmin' : 'cs'}" style="font-size:10px;padding:2px 8px;">${escapeHtml(role)}</span>
+              <span class="role-badge ${isSuperAdmin ? 'superadmin' : 'cs'}" style="font-size:11px;padding:3px 10px;">${escapeHtml(role)}</span>
             </div>
           </div>
         </div>
@@ -234,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loginSubtitle.textContent  = 'Daftarkan akun CS atau Administrator baru';
     document.getElementById('reg-footer-back').style.display = canCancel ? 'block' : 'none';
     renderRegisterAvatarPicker();
-    setTimeout(() => regUsername.focus(), 150);
+    setTimeout(() => regDisplayName?.focus(), 150);
   }
 
   function showResetForm() {
@@ -316,8 +315,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Handle Registration ────────────────────────────────────────────────────────
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username    = regUsername.value.trim();
-    const displayName = regDisplayName ? regDisplayName.value.trim() : username;
+    const displayName = regDisplayName ? regDisplayName.value.trim() : '';
+    const username    = regUsername ? regUsername.value.trim() : '';
     const role        = regRole ? regRole.value : 'Customer Service';
     const password    = regPassword.value;
     const confirm     = regPasswordConfirm.value;
@@ -325,8 +324,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const securityQuestion = regSecurityQuestion.value;
     const securityAnswer   = regSecurityAnswer.value.trim();
 
-    if (!username || !password) {
-      showToast('Harap isi username dan PIN', 'error');
+    if (!displayName) {
+      showToast('Harap isi Nama Lengkap / Panggilan CS', 'error');
+      regDisplayName?.focus();
+      return;
+    }
+    if (!password) {
+      showToast('Harap isi PIN / Password Masuk', 'error');
+      regPassword?.focus();
       return;
     }
     if (password !== confirm) {
@@ -343,12 +348,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    btnRegister.disabled    = true;
-    btnRegister.textContent = 'Membuat...';
+    // Generate safe clean slug username for instant compatibility
+    let baseSlug = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '') || 'cs';
+    let autoUsername = username || baseSlug;
+    if (users.some(u => u.username.toLowerCase() === autoUsername.toLowerCase())) {
+      autoUsername = `${baseSlug}_${Date.now().toString(36).slice(-4)}`;
+    }
 
     try {
       const res = await window.electronAPI.createUser({
-        username,
+        username: autoUsername,
         displayName,
         role,
         avatarColor: selectedRegColor,
@@ -359,8 +368,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         securityAnswer: securityAnswer || null
       });
       if (res.success) {
-        showToast(`Akun ${role === 'Super Admin' ? '👑 Super Admin' : 'CS'} berhasil dibuat! Silakan masuk.`, 'success');
-        regUsername.value         = '';
+        showToast(`Akun "${displayName}" (${role === 'Super Admin' ? '👑 Super Admin' : 'CS'}) berhasil dibuat! Silakan masuk.`, 'success');
+        if (regUsername) regUsername.value = '';
         if (regDisplayName) regDisplayName.value = '';
         regPassword.value         = '';
         regPasswordConfirm.value  = '';
@@ -370,7 +379,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         regSecurityQuestion.value = '';
         regSecurityAnswer.value   = '';
         regSecurityAnswerGroup.style.display = 'none';
-        localStorage.setItem('currentUser', username);
+        if (res.user && res.user.username) {
+          localStorage.setItem('currentUser', res.user.username);
+        }
         await initLoginScreen();
       } else {
         showToast(res.error || 'Gagal membuat akun', 'error');

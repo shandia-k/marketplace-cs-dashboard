@@ -127,11 +127,15 @@ function resolveTemplateVariables(rawText, options = {}) {
   const clip = (opts.clipboard !== undefined ? opts.clipboard : (window.currentClipboardValue || '')).trim();
   const store = opts.storeName || (window.stores && window.activeStoreId ? window.stores.find(s => s.id === window.activeStoreId)?.name : '') || 'Toko Kami';
   const waktu = opts.waktu || getGreetingTime();
+  const csName = opts.csName || (window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS');
+  const customer = opts.customer || 'Kak';
 
   return rawText
     .replace(/\{(clipboard|order|resi)\}/gi, () => clip || '...')
     .replace(/\{toko\}/gi, () => store)
-    .replace(/\{waktu\}/gi, () => waktu);
+    .replace(/\{waktu\}/gi, () => waktu)
+    .replace(/\{(cs|nama_cs|nama|cs_name|nama_pengguna|user)\}/gi, () => csName)
+    .replace(/\{(pembeli|customer|buyer|nama_pembeli|nama_customer)\}/gi, () => customer);
 }
 
 // ── Modern Custom Confirmation & Danger Zone Dialog ──────────────────────────

@@ -60,9 +60,9 @@ function renderSidebar(filteredStores) {
   for (const [mp, mpStores] of Object.entries(groups)) {
     const cfg = MARKETPLACE_CONFIG[mp] || MARKETPLACE_CONFIG.custom;
     html += `<div class="store-group">
-      <div class="store-group-header">
+      <div class="store-group-header" title="${escapeHtml(cfg.label)}">
         <div class="store-group-dot" style="background:${cfg.groupColor}"></div>
-        ${cfg.label}
+        <span class="store-group-label">${escapeHtml(cfg.label)}</span>
       </div>`;
     mpStores.forEach(store => {
       const isActive = store.id === activeStoreId;

@@ -40,12 +40,14 @@ function activateStore(storeId) {
 
 function ensureStoreTabs(store) {
   if (!storeTabs[store.id]) {
-    const cfg = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
+    const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
     const tabId = `tab-${generateId()}`;
+    const initialUrl = store.url || cfg.url || 'https://www.google.com';
     storeTabs[store.id] = [{
       id: tabId,
       title: 'Chat',
-      url: store.url || cfg.url,
+      url: initialUrl,
+      initialUrl: initialUrl,
       zoom: 1.0
     }];
     activeTabMap[store.id] = tabId;
@@ -61,7 +63,7 @@ function renderTabBar() {
   const store = stores.find(s => s.id === activeStoreId);
   if (!store) return;
 
-  const cfg      = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
+  const cfg      = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
   const tabs     = storeTabs[activeStoreId];
   const curTabId = activeTabMap[activeStoreId];
   const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
@@ -94,6 +96,12 @@ function renderTabBar() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
+        </svg>
+      </button>
+      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
       </button>
     </div>
@@ -182,6 +190,22 @@ function renderTabBar() {
   });
   document.getElementById('btn-nav-refresh')?.addEventListener('click', () => {
     getActiveWebview()?.reload();
+  });
+  document.getElementById('btn-nav-home')?.addEventListener('click', () => {
+    const store = stores.find(s => s.id === activeStoreId);
+    const cfg = store ? ((typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom) : null;
+    const tabEntry = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
+    const homeUrl = tabEntry?.initialUrl || store?.url || cfg?.url || '';
+    if (homeUrl) {
+      const wv = getActiveWebview();
+      if (wv) {
+        try {
+          wv.loadURL(homeUrl);
+        } catch (e) {
+          wv.src = homeUrl;
+        }
+      }
+    }
   });
 
   // Bind Address Bar events
@@ -305,13 +329,15 @@ function updateNavButtonStates() {
 function addTab(storeId, url, title) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
-  const cfg   = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
+  const cfg   = ((typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom);
   const tabId = `tab-${generateId()}`;
+  const targetUrl = url || store.url || cfg.url || 'https://www.google.com';
 
   storeTabs[storeId].push({
     id: tabId,
     title: title || 'Tab Baru',
-    url: url || store.url || cfg.url,
+    url: targetUrl,
+    initialUrl: targetUrl,
     zoom: 1.0
   });
 

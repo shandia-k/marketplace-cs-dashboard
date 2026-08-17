@@ -18,7 +18,7 @@ function bindEvents() {
   // Add store buttons
   document.getElementById('btn-add-store').addEventListener('click', openAddModal);
   document.getElementById('btn-add-store-empty').addEventListener('click', openAddModal);
-  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-settings')?.addEventListener('click', openSettings);
 
   // Search
   searchInput.addEventListener('input', () => renderSidebar(getFilteredStores()));

@@ -451,56 +451,32 @@ function bindToolkitFab() {
   const fab = document.getElementById('btn-cs-toolkit-fab');
   const backdrop = document.getElementById('cs-toolkit-backdrop');
 
-  fab?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleToolkitMenu();
-  });
+  if (fab) {
+    fab.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleToolkitMenu();
+    };
+  }
 
-  backdrop?.addEventListener('click', () => {
-    closeToolkitMenu();
-  });
-
-  // Tool item triggers
-  document.getElementById('tool-item-quickreply')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    if (typeof openQuickReplyDrawer === 'function') openQuickReplyDrawer();
-  });
-
-  document.getElementById('tool-item-scratchpad')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    if (typeof toggleScratchpad === 'function') toggleScratchpad();
-  });
-
-  document.getElementById('tool-item-cnotes')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    openCustomerNotesModal();
-  });
-
-  document.getElementById('tool-item-walinker')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    openWaLinkerModal();
-  });
-
-  document.getElementById('tool-item-caseconv')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    openCaseConvModal();
-  });
-
-  document.getElementById('tool-item-feedback')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    if (typeof openFeedbackModal === 'function') openFeedbackModal();
-  });
-
-  document.getElementById('tool-item-onboarding')?.addEventListener('click', () => {
-    closeToolkitMenu();
-    if (typeof window.startOnboardingTour === 'function') window.startOnboardingTour();
-  });
+  if (backdrop) {
+    backdrop.onclick = () => {
+      closeToolkitMenu();
+    };
+  }
 }
 
 // ── BIND TOOLS EVENTS ────────────────────────────────────────────────────────
+let isToolsEventsBound = false;
+
 function bindToolsEvents() {
-  // Bind Floating CS Toolkit FAB
+  loadCustomerNotes();
+
+  // Selalu pastikan FAB terpasang handler tunggal
   bindToolkitFab();
+
+  if (isToolsEventsBound) return;
+  isToolsEventsBound = true;
 
   // 1. Customer Notes modal trigger & events
   document.getElementById('btn-cnotes-tool')?.addEventListener('click', openCustomerNotesModal);

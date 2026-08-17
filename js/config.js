@@ -42,6 +42,27 @@ const MARKETPLACE_CONFIG = {
     faviconClass: 'favicon-bukalapak',
     groupColor: '#e12b2b'
   },
+  whatsapp: {
+    label: 'WhatsApp Web',
+    url: 'https://web.whatsapp.com/',
+    emoji: '💬',
+    faviconClass: 'favicon-whatsapp',
+    groupColor: '#25d366'
+  },
+  gmail: {
+    label: 'Gmail',
+    url: 'https://mail.google.com/',
+    emoji: '✉️',
+    faviconClass: 'favicon-gmail',
+    groupColor: '#ea4335'
+  },
+  outlook: {
+    label: 'Outlook',
+    url: 'https://outlook.live.com/mail/',
+    emoji: '📧',
+    faviconClass: 'favicon-outlook',
+    groupColor: '#0078d4'
+  },
   custom: {
     label: 'Custom',
     url: '',
@@ -61,7 +82,7 @@ const DEFAULT_SMART_TEMPLATES = [
     id: 'tpl-greeting-1',
     title: 'Sapaan Ramah & Bantuan',
     category: 'greeting',
-    content: 'Halo kak, selamat {waktu}! Terima kasih sudah menghubungi {toko}. Ada yang bisa kami bantu kak? 😊'
+    content: 'Halo kak {customer}, selamat {waktu}! Dengan CS {cs} dari {toko}. Ada yang bisa saya bantu? 😊'
   },
   {
     id: 'tpl-order-check',

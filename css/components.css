@@ -166,6 +166,9 @@
 .favicon-tiktok    { background: linear-gradient(135deg, #010101, #333); }
 .favicon-blibli    { background: linear-gradient(135deg, #0190d0, #01b0f8); }
 .favicon-bukalapak { background: linear-gradient(135deg, #e12b2b, #ff4444); }
+.favicon-whatsapp  { background: linear-gradient(135deg, #25d366, #128c7e); }
+.favicon-gmail     { background: linear-gradient(135deg, #ea4335, #c5221f); }
+.favicon-outlook   { background: linear-gradient(135deg, #0078d4, #005a9e); }
 .favicon-custom    { background: var(--accent-gradient); }
 
 /* ==============
@@ -825,36 +828,30 @@
    ============================================= */
 .unread-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -4px;
+  right: -4px;
   background: #ef4444;
   color: #fff;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
   min-width: 16px;
   height: 16px;
   border-radius: 99px;
-  padding: 0 4px;
+  padding: 0 4.5px;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   border: 1.5px solid var(--bg-secondary);
-  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.5);
-  animation: badgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), badgePulse 2s infinite ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   pointer-events: none;
   z-index: 2;
+  animation: badgePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes badgePop {
   from { transform: scale(0); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
-}
-
-@keyframes badgePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70%  { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
 /* ==============
@@ -962,12 +959,10 @@
    SMART QUICK REPLY DRAWER & FLOATING BUTTON
    ========================================================================== */
 
-/* Sembunyikan CS Toolkit FAB saat Drawer Quick Reply aktif atau Modal aktif */
+/* Sembunyikan CS Toolkit FAB saat Drawer Quick Reply aktif */
 body.has-quickreply-open .cs-toolkit-fab-container,
 body:has(.quickreply-drawer.active) .cs-toolkit-fab-container,
-body:has(.modal-overlay.active) .cs-toolkit-fab-container,
-.quickreply-drawer.active ~ .cs-toolkit-fab-container,
-.modal-overlay.active ~ .cs-toolkit-fab-container {
+.quickreply-drawer.active ~ .cs-toolkit-fab-container {
   opacity: 0 !important;
   pointer-events: none !important;
   transform: scale(0.6) translateY(20px) !important;

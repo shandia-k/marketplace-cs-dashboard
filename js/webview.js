@@ -1,18 +1,20 @@
-// ── Hibernation System ─────────────────────────────────────────────────────────
-
-function hibernateTab(storeId, tabId) {
+function hibernateTab(storeId, tabId, forceHard = false) {
   const wvEntry = webviewMap[tabId];
   if (!wvEntry || wvEntry.hibernated || !wvEntry.webview) return;
 
   // Jangan hibernasi tab yang sedang aktif menyinkronkan riwayat chat
   if (wvEntry.isSyncing) return;
 
-  if (wvEntry.hasDraft) {
-    // Soft hibernate: user is typing something, keep DOM to prevent data loss
+  // Cek apakah RAM sudah melewati batas kritis (> 2GB)
+  const isEmergencyRam = typeof ramUsageMB === 'number' && ramUsageMB > (typeof RAM_THRESHOLD_MB !== 'undefined' ? RAM_THRESHOLD_MB : 2048);
+
+  if (!forceHard && !isEmergencyRam) {
+    // 🍃 Smart Sleep (Suspended Rendering): Sembunyikan webview (0% GPU & CPU), tetapi PERTAHANKAN WebSocket agar notifikasi email & WhatsApp tetap masuk INSTAN (1 detik)!
     wvEntry.webview.style.display = 'none';
+    wvEntry.webview.classList.remove('visible');
     if (wvEntry.loading) wvEntry.loading.style.display = 'none';
   } else {
-    // Hard hibernate: Hapus dari DOM untuk benar-benar membebaskan RAM
+    // Hard hibernate: Hapus dari DOM hanya saat kondisi RAM darurat (> 2GB)
     wvEntry.webview.remove();
     if (wvEntry.loading) wvEntry.loading.remove();
     delete wvEntry.webview;
@@ -113,11 +115,53 @@ function hibernateAll() {
 // Expose untuk onclick inline
 window.hibernateAll = hibernateAll;
 
+// ── Universal Top-Level Navigation URL Validator ─────────────────────────────
+// Memastikan hanya URL dokumen halaman utama yang valid (bukan sub-widget/iframe/ephemeral RPC) yang dicatat
+function isValidTopNavigationUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const clean = url.trim();
+  if (!clean || clean === 'about:blank') return false;
+
+  // Harus diawali dengan protokol http atau https
+  if (!/^https?:\/\//i.test(clean)) return false;
+
+  // Filter universal untuk sub-widget, iframe popup, auth frames, captcha, dan RPC endpoints
+  const invalidSubFrameSignatures = [
+    '/widget/hovercard',
+    'contacts.google.com/widget',
+    'accounts.google.com/o/oauth2/iframe',
+    'ogs.google.com',
+    'hangouts.google.com/webchat/frame',
+    '/embed/',
+    'security.shopee.co.id/captcha',
+    'captcha.tiktok.com'
+  ];
+
+  const lower = clean.toLowerCase();
+  for (const sig of invalidSubFrameSignatures) {
+    if (lower.includes(sig)) return false;
+  }
+
+  return true;
+}
+window.isValidTopNavigationUrl = isValidTopNavigationUrl;
+
 // ── Create Webview ────────────────────────────────────────────────────────────
 function createWebview(store, tab) {
   // Build absolute path to webview-preload.js (works dev & packaged)
   const preloadPath = appPath.replace(/\\/g, '/');
   const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
+
+  // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah
+  const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
+  const defaultFallbackUrl = tab.initialUrl || store.url || cfg.url || 'https://www.google.com';
+
+  if (!isValidTopNavigationUrl(tab.url)) {
+    tab.url = defaultFallbackUrl;
+  }
+  if (!tab.initialUrl) {
+    tab.initialUrl = defaultFallbackUrl;
+  }
 
   // Loading overlay
   const loadingEl = document.createElement('div');
@@ -169,31 +213,7 @@ function createWebview(store, tab) {
       if (webviewMap[tab.id]) webviewMap[tab.id].hasDraft = event.args[0];
 
     } else if (event.channel === 'unread-count') {
-      const count = event.args[0] || 0;
-      // Akumulasi unread dari semua tab toko ini
-      const allTabs = storeTabs[store.id] || [];
-      let total = 0;
-      allTabs.forEach(t => {
-        if (t.id === tab.id) total += count;
-        else total += (webviewMap[t.id]?.unreadCount || 0);
-      });
-      if (webviewMap[tab.id]) webviewMap[tab.id].unreadCount = count;
-
-      const prevTotal = unreadMap[store.id] || 0;
-      unreadMap[store.id] = total;
-
-      // Pemicu Notifikasi Audio & Taskbar Flash jika ada pesan baru bertambah
-      if (total > prevTotal && total > 0) {
-        if (typeof playNotificationSound === 'function') {
-          playNotificationSound();
-        }
-        if (window.electronAPI && typeof window.electronAPI.flashWindow === 'function') {
-          window.electronAPI.flashWindow(true);
-        }
-        showToast(`💬 Pesan baru di ${store.name} (${total} belum dibaca)`, 'warning');
-      }
-
-      renderSidebar(getFilteredStores());
+      handleUnreadCount(event.args[0] || 0);
 
     } else if (event.channel === 'open-quick-reply') {
       if (typeof openQuickReplyDrawer === 'function') {
@@ -233,9 +253,11 @@ function createWebview(store, tab) {
       const theme = typeof currentTheme !== 'undefined' ? currentTheme : (document.documentElement.getAttribute('data-theme') || 'dark');
       const clip = typeof currentClipboardValue !== 'undefined' && currentClipboardValue ? currentClipboardValue : (localStorage.getItem('globalCapturedClipboard') || '');
       const hist = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
+      const csName = window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS';
       wv.send('sync-smart-templates', {
         templates: typeof smartTemplates !== 'undefined' ? smartTemplates : [],
         storeName: store.name || '',
+        csName: csName,
         clipboard: clip,
         history: hist,
         theme: theme
@@ -274,19 +296,60 @@ function createWebview(store, tab) {
     }
   });
 
-  // ── new-window: target=_blank / window.open() → buka sebagai tab baru ────
+  // Helper terpusat untuk akumulasi unread badge & notifikasi suara/toast
+  function handleUnreadCount(count) {
+    if (typeof count !== 'number' || isNaN(count)) count = 0;
+    const allTabs = storeTabs[store.id] || [];
+    let total = 0;
+    allTabs.forEach(t => {
+      if (t.id === tab.id) total += count;
+      else total += (webviewMap[t.id]?.unreadCount || 0);
+    });
+    if (webviewMap[tab.id]) webviewMap[tab.id].unreadCount = count;
+
+    const prevTotal = unreadMap[store.id] || 0;
+    unreadMap[store.id] = total;
+
+    // Pemicu Notifikasi Audio & Taskbar Flash jika ada pesan baru bertambah
+    if (total > prevTotal && total > 0) {
+      if (typeof playNotificationSound === 'function') {
+        playNotificationSound();
+      }
+      if (window.electronAPI && typeof window.electronAPI.flashWindow === 'function') {
+        window.electronAPI.flashWindow(true);
+      }
+      showToast(`💬 Pesan baru di ${store.name} (${total} belum dibaca)`, 'warning');
+    }
+
+    renderSidebar(getFilteredStores());
+    if (activeStoreId === store.id && typeof renderTabBar === 'function') {
+      renderTabBar();
+    }
+  }
+
+  // ── new-window: target=_blank / window.open() → buka sebagai tab baru jika dipicu User Gesture yang sah ────
   wv.addEventListener('new-window', (e) => {
-    if (e.url && e.url !== 'about:blank') {
+    // Abaikan pembukaan window liar dari skrip background/hovercard tanpa klik nyata pengguna
+    if (e.isUserGesture === false && e.disposition !== 'new-window' && e.disposition !== 'foreground-tab' && e.disposition !== 'background-tab') {
+      return;
+    }
+    if (e.url && e.url !== 'about:blank' && isValidTopNavigationUrl(e.url)) {
       openUrlInNewTab(store, e.url);
     }
   });
 
-  // ── Auto-update tab title dari halaman ───────────────────────────────────
+  // ── Auto-update tab title dari halaman & hitung unread count langsung ────
   wv.addEventListener('page-title-updated', e => {
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
     if (tabEntry && e.title) {
       tabEntry.title = e.title.length > 30 ? e.title.substring(0, 28) + '…' : e.title;
       if (activeStoreId === store.id) renderTabBar();
+
+      // Jika judul memuat format angka (misal: "(1) WhatsApp", "Inbox (2)"), sinkronkan unread
+      const countFromTitle = parseUnreadFromTitle(e.title);
+      if (countFromTitle > 0) {
+        handleUnreadCount(countFromTitle);
+      }
     }
   });
 
@@ -328,16 +391,25 @@ function createWebview(store, tab) {
     });
   });
 
-  // Update nav state & sinkronisasi tab.url saat navigasi dalam halaman (SPA routing & hard wakeup resilience)
+  // Update nav state & sinkronisasi tab.url saat navigasi dalam halaman (Chromium Main-Frame Isolation)
   const handleNavChange = (e) => {
+    // Lapisan 1 (Frame Boundary Isolation): Abaikan jika navigasi berasal dari sub-frame/iframe/widget
+    if (e && e.isMainFrame === false) {
+      return;
+    }
+
     let currentUrl = e?.url;
     if (!currentUrl && typeof wv.getURL === 'function') {
       try { currentUrl = wv.getURL(); } catch (err) {}
     }
-    if (currentUrl && currentUrl !== 'about:blank') {
+
+    if (isValidTopNavigationUrl(currentUrl)) {
       const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
       if (tabEntry) {
         tabEntry.url = currentUrl;
+        if (!tabEntry.initialUrl) {
+          tabEntry.initialUrl = store.url || currentUrl;
+        }
       }
       if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
         updateNavButtonStates();
@@ -369,6 +441,19 @@ function createWebview(store, tab) {
   webviewCont.appendChild(wv);
   webviewMap[tab.id] = { webview: wv, loading: loadingEl };
 }
+
+// ── Smart Title Parser ────────────────────────────────────────────────────────
+function parseUnreadFromTitle(title) {
+  if (!title || typeof title !== 'string') return 0;
+  let m = title.match(/\((\d+)\+?\)/);
+  if (m) return parseInt(m[1], 10);
+  m = title.match(/\[(\d+)\+?\]/);
+  if (m) return parseInt(m[1], 10);
+  m = title.match(/(\d+)\+?\s*(?:pesan|message|msg|chat|unread|email|surat)/i);
+  if (m) return parseInt(m[1], 10);
+  return 0;
+}
+window.parseUnreadFromTitle = parseUnreadFromTitle;
 
 // ── Smart Staggered Background Ping ──────────────────────────────────────────
 let pingQueue = [];
@@ -448,7 +533,7 @@ function runNextBackgroundPing() {
     }
 
     if (keepAlive) {
-      // Ada chat masuk! Pindahkan webview ke dalam webviewCont dan jadikan webview resmi
+      // Ada chat/email masuk! Pindahkan webview ke dalam webviewCont dan jadikan webview resmi
       pingWv.className = 'store-webview';
       pingWv.style.cssText = '';
       if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
@@ -488,28 +573,51 @@ function runNextBackgroundPing() {
     }
   };
 
+  // 1. Tangkap update unread lewat IPC dari preload
   pingWv.addEventListener('ipc-message', (e) => {
     if (e.channel === 'unread-count') {
       const count = e.args[0] || 0;
       if (count > 0) {
         unreadDetected = count;
-        cleanupPing(true); // Keep alive karena ada chat baru
+        cleanupPing(true); // Keep alive karena ada chat/email baru
       }
     }
   });
 
-  // Timeout maksimal 12 detik per ping
+  // 2. Tangkap update title langsung dari webview (Gmail/Outlook/WA selalu update title)
+  pingWv.addEventListener('page-title-updated', (e) => {
+    if (e.title) {
+      const count = parseUnreadFromTitle(e.title);
+      if (count > 0) {
+        unreadDetected = count;
+        cleanupPing(true);
+      }
+    }
+  });
+
+  // Timeout maksimal 16 detik per ping
   pingTimeout = setTimeout(() => {
     cleanupPing(false);
-  }, 12000);
+  }, 16000);
 
   pingWv.addEventListener('did-finish-load', () => {
-    // Beri waktu 3.5 detik setelah load untuk mendeteksi chat badge/title
+    // Beri waktu 7.5 detik setelah load untuk mendeteksi chat badge/title/DOM pada SPA berat (Gmail/WA/Shopee)
     setTimeout(() => {
       if (unreadDetected === 0) {
+        try {
+          if (typeof pingWv.getTitle === 'function') {
+            const currentTitle = pingWv.getTitle();
+            const count = parseUnreadFromTitle(currentTitle);
+            if (count > 0) {
+              unreadDetected = count;
+              cleanupPing(true);
+              return;
+            }
+          }
+        } catch (e) {}
         cleanupPing(false);
       }
-    }, 3500);
+    }, 7500);
   });
 
   pingWv.addEventListener('did-fail-load', () => {

@@ -33,9 +33,112 @@
 
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.6',
+      version: '1.0.7',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
+      releaseDate: 'Agustus 2026',
+      title: 'Gemini Sidebar, Smart Customer Detection, Dynamic CS Profiles & Zero-Duplicate Engine',
+      tagline: 'Desain sidebar ultra-mulus zero-jitter gaya Google Gemini, deteksi cerdas nama pembeli ({customer}), variabel personal CS ({cs}), registrasi berbasis nama lengkap, dan eliminasi duplikasi teks chat.',
+      highlights: [
+        {
+          icon: '✨',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Sidebar Zero-Jitter Gaya Gemini',
+          desc: 'Posisi icon navigasi toko tetap statis sempurna saat collapse/expand dengan animasi teks transparan yang halus dan pulse statusbar anti-stutter.'
+        },
+        {
+          icon: '👤',
+          iconBg: 'rgba(56, 189, 248, 0.15)',
+          title: 'Deteksi Otomatis Nama Customer',
+          desc: 'Smart Customer Name Detector di Shopee, Tokopedia, WhatsApp Web, TikTok Shop & Lazada via variabel {customer} dengan fallback otomatis "Kak".'
+        },
+        {
+          icon: '🏷️',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Variabel CS & Login Nama Lengkap',
+          desc: 'Variabel {cs} otomatis menampilkan nama CS aktif. Form login & pendaftaran user disederhanakan murni fokus pada Nama Lengkap CS dengan auto-slug.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Zero-Duplicate Insertion Engine',
+          desc: 'Mesin pengetikan native Chromium tunggal yang menuntaskan duplikasi teks 3x di editor chatbox React, Slate.js, dan Draft.js.'
+        },
+        {
+          icon: '🛠️',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: 'Arsitektur CS Toolkit FAB Idempotent',
+          desc: 'Single-handler architecture pada tombol terapung Tools CS & isolasi modal untuk akses alat cepat yang responsif tanpa benturan event.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Desain Antarmuka & Sidebar Zero-Jitter Gaya Google Gemini',
+          tag: 'UI & Animation',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Implementasi layout sidebar ultra-presisi gaya Google Gemini: Posisi icon toko dan navigasi tetap statis (zero-jitter) saat sidebar di-expand atau di-collapse.',
+            'Efek transisi teks nama toko dan badge unread yang bergeser ke kanan dengan opasitas bertingkat dan timing bezier modern.',
+            'Penyelarasan visual tombol Collapse ◀ dan Extend ▶ agar memiliki ukuran, hover glow, dan sentuhan visual yang identik dengan icon lainnya.',
+            'Optimasi animasi pulse statusbar dan avatar pengguna agar tetap berjalan mulus 60 FPS tanpa stutter saat statusbar diperluas.',
+            'Konsolidasi menu Pengaturan ke dalam Widget Profil Pengguna, menyisakan tombol Tambah Toko yang bersih dan serasi di area sidebar.'
+          ]
+        },
+        {
+          category: 'Deteksi Cerdas Pelanggan & Template Chat Dinamis',
+          tag: 'Smart Variables',
+          color: '#38bdf8',
+          bgColor: 'rgba(56, 189, 248, 0.12)',
+          items: [
+            'Smart Customer Name Detector: Otomatis membaca nama pembeli / customer yang sedang aktif di ruang chat Shopee, Tokopedia, WhatsApp Web, TikTok Shop, dan Lazada.',
+            'Dukungan variabel template {customer}, {pembeli}, dan {buyer} dengan fallback cerdas "Kak" jika berada di luar ruang percakapan.',
+            'Pratinjau cerdas highlight biru langit (sky-blue) untuk variabel {customer} pada floating autocomplete (Ctrl+Space) sebelum dikirim.',
+            'Tombol pill cepat {customer} pada modal editor template smart reply.'
+          ]
+        },
+        {
+          category: 'Profil Pengguna & Variabel Personal CS',
+          tag: 'User & Profile',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Variabel {cs} dan {nama_cs} yang otomatis menginterpolasi nama panggilan/nama lengkap CS yang sedang aktif ke dalam template pesan.',
+            'Penyederhanaan form pendaftaran CS & Super Admin: Menghapus kolom username teknis yang redundan, digantikan murni oleh Nama Lengkap / Panggilan CS dengan auto-slug generator di background.',
+            'Tampilan kartu profil user login ultra-clean tanpa label @username teknis.'
+          ]
+        },
+        {
+          category: 'Penyempurnaan Mesin Pengetikan Webview',
+          tag: 'Webview Engine',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 129, 0.12)',
+          items: [
+            'Zero-Duplicate Text Insertion: Mengadopsi pure single native execCommand(insertText) Chromium pada webview-preload, menuntaskan isu teks tersalin 3x pada editor React/Slate/Draft.js.',
+            'Debounce & Lock Guard isInsertingTemplate untuk mencegah duplikasi eksekusi saat double-click atau penekanan tombol Enter cepat.',
+            'Resolusi variabel instan saat pengiriman teks dari Host Drawer ke ruang chat webview aktif.'
+          ]
+        },
+        {
+          category: 'Perbaikan Antarmuka, FAB Tools CS & Stabilitas Sistem',
+          tag: 'Bug Fix & Stability',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Idempotent Single-Handler pada tombol terapung Tools CS (#btn-cs-toolkit-fab), menjamin menu popover selalu responsif dibuka-tutup pada pergantian user mana pun.',
+            'Pembersihan konflik selektor CSS .modal-overlay pointer-events: none yang sempat mengunci tombol floating.',
+            'Pemberian guard flags isToolsEventsBound dan isQuickReplyEventsBound untuk mencegah kebocoran/duplikasi event listener di memory.',
+            'Penyesuaian rute interaktif Onboarding Guide dan pencegahan deadlock state saat tombol pengaturan berpindah ke profil.',
+            'Peningkatan Smart Title Parser pada background ping untuk mendeteksi unread email/chat pada web SPA berat (Gmail, Outlook, WhatsApp Web).',
+            'Pembaruan manifest versi dan release guard terintegrasi v1.0.7.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.6',
+      badge: 'Security & Enterprise 🛡️',
+      badgeColor: '#3b82f6',
       releaseDate: 'Agustus 2026',
       title: 'Security Hardening, Super Admin, WhatsApp Linker & Network SOP',
       tagline: 'Peningkatan keamanan kriptografis, otorisasi Super Admin terpusat, ketahanan jaringan live ping, dan ekspansi pusat alat CS.',

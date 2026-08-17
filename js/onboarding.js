@@ -1,9 +1,9 @@
 /**
  * js/onboarding.js
- * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.6)
+ * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.7)
  * 
  * Features:
- * 1. Welcome Modal with v1.0.6 Production Readiness Changelog & System Overview
+ * 1. Welcome Modal with v1.0.7 Production Readiness Changelog & System Overview
  * 2. Step-by-Step Interactive Guided Tour (Spotlight Highlight)
  * 3. Interactive Checklist Setup Tasks with Real-Time Action Triggers
  * 4. Extensible Versioned Architecture for Seamless Future Feature Onboarding
@@ -15,9 +15,9 @@ const ONBOARDING_CONFIG = {
   get version() {
     if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function') {
       const latest = window.VERSIONS_REGISTRY.getLatestVersion();
-      return latest ? latest.version : '1.0.6';
+      return latest ? latest.version : '1.0.7';
     }
-    return '1.0.6';
+    return '1.0.7';
   },
   welcomeTitle: 'Selamat Datang di CS Marketplace Dashboard',
   welcomeSubtitle: 'Pusat komando Customer Service Multi-Marketplace dalam 1 jendela kerja terpadu.',
@@ -94,10 +94,10 @@ const ONBOARDING_CONFIG = {
     },
     {
       id: 'step_settings',
-      target: '#btn-settings',
+      target: '#sidebar-user-card',
       fallbackTarget: '#sidebar',
-      title: 'Pengaturan & Bersihkan Cache Aman',
-      desc: 'Kelola toko, ganti PIN akun, backup ekspor/impor konfigurasi, dan bersihkan file cache/temp tanpa membuat Anda ter-logout dari toko.',
+      title: 'Profil, Pengaturan & Bersihkan Cache Aman',
+      desc: 'Klik kartu profil pengguna Anda di bawah sidebar untuk mengakses Pengaturan Akun, ganti PIN, backup konfigurasi, dan membersihkan file cache/temp dengan aman.',
       position: 'top'
     }
   ],
@@ -1218,23 +1218,31 @@ const ONBOARDING_CONFIG = {
     task_settings_cache: [
       {
         id: 'cache_step_open_settings',
-        target: '#btn-settings',
+        target: '#sidebar-user-card',
         fallbackTarget: '#sidebar',
-        title: '1. Buka Menu Pengaturan',
-        desc: 'Klik ikon tombol <b>Pengaturan (⚙️)</b> di bagian kiri bawah sidebar untuk membuka pusat konfigurasi dashboard.',
-        position: 'top',
+        title: '1. Buka Menu Profil & Pengaturan',
+        desc: 'Klik <b>Profil Pengguna</b> di bagian bawah sidebar untuk membuka menu dan masuk ke pusat konfigurasi dashboard.',
+        position: 'right',
+        allowNextButton: true,
+        nextButtonLabel: 'Buka Pengaturan →',
         bindEvents: (manager) => {
           const overlay = document.getElementById('settings-overlay');
           if (overlay && overlay.classList.contains('active')) {
             setTimeout(() => manager.goToStep(1), 100);
             return;
           }
-          const btn = document.getElementById('btn-settings');
-          const onClick = () => {
+          const userCard = document.getElementById('sidebar-user-card');
+          const popoverAccountBtn = document.getElementById('popover-btn-account');
+          const onOpen = (e) => {
+            if (typeof openSettings === 'function') openSettings();
             setTimeout(() => manager.goToStep(1), 150);
           };
-          btn?.addEventListener('click', onClick, { once: true });
-          return () => btn?.removeEventListener('click', onClick);
+          userCard?.addEventListener('click', onOpen, { once: true });
+          popoverAccountBtn?.addEventListener('click', onOpen, { once: true });
+          return () => {
+            userCard?.removeEventListener('click', onOpen);
+            popoverAccountBtn?.removeEventListener('click', onOpen);
+          };
         }
       },
       {
@@ -1244,6 +1252,8 @@ const ONBOARDING_CONFIG = {
         title: '2. Buka Tab Cache & Data',
         desc: 'Klik tab <b>"Cache & Data"</b> untuk melihat status penggunaan memori cache dan kontrol pembersihan aman.',
         position: 'bottom',
+        allowNextButton: true,
+        nextButtonLabel: 'Lanjut ke Pantau Ukuran →',
         bindEvents: (manager) => {
           const overlay = document.getElementById('settings-overlay');
           if (!overlay || !overlay.classList.contains('active')) {
@@ -1535,6 +1545,14 @@ const OnboardingManager = {
   secretClickCount: 0,
   secretClickTimer: null,
 
+  init() {
+    this.injectElements();
+    const state = this.getState();
+    if (!state.checklistDismissed) {
+      this.renderChecklistWidget();
+    }
+  },
+
   // ── State Persistence (User-Scoped) ────────────────────────────────────────
   getState() {
     const defaultState = {
@@ -1796,7 +1814,7 @@ const OnboardingManager = {
             <div class="onboarding-carousel-top-bar">
               <span class="onboarding-carousel-title-label">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.6)
+                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.7)
               </span>
               <span class="onboarding-carousel-hint">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

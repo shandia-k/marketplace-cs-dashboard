@@ -1110,20 +1110,18 @@ window.adminChangeRolePrompt = adminChangeRolePrompt;
 function openAdminCreateUserModal() {
   const overlay = document.getElementById('modal-admin-create-user-overlay');
   if (!overlay) return;
-  const uInput = document.getElementById('adm-new-username');
   const dInput = document.getElementById('adm-new-display-name');
   const rInput = document.getElementById('adm-new-role');
   const pInput = document.getElementById('adm-new-password');
   const aInput = document.getElementById('adm-confirm-admin-pin');
 
-  if (uInput) uInput.value = '';
   if (dInput) dInput.value = '';
   if (rInput) rInput.value = 'Customer Service';
   if (pInput) pInput.value = '';
   if (aInput) aInput.value = '';
 
   overlay.classList.add('active');
-  setTimeout(() => uInput?.focus(), 150);
+  setTimeout(() => dInput?.focus(), 150);
 }
 window.openAdminCreateUserModal = openAdminCreateUserModal;
 
@@ -1134,13 +1132,13 @@ window.closeAdminCreateUserModal = closeAdminCreateUserModal;
 
 async function handleAdminCreateUserSubmit(e) {
   if (e) e.preventDefault();
-  const username = document.getElementById('adm-new-username')?.value.trim();
-  const displayName = document.getElementById('adm-new-display-name')?.value.trim() || username;
+  const displayName = document.getElementById('adm-new-display-name')?.value.trim();
+  const username = document.getElementById('adm-new-username')?.value.trim() || '';
   const role = document.getElementById('adm-new-role')?.value || 'Customer Service';
   const newPassword = document.getElementById('adm-new-password')?.value;
   const adminPassword = document.getElementById('adm-confirm-admin-pin')?.value;
 
-  if (!username || !newPassword || !adminPassword) {
+  if (!displayName || !newPassword || !adminPassword) {
     showToast('Harap lengkapi semua kolom yang bertanda bintang (*)!', 'error');
     return;
   }
@@ -1151,11 +1149,15 @@ async function handleAdminCreateUserSubmit(e) {
     btn.textContent = 'Membuat...';
   }
 
+  // Generate safe clean slug username for instant compatibility
+  const baseSlug = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '') || 'cs';
+  const autoUsername = username || `${baseSlug}_${Date.now().toString(36).slice(-4)}`;
+
   try {
     const res = await window.electronAPI.adminCreateUser({
       requestingUsername: window.currentUser,
       password: adminPassword,
-      newUsername: username,
+      newUsername: autoUsername,
       newDisplayName: displayName,
       newRole: role,
       newPassword,

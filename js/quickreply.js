@@ -208,10 +208,11 @@ function broadcastTemplatesToWebviews() {
         const storeId = Object.keys(storeTabs).find(sid =>
           storeTabs[sid].some(t => t.id === tabId)
         );
-        const store = typeof stores !== 'undefined' ? stores.find(s => s.id === storeId) : null;
+        const csName = window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS';
         entry.webview.send('sync-smart-templates', {
           templates: smartTemplates,
           storeName: store?.name || '',
+          csName: csName,
           clipboard: currentClipboardValue,
           history: clipboardHistory,
           theme: theme
@@ -265,12 +266,15 @@ function renderQuickReplyList() {
     const clipVal = (currentClipboardValue || '').trim() || '...';
     const store = (window.stores && window.activeStoreId ? window.stores.find(s => s.id === window.activeStoreId)?.name : '') || 'Toko Kami';
     const waktu = typeof getGreetingTime === 'function' ? getGreetingTime() : 'Kak';
+    const csName = (window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS');
 
     // Pratinjau cerdas: hanya sorot variabel dinamis yang disisipkan
     const highlightedPreview = escapeHtml(tpl.content)
       .replace(/\{(clipboard|order|resi)\}/gi, `<mark class="qr-clip-highlight">${escapeHtml(clipVal)}</mark>`)
       .replace(/\{toko\}/gi, `<span style="color:var(--accent-primary);font-weight:600;">${escapeHtml(store)}</span>`)
-      .replace(/\{waktu\}/gi, `<span style="color:var(--text-primary);font-weight:600;">${escapeHtml(waktu)}</span>`);
+      .replace(/\{waktu\}/gi, `<span style="color:var(--text-primary);font-weight:600;">${escapeHtml(waktu)}</span>`)
+      .replace(/\{(cs|nama_cs|nama|cs_name|nama_pengguna|user)\}/gi, `<span style="color:#10b981;font-weight:600;">${escapeHtml(csName)}</span>`)
+      .replace(/\{(pembeli|customer|buyer|nama_pembeli|nama_customer)\}/gi, `<span style="color:#38bdf8;font-weight:600;">{customer}</span>`);
 
     return `
       <div class="qr-template-card" data-id="${tpl.id}">
@@ -553,8 +557,13 @@ function insertVariableToModalContent(varTag) {
 }
 
 // ── Bind Quick Reply Events ──────────────────────────────────────────────────
+let isQuickReplyEventsBound = false;
+
 function bindQuickReplyEvents() {
   loadSmartTemplates();
+
+  if (isQuickReplyEventsBound) return;
+  isQuickReplyEventsBound = true;
 
   // Drawer Toggle button in Statusbar / Titlebar & Floating Button
   document.getElementById('btn-quick-reply')?.addEventListener('click', toggleQuickReplyDrawer);
