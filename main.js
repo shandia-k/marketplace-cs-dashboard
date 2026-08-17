@@ -7,6 +7,13 @@ const docx = require('docx');
 const { autoUpdater } = require('electron-updater');
 const crypto = require('crypto');
 
+// Utility Keamanan: Sanitasi dan Validasi Input IPC
+function isValidPartition(partition) {
+  if (!partition || typeof partition !== 'string') return false;
+  // Format partisi yang valid: persist:namapartisi (hanya alfanumerik, dash, dan underscore)
+  return /^persist:[a-zA-Z0-9_-]+$/.test(partition);
+}
+
 // ── Release Guard Validation ────────────────────────────────────────────────
 // Memastikan changelog versi di package.json sudah tersedia di js/versions-registry.js sebelum startup
 try {
@@ -1393,7 +1400,7 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 // Opsi 2: Bersihkan Cache Khusus Toko Tertentu (Per-Store Cache Clear & Reload)
 ipcMain.handle('clear-store-cache', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData({
@@ -1408,7 +1415,7 @@ ipcMain.handle('clear-store-cache', async (event, { partition }) => {
 // Opsi 3: Deep Clean / Reset Toko (Termasuk Logout / Sesi Dihapus)
 ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) return { success: false, error: 'Partisi tidak valid' };
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
