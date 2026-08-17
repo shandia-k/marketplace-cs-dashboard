@@ -723,7 +723,7 @@ const ONBOARDING_CONFIG = {
             manager.showSandboxDropdown(e.target.value);
           };
 
-          sandboxInput?.addEventListener('input', onSearchInput);
+          sandboxInput?.addEventListener('input', debounce(onSearchInput, 250));
           if (sandboxInput) sandboxInput.focus();
 
           const onSelectTemplate = (resolvedText) => {
