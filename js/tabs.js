@@ -67,7 +67,17 @@ function renderTabBar() {
   const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
   const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
 
-  // Nav controls (kiri) + tabs (tengah) + add button (kanan)
+  const activeTabObj = tabs.find(t => t.id === curTabId);
+  let activeTabUrl = activeTabObj?.url || store.url || cfg.url || '';
+  const activeWv = getActiveWebview();
+  if (activeWv && typeof activeWv.getURL === 'function') {
+    try {
+      const curUrl = activeWv.getURL();
+      if (curUrl && curUrl !== 'about:blank') activeTabUrl = curUrl;
+    } catch (e) {}
+  }
+
+  // Nav controls (kiri) + Mini Address Bar + tabs (tengah) + add button (kanan)
   const navHtml = `
     <div class="tab-nav-controls">
       <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)">
@@ -87,7 +97,22 @@ function renderTabBar() {
         </svg>
       </button>
     </div>
-    <div class="tab-nav-separator"></div>`;
+    <div class="tab-address-bar-wrap" id="tab-address-bar-wrap" title="Ketik URL (e.g. cekresi.com, maps, atau link produk)">
+      <div class="tab-address-icon" id="tab-address-icon">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" value="${escapeHtml(activeTabUrl)}">
+      <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+    <div class="tab-nav-separator"></div>
+    <div class="tab-items-container">`;
 
   const leafIcon = '&#x1F343;';
   const tabsHtml = tabs.map(tab => {
@@ -134,7 +159,8 @@ function renderTabBar() {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M12 5v14M5 12h14"/>
       </svg>
-    </button>`;
+    </button>
+  </div>`;
 
   const fullHtml = navHtml + tabsHtml + addBtnHtml;
   if (tabBar.dataset.lastHtml === fullHtml && tabBar.style.display === 'flex') {
@@ -156,6 +182,20 @@ function renderTabBar() {
   });
   document.getElementById('btn-nav-refresh')?.addEventListener('click', () => {
     getActiveWebview()?.reload();
+  });
+
+  // Bind Address Bar events
+  const addrInput = document.getElementById('tab-address-input');
+  const btnAddrGo = document.getElementById('btn-tab-address-go');
+  btnAddrGo?.addEventListener('click', () => navigateFromAddressBar());
+  addrInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      navigateFromAddressBar();
+    }
+  });
+  addrInput?.addEventListener('focus', () => {
+    setTimeout(() => addrInput.select(), 50);
   });
 
   // Bind tab click (not close)
@@ -202,6 +242,42 @@ function renderTabBar() {
   // Update nav button states
   updateNavButtonStates();
 }
+
+function updateAddressBarUrl(url) {
+  const input = document.getElementById('tab-address-input');
+  if (!input) return;
+  if (document.activeElement === input) return;
+  if (url && url !== 'about:blank') {
+    input.value = url;
+  }
+}
+window.updateAddressBarUrl = updateAddressBarUrl;
+
+function navigateFromAddressBar() {
+  const input = document.getElementById('tab-address-input');
+  if (!input) return;
+  let raw = (input.value || '').trim();
+  if (!raw) return;
+
+  let targetUrl = raw;
+  if (!/^https?:\/\//i.test(raw)) {
+    if (raw.includes('.') && !raw.includes(' ')) {
+      targetUrl = 'https://' + raw;
+    } else {
+      targetUrl = `https://www.google.com/search?q=${encodeURIComponent(raw)}`;
+    }
+  }
+
+  const wv = getActiveWebview();
+  if (wv) {
+    try {
+      wv.loadURL(targetUrl);
+    } catch (e) {
+      wv.src = targetUrl;
+    }
+  }
+}
+window.navigateFromAddressBar = navigateFromAddressBar;
 
 // ── Helper: ambil webview aktif saat ini ──────────────────────────────────────
 function getActiveWebview() {

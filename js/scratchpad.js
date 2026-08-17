@@ -302,6 +302,39 @@ btnSpSave.addEventListener('click', async () => {
   }
 });
 
+// Copy all content of active tab to clipboard
+document.getElementById('btn-sp-copy')?.addEventListener('click', () => {
+  const content = spTextarea.value;
+  if (!content) {
+    showToast('Catatan masih kosong', 'error');
+    return;
+  }
+  try {
+    if (typeof copyResolvedText === 'function') {
+      copyResolvedText(content);
+    } else {
+      navigator.clipboard.writeText(content);
+    }
+    showToast('Seluruh catatan berhasil disalin ke clipboard ✓', 'success');
+  } catch (e) {
+    showToast('Gagal menyalin catatan: ' + e.message, 'error');
+  }
+});
+
+// Insert active tab content directly into marketplace chat
+document.getElementById('btn-sp-insert-chat')?.addEventListener('click', () => {
+  const content = spTextarea.value;
+  if (!content.trim()) {
+    showToast('Catatan masih kosong', 'error');
+    return;
+  }
+  if (typeof insertTextToActiveChat === 'function') {
+    insertTextToActiveChat(content);
+  } else {
+    showToast('Ketik ke chat tidak tersedia', 'error');
+  }
+});
+
 // ── Scratchpad Multi-Directional Resizing (Top-Left & All Edges) ─────────────
 function initScratchpadResizer() {
   if (!scratchpadWindow) return;

@@ -19,15 +19,18 @@ function loadSmartTemplates() {
     smartTemplates = [...DEFAULT_SMART_TEMPLATES];
   }
 
-  // Load persisted global clipboard agar selalu aktif antar toko & antar aplikasi
-  const savedClip = Storage.get('globalCapturedClipboard', '', false) || Storage.get('lastCapturedClipboard', '', false);
+  // Load persisted clipboard scoped per user agar data tidak bocor saat pergantian shift CS
+  const savedClip = Storage.get('capturedClipboard', '', true) || Storage.get('globalCapturedClipboard', '', true);
   if (savedClip) {
     currentClipboardValue = savedClip;
     window.currentClipboardValue = savedClip;
+  } else {
+    currentClipboardValue = '';
+    window.currentClipboardValue = '';
   }
 
-  // Load history clipboard
-  clipboardHistory = Storage.get('globalClipboardHistory', [], false);
+  // Load history clipboard scoped per user
+  clipboardHistory = Storage.get('clipboardHistory', [], true);
   if (!Array.isArray(clipboardHistory)) {
     clipboardHistory = [];
   }
@@ -45,9 +48,8 @@ function setCapturedClipboard(text, source = '', lastUsedStore = '') {
 
   currentClipboardValue = clean;
   window.currentClipboardValue = clean;
-  // Simpan secara global untuk semua toko dan sesi
-  Storage.set('globalCapturedClipboard', clean, false);
-  Storage.set('lastCapturedClipboard', clean, false);
+  // Simpan secara terisolasi per akun user yang sedang aktif
+  Storage.set('capturedClipboard', clean, true);
 
   // Auto-detect source jika tidak disertakan
   let detectedSource = source;
@@ -85,7 +87,7 @@ function setCapturedClipboard(text, source = '', lastUsedStore = '') {
     clipboardHistory = clipboardHistory.slice(0, 15);
   }
 
-  Storage.set('globalClipboardHistory', clipboardHistory, false);
+  Storage.set('clipboardHistory', clipboardHistory, true);
 
   const clipInput = document.getElementById('qr-clipboard-input');
   if (clipInput) {
@@ -131,7 +133,7 @@ async function clearClipboardHistory() {
   });
   if (confirmed) {
     clipboardHistory = [];
-    Storage.remove('globalClipboardHistory', false);
+    Storage.remove('clipboardHistory', true);
     if (typeof updateStatusBarClipboard === 'function') {
       updateStatusBarClipboard(true);
     }
@@ -260,20 +262,15 @@ function renderQuickReplyList() {
   };
 
   container.innerHTML = filtered.map(tpl => {
-    const resolved = resolveTemplateVariables(tpl.content);
-    // Highlight variable replacements for visual delight
-    const clipValToSearch = currentClipboardValue.trim() || '...';
-    let highlightedPreview = escapeHtml(resolved);
-    if (clipValToSearch && clipValToSearch !== '...') {
-      try {
-        const escapedClip = escapeHtml(clipValToSearch);
-        const safeRegexStr = escapedClip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        highlightedPreview = highlightedPreview.replace(
-          new RegExp(safeRegexStr, 'g'), 
-          `<mark class="qr-clip-highlight">${escapedClip}</mark>`
-        );
-      } catch (e) {}
-    }
+    const clipVal = (currentClipboardValue || '').trim() || '...';
+    const store = (window.stores && window.activeStoreId ? window.stores.find(s => s.id === window.activeStoreId)?.name : '') || 'Toko Kami';
+    const waktu = typeof getGreetingTime === 'function' ? getGreetingTime() : 'Kak';
+
+    // Pratinjau cerdas: hanya sorot variabel dinamis yang disisipkan
+    const highlightedPreview = escapeHtml(tpl.content)
+      .replace(/\{(clipboard|order|resi)\}/gi, `<mark class="qr-clip-highlight">${escapeHtml(clipVal)}</mark>`)
+      .replace(/\{toko\}/gi, `<span style="color:var(--accent-primary);font-weight:600;">${escapeHtml(store)}</span>`)
+      .replace(/\{waktu\}/gi, `<span style="color:var(--text-primary);font-weight:600;">${escapeHtml(waktu)}</span>`);
 
     return `
       <div class="qr-template-card" data-id="${tpl.id}">
@@ -287,29 +284,28 @@ function renderQuickReplyList() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
             </svg>
-            Sisipkan ke Chat
+            Ketik ke Chat
           </button>
-          <button class="qr-btn-action" title="Salin ke Clipboard" onclick="copyTemplateToClipboard('${tpl.id}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="qr-btn-action-icon" title="Salin Pesan" onclick="copyTemplateToClipboard('${tpl.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            Salin
           </button>
           <button class="qr-btn-action-icon" title="Edit Template" onclick="openEditTemplateModal('${tpl.id}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="qr-btn-action-icon danger" title="Hapus Template" onclick="deleteTemplate('${tpl.id}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <button class="qr-btn-action-icon danger" title="Hapus Template" onclick="deleteSmartTemplate('${tpl.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
             </svg>
           </button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 

@@ -94,3 +94,15 @@ const DEFAULT_SMART_TEMPLATES = [
     content: 'Sama-sama kak, senang bisa membantu! Jika pesanan sudah sampai dengan baik, mohon bantu berikan ulasan bintang 5 ya kak. Sehat selalu dan selamat berbelanja kembali di {toko}! ⭐⭐⭐⭐⭐'
   }
 ];
+
+// ── User Avatar & Palette Presets ────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#df1683', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'
+];
+
+const AVATAR_ICONS = [
+  '👩‍💼', '👨‍💻', '🎧', '⚡', '🌟', '🛡️', '🤖', '🛍️', '📦', '🎯', '🚀', '💼'
+];
+
+window.AVATAR_COLORS = AVATAR_COLORS;
+window.AVATAR_ICONS = AVATAR_ICONS;

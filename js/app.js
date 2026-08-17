@@ -28,7 +28,13 @@ function bindEvents() {
     const handleSelect = () => {
       const val = el.dataset.value;
       setSelectedMarketplace(val);
-      customUrlGroup.style.display = val === 'custom' ? 'flex' : 'none';
+      if (val === 'custom') {
+        customUrlGroup.style.display = 'flex';
+        setTimeout(() => fieldStoreUrl.focus(), 100);
+      } else {
+        customUrlGroup.style.display = 'none';
+        clearCustomUrlSearch();
+      }
     };
     el.addEventListener('click', handleSelect);
     el.addEventListener('keydown', (e) => {
@@ -62,11 +68,74 @@ function bindEvents() {
     document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
   });
 
-  // Custom URL input
-  fieldStoreUrl.addEventListener('input', () => updateUrlPreview('custom', fieldStoreUrl.value));
+  // Custom URL Smart Search input
+  fieldStoreUrl.addEventListener('input', handleCustomUrlInput);
+  fieldStoreUrl.addEventListener('focus', () => {
+    if (fieldStoreUrl.value.trim() && (!customResultsList.innerHTML || customUrlResults.style.display === 'none')) {
+      handleCustomUrlInput();
+    }
+  });
+  fieldStoreUrl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = fieldStoreUrl.value.trim();
+      if (val) {
+        performCustomUrlSearch(val, false);
+      } else {
+        saveStore();
+      }
+    }
+  });
+
+  // Clear URL button
+  btnClearUrl?.addEventListener('click', () => {
+    fieldStoreUrl.value = '';
+    clearCustomUrlSearch();
+    updateUrlPreview('custom', '');
+    fieldStoreUrl.focus();
+  });
+
+  // Preset Chips
+  document.querySelectorAll('.preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const name = chip.dataset.name;
+      const initials = chip.dataset.initials;
+      const url = chip.dataset.url;
+      const query = chip.dataset.query || name;
+
+      document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      if (url) {
+        let domain = '';
+        try {
+          domain = new URL(url).hostname;
+        } catch (e) {
+          domain = url;
+        }
+        selectCustomUrl({
+          title: name,
+          url: url,
+          domain: domain,
+          snippet: `Rekomendasi resmi ${name}`,
+          isPreset: true
+        });
+        if (name && (!fieldStoreName.value.trim() || fieldStoreName.value.trim() === 'Custom')) {
+          fieldStoreName.value = name;
+        }
+        if (initials && (!fieldStoreInitials.value.trim() || fieldStoreInitials.value.trim() === 'CU')) {
+          fieldStoreInitials.value = initials;
+        }
+      } else if (query) {
+        fieldStoreUrl.value = query;
+        performCustomUrlSearch(query, true);
+      }
+    });
+  });
 
   // Store name — Enter to save
   fieldStoreName.addEventListener('keydown', e => { if (e.key === 'Enter') saveStore(); });
+  fieldStoreInitials.addEventListener('keydown', e => { if (e.key === 'Enter') saveStore(); });
 
   // Modal close / save
   document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -110,6 +179,12 @@ function bindEvents() {
       if (storesFooter) {
         storesFooter.style.display = (tabName === 'stores') ? 'flex' : 'none';
       }
+      if (tabName === 'account') {
+        if (typeof renderSettingsAccountTab === 'function') renderSettingsAccountTab();
+      }
+      if (tabName === 'superadmin') {
+        if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
+      }
       if (tabName === 'cache') {
         if (typeof updateCacheSizeDisplay === 'function') updateCacheSizeDisplay();
         if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
@@ -119,10 +194,185 @@ function bindEvents() {
     });
   });
 
+  // Smooth mousewheel horizontal scroll on settings tabs
+  const settingsNavTabs = document.querySelector('.settings-nav-tabs');
+  settingsNavTabs?.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      settingsNavTabs.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+
   // Refresh cache size button
   document.getElementById('btn-refresh-cache-size')?.addEventListener('click', () => {
     if (typeof updateCacheSizeDisplay === 'function') updateCacheSizeDisplay();
   });
+
+  // Sidebar User Popover Menu toggling
+  const userPopover = document.getElementById('user-popover-menu');
+  const userCard = document.getElementById('sidebar-user-card');
+
+  userCard?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    userPopover?.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (userPopover && userPopover.classList.contains('active')) {
+      if (!userPopover.contains(e.target) && !userCard?.contains(e.target)) {
+        userPopover.classList.remove('active');
+      }
+    }
+  });
+
+  // Popover Menu Items
+  document.getElementById('popover-btn-lock')?.addEventListener('click', () => {
+    userPopover?.classList.remove('active');
+    lockScreen();
+  });
+
+  document.getElementById('popover-btn-account')?.addEventListener('click', () => {
+    userPopover?.classList.remove('active');
+    openSettings('account');
+  });
+
+  document.getElementById('popover-btn-logout')?.addEventListener('click', () => {
+    userPopover?.classList.remove('active');
+    logoutUser();
+  });
+
+  // Quick Lock Button in Titlebar
+  document.getElementById('btn-quick-lock')?.addEventListener('click', () => {
+    lockScreen();
+  });
+
+  // Lock Screen Unlock form
+  document.getElementById('lockscreen-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pwdField = document.getElementById('lockscreen-password');
+    const pin = pwdField ? pwdField.value : '';
+    const unlockBtn = document.getElementById('btn-lockscreen-unlock');
+    const card = document.getElementById('lockscreen-card');
+
+    if (!pin) return;
+
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = 'Membuka...';
+
+    try {
+      const res = await window.electronAPI.verifyUserPin({
+        username: window.currentUser,
+        password: pin
+      });
+
+      if (res && res.success) {
+        unlockScreen();
+        showToast(`Selamat datang kembali, ${escapeHtml(window.currentUserProfile?.displayName || window.currentUser)}!`, 'success');
+      } else {
+        card?.classList.remove('shake');
+        void card?.offsetWidth; // trigger reflow
+        card?.classList.add('shake');
+        showToast('PIN salah!', 'error');
+        if (pwdField) {
+          pwdField.value = '';
+          pwdField.focus();
+        }
+      }
+    } catch (err) {
+      showToast('Gagal memverifikasi PIN: ' + err.message, 'error');
+    } finally {
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Buka Kunci';
+    }
+  });
+
+  // Lock screen switch user
+  document.getElementById('btn-lockscreen-switch')?.addEventListener('click', () => {
+    unlockScreen();
+    logoutUser();
+  });
+
+  // Save Profile CS
+  document.getElementById('btn-save-profile')?.addEventListener('click', async () => {
+    const displayName = document.getElementById('acc-display-name')?.value.trim();
+    const btn = document.getElementById('btn-save-profile');
+
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    try {
+      const res = await window.electronAPI.updateUserProfile({
+        username: window.currentUser,
+        displayName: displayName || window.currentUser,
+        avatarColor: typeof selectedAccColor !== 'undefined' ? selectedAccColor : '#df1683',
+        avatarIcon: typeof selectedAccIcon !== 'undefined' ? selectedAccIcon : '👩‍💼'
+      });
+
+      if (res && res.success) {
+        window.currentUserProfile = res.user;
+        updateSidebarUserProfile(res.user);
+        showToast('Profil CS berhasil diperbarui!', 'success');
+        if (typeof renderUsersManagementList === 'function') renderUsersManagementList();
+      } else {
+        showToast(res?.error || 'Gagal memperbarui profil', 'error');
+      }
+    } catch (e) {
+      showToast('Terjadi kesalahan: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Simpan Profil CS';
+    }
+  });
+
+  // Save Auto-Lock settings
+  document.getElementById('btn-save-autolock')?.addEventListener('click', async () => {
+    const minutes = parseInt(document.getElementById('acc-autolock-select')?.value, 10) || 0;
+    const btn = document.getElementById('btn-save-autolock');
+
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    try {
+      const res = await window.electronAPI.updateUserProfile({
+        username: window.currentUser,
+        autoLockMinutes: minutes
+      });
+
+      if (res && res.success) {
+        if (window.currentUserProfile) window.currentUserProfile.autoLockMinutes = minutes;
+        setupAutoLockTimer();
+        const msg = minutes > 0 ? `Kunci otomatis diset ${minutes} menit tidak aktif.` : 'Kunci otomatis dinonaktifkan.';
+        showToast(msg, 'success');
+      } else {
+        showToast(res?.error || 'Gagal menyimpan pengaturan', 'error');
+      }
+    } catch (e) {
+      showToast('Terjadi kesalahan: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Simpan Pengaturan Kunci Otomatis';
+    }
+  });
+
+  // Add User / Super Admin from Super Admin Panel
+  const handleAddUserFromAdmin = () => {
+    if (typeof openAdminCreateUserModal === 'function') {
+      openAdminCreateUserModal();
+    }
+  };
+
+  document.getElementById('btn-superadmin-add-user')?.addEventListener('click', handleAddUserFromAdmin);
+  document.getElementById('btn-add-user-from-settings')?.addEventListener('click', handleAddUserFromAdmin);
+
+  // Refresh Super Admin Audit
+  document.getElementById('btn-superadmin-refresh')?.addEventListener('click', () => {
+    if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
+  });
+
+  // Password Visibility Toggles
+  if (typeof initPasswordToggles === 'function') {
+    initPasswordToggles();
+  }
 
   // Opsi 1: Clear Safe Cache Global (Hanya partisi user aktif)
   document.getElementById('btn-clear-safe-cache')?.addEventListener('click', async () => {
@@ -186,8 +436,6 @@ function bindEvents() {
       btn.innerHTML = originalHTML;
     }
   });
-
-
 
   // Change PIN
   document.getElementById('btn-change-password')?.addEventListener('click', async () => {
@@ -261,24 +509,148 @@ function bindEvents() {
   });
 
   // Logout button
-  document.getElementById('btn-logout')?.addEventListener('click', logoutUser);
+  document.getElementById('btn-logout')?.addEventListener('click', () => logoutUser(true));
 
   // Theme toggle
   btnThemeToggle?.addEventListener('click', toggleTheme);
 }
 
+// ── Sidebar User Profile Rendering ──────────────────────────────────────────
+function updateSidebarUserProfile(profile) {
+  const p = profile || window.currentUserProfile || {
+    username: window.currentUser,
+    displayName: window.currentUser,
+    role: 'Customer Service',
+    avatarColor: '#df1683',
+    avatarIcon: '👩‍💼'
+  };
+
+  const avatarEl = document.getElementById('sidebar-user-avatar');
+  const nameEl   = document.getElementById('sidebar-user-name');
+  const roleEl   = document.getElementById('sidebar-user-role');
+  const popoverName = document.getElementById('popover-user-name');
+  const popoverRole = document.getElementById('popover-user-role');
+
+  const isSuperAdmin = !!(p.isSuperAdmin || p.role === 'Super Admin' || p.username === 'superadmin');
+  const color = p.avatarColor || (isSuperAdmin ? '#e11d48' : '#df1683');
+  const icon  = p.avatarIcon || (isSuperAdmin ? '👑' : '👩‍💼');
+  const name  = p.displayName || p.username || 'Pengguna';
+  const role  = isSuperAdmin ? '👑 Super Admin' : (p.role || 'Customer Service');
+
+  if (avatarEl) {
+    avatarEl.style.backgroundColor = color;
+    avatarEl.textContent = icon;
+  }
+  if (nameEl) nameEl.textContent = name;
+  if (roleEl) roleEl.textContent = role;
+  if (popoverName) popoverName.textContent = name;
+  if (popoverRole) popoverRole.textContent = role;
+}
+window.updateSidebarUserProfile = updateSidebarUserProfile;
+
+// ── Lock Screen Logic ───────────────────────────────────────────────────────
+let isScreenLocked = false;
+
+function lockScreen() {
+  if (!window.currentUser || isScreenLocked) return;
+  isScreenLocked = true;
+
+  const overlay = document.getElementById('lockscreen-overlay');
+  const avatarEl = document.getElementById('lockscreen-avatar');
+  const nameEl   = document.getElementById('lockscreen-user-name');
+  const roleEl   = document.getElementById('lockscreen-user-role');
+  const pwdField = document.getElementById('lockscreen-password');
+
+  const p = window.currentUserProfile || {
+    username: window.currentUser,
+    displayName: window.currentUser,
+    role: 'Customer Service',
+    avatarColor: '#df1683',
+    avatarIcon: '👩‍💼'
+  };
+
+  const isSuperAdmin = !!(p.isSuperAdmin || p.role === 'Super Admin' || p.username === 'superadmin');
+
+  if (avatarEl) {
+    avatarEl.style.backgroundColor = p.avatarColor || (isSuperAdmin ? '#e11d48' : '#df1683');
+    avatarEl.textContent = p.avatarIcon || (isSuperAdmin ? '👑' : '👩‍💼');
+  }
+  if (nameEl) nameEl.textContent = p.displayName || p.username || 'Pengguna';
+  if (roleEl) roleEl.textContent = `${isSuperAdmin ? '👑 Super Admin' : (p.role || 'CS')} · Layar Terkunci`;
+
+  if (pwdField) {
+    pwdField.value = '';
+    pwdField.type = 'password';
+  }
+
+  // Close popover and settings if open
+  document.getElementById('user-popover-menu')?.classList.remove('active');
+  settingsOverlay?.classList.remove('active');
+
+  overlay?.classList.add('active');
+  setTimeout(() => pwdField?.focus(), 150);
+}
+
+function unlockScreen() {
+  isScreenLocked = false;
+  const overlay = document.getElementById('lockscreen-overlay');
+  overlay?.classList.remove('active');
+  const pwdField = document.getElementById('lockscreen-password');
+  if (pwdField) pwdField.value = '';
+  resetInactivityTimer();
+}
+
+window.lockScreen   = lockScreen;
+window.unlockScreen = unlockScreen;
+
+// ── Auto-Lock Inactivity Timer ──────────────────────────────────────────────
+let autoLockTimeoutId = null;
+let lastActivityTimestamp = Date.now();
+
+function resetInactivityTimer() {
+  lastActivityTimestamp = Date.now();
+}
+
+function setupAutoLockTimer() {
+  if (autoLockTimeoutId) {
+    clearInterval(autoLockTimeoutId);
+    autoLockTimeoutId = null;
+  }
+
+  const minutes = window.currentUserProfile?.autoLockMinutes || 0;
+  if (minutes <= 0) return;
+
+  const intervalMs = 15000; // Cek setiap 15 detik
+  const timeoutMs = minutes * 60 * 1000;
+
+  autoLockTimeoutId = setInterval(() => {
+    if (isScreenLocked || !window.currentUser) return;
+    const elapsed = Date.now() - lastActivityTimestamp;
+    if (elapsed >= timeoutMs) {
+      lockScreen();
+    }
+  }, intervalMs);
+}
+window.setupAutoLockTimer = setupAutoLockTimer;
+
+['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt => {
+  window.addEventListener(evt, resetInactivityTimer, { passive: true });
+});
+
 // ── Logout Logic ────────────────────────────────────────────────────────────
-async function logoutUser() {
-  const confirmed = await showConfirmDialog({
-    title: 'Konfirmasi Keluar Akun',
-    message: `Apakah Anda yakin ingin keluar dari akun <strong>${escapeHtml(window.currentUser || 'ini')}</strong>?`,
-    type: 'warning',
-    icon: '🚪',
-    confirmText: 'Keluar',
-    cancelText: 'Batal',
-    confirmBtnClass: 'btn-warning'
-  });
-  if (!confirmed) return;
+async function logoutUser(askConfirmation = true) {
+  if (askConfirmation) {
+    const confirmed = await showConfirmDialog({
+      title: 'Konfirmasi Keluar Akun',
+      message: `Apakah Anda yakin ingin keluar dari akun <strong>${escapeHtml(window.currentUser || 'ini')}</strong>?`,
+      type: 'warning',
+      icon: '🚪',
+      confirmText: 'Keluar',
+      cancelText: 'Batal',
+      confirmBtnClass: 'btn-warning'
+    });
+    if (!confirmed) return;
+  }
 
   // Flush telemetri sesi sebelum logout
   if (window.AppTelemetry) {
@@ -328,7 +700,11 @@ async function logoutUser() {
   if (tabBar) tabBar.style.display = 'none';
   if (webviewCont) webviewCont.classList.remove('active');
   if (emptyState) emptyState.style.display = 'flex';
-  if (sidebarContent) sidebarContent.innerHTML = '';
+  if (sidebarContent) {
+    sidebarContent.innerHTML = '';
+    delete sidebarContent.dataset.lastHtml;
+    delete sidebarContent.dataset.lastUser;
+  }
   if (searchInput) searchInput.value = '';
 
   // 5. Sembunyikan scratchpad & onboarding jika terbuka
@@ -345,6 +721,12 @@ async function logoutUser() {
 
   const prevUser = window.currentUser;
   window.currentUser = null;
+
+  if (window.electronAPI && typeof window.electronAPI.logoutUser === 'function') {
+    try {
+      await window.electronAPI.logoutUser();
+    } catch (e) {}
+  }
 
   // 7. Inisialisasi ulang form login
   if (typeof window.initLoginScreen === 'function') {
@@ -416,13 +798,35 @@ window.initApp = async function() {
   document.documentElement.setAttribute('data-theme', currentTheme);
   updateThemeUI();
 
+  // Load and render user profile
+  if (window.currentUser) {
+    try {
+      const pRes = await window.electronAPI.getUserProfile(window.currentUser);
+      if (pRes && pRes.success && pRes.user) {
+        window.currentUserProfile = pRes.user;
+      }
+    } catch (e) {
+      console.error('Error loading user profile:', e);
+    }
+    updateSidebarUserProfile(window.currentUserProfile);
+    setupAutoLockTimer();
+  }
+
   appPath = await window.electronAPI.getAppPath();
   stores  = await window.electronAPI.getStores(window.currentUser);
+  if (sidebarContent) {
+    delete sidebarContent.dataset.lastHtml;
+    delete sidebarContent.dataset.lastUser;
+  }
   renderSidebar(getFilteredStores());
   
   if (!isEventsBound) {
     bindEvents();
     isEventsBound = true;
+  }
+
+  if (typeof initPasswordToggles === 'function') {
+    initPasswordToggles();
   }
   
   // Reload scratchpad for current user
@@ -445,7 +849,7 @@ window.initApp = async function() {
     broadcastTemplatesToWebviews();
   }
 
-  // Inisialisasi CS Toolkit (Cek Resi, Kalkulator, Catatan Pembeli)
+  // Inisialisasi CS Toolkit (Catatan Pembeli & Speed Dial FAB)
   if (typeof bindToolsEvents === 'function') {
     bindToolsEvents();
   }
@@ -466,7 +870,7 @@ window.initApp = async function() {
     startStaggeredBackgroundPing();
   }
 
-  // Inisialisasi Onboarding & Interactive Tour Guide (v1.0.5)
+  // Inisialisasi Onboarding & Interactive Tour Guide (v1.0.6)
   if (window.OnboardingManager && typeof window.OnboardingManager.init === 'function') {
     window.OnboardingManager.init();
   }

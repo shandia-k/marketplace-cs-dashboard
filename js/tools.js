@@ -1,125 +1,13 @@
 /**
  * js/tools.js
  * CS Toolkit:
- * 1. 🚚 Logistics Tracker (Cek Resi)
- * 2. 🧮 CS Fee, Discount & Margin Calculator
- * 3. 📝 Customer Sticky Notes & Warning Tracker
+ * 1. 📝 Customer Sticky Notes & Warning Tracker
+ * 2. ⚡ Speed Dial FAB & Assistant Tools
  */
 
-// ── 1. LOGISTICS TRACKER (CEK RESI) ──────────────────────────────────────────
-
-const COURIER_PATTERNS = [
-  { code: 'spx',       name: 'Shopee Xpress (SPX)', regex: /^(SPXID|SPX)\d+/i },
-  { code: 'jnt',       name: 'J&T Express',        regex: /^(JP|JX|888|JS|EZ)\d+/i },
-  { code: 'sicepat',   name: 'SiCepat',            regex: /^(00\d{10,14}|TKP\d+|SP\d+)/i },
-  { code: 'anteraja',  name: 'Anteraja',           regex: /^(10\d{10,14}|11\d{10,14}|100\d{10,14})/i },
-  { code: 'jne',       name: 'JNE Express',        regex: /^(CM\d+|JNE\d+|\d{12,16}|TG\d+)/i },
-  { code: 'idexpress', name: 'ID Express',         regex: /^(IDV\d+|IDE\d+|IDS\d+|000\d+)/i },
-  { code: 'ninja',     name: 'Ninja Xpress',       regex: /^(SHP|TJNT|NINJA|NLID)\d+/i },
-  { code: 'lion',      name: 'Lion Parcel',        regex: /^(LP\d+|99\d+)/i }
-];
-
-function autoDetectCourier(resi) {
-  const clean = (resi || '').trim();
-  for (const c of COURIER_PATTERNS) {
-    if (c.regex.test(clean)) return c.code;
-  }
-  return 'jnt';
-}
-
-function generateTrackingSummary(resi, courierCode) {
-  const cleanResi = (resi || '').trim();
-  const courierObj = COURIER_PATTERNS.find(c => c.code === courierCode) || { name: courierCode.toUpperCase() };
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-  return {
-    resi: cleanResi,
-    courier: courierObj.name,
-    status: 'SEDANG DIKIRIM (ON PROCESS)',
-    statusBadge: 'in-transit',
-    lastUpdate: `${dateStr} ${timeStr}`,
-    history: [
-      { time: `${dateStr} ${timeStr}`, desc: 'Paket sedang dibawa oleh kurir menuju alamat penerima.', loc: 'Hub Terdekat Tujuan' },
-      { time: `${dateStr} 04:30`, desc: 'Paket telah tiba di Sorting Center kota tujuan.', loc: 'DC Kota Tujuan' },
-      { time: 'Kemarin 18:20', desc: 'Paket telah diberangkatkan dari Drop Point pengirim.', loc: 'Hub Pengirim' },
-      { time: 'Kemarin 14:00', desc: 'Paket telah diserahkan oleh penjual ke kurir ekspedisi.', loc: 'Drop Point' }
-    ],
-    chatFormat: `Halo kak! Untuk paket dengan no. resi ${cleanResi} (${courierObj.name}) saat ini statusnya sedang dibawa kurir menuju alamat kakak ya. Estimasi tiba hari ini / besok. Mohon pastikan no. HP penerima aktif ya kak! 🙏📦`
-  };
-}
-
-function performTrackingCheck() {
-  const input = document.getElementById('tracking-resi-input');
-  const courierSelect = document.getElementById('tracking-courier-select');
-  const resultsContainer = document.getElementById('tracking-results-box');
-
-  const resi = input?.value.trim();
-  if (!resi) {
-    if (typeof showToast === 'function') showToast('Masukkan nomor resi terlebih dahulu!', 'error');
-    input?.focus();
-    return;
-  }
-
-  const courier = courierSelect ? courierSelect.value : 'jnt';
-  const data = generateTrackingSummary(resi, courier);
-
-  if (window.AppTelemetry) {
-    window.AppTelemetry.track('tool_tracking_checked');
-  }
-
-  resultsContainer.innerHTML = `
-    <div class="tracking-summary-card">
-      <div class="tracking-summary-header">
-        <div>
-          <span class="tracking-courier-pill">${escapeHtml(data.courier)}</span>
-          <h4 class="tracking-resi-num">${escapeHtml(data.resi)}</h4>
-        </div>
-        <span class="tracking-status-badge ${data.statusBadge}">${escapeHtml(data.status)}</span>
-      </div>
-      <div class="tracking-last-update">Update terakhir: ${data.lastUpdate}</div>
-
-      <!-- Timeline -->
-      <div class="tracking-timeline">
-        ${data.history.map((h, i) => `
-          <div class="timeline-item ${i === 0 ? 'current' : ''}">
-            <div class="timeline-dot"></div>
-            <div class="timeline-info">
-              <span class="timeline-time">${h.time} &middot; <small style="color:var(--text-muted)">${h.loc}</small></span>
-              <p class="timeline-desc">${h.desc}</p>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="tracking-card-actions">
-        <button class="btn-primary" id="btn-tracking-insert-chat" style="flex:1;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          Ketik Status ke Chat
-        </button>
-        <button class="btn-secondary" id="btn-tracking-copy-info">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Salin Info
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('btn-tracking-insert-chat')?.addEventListener('click', () => {
-    insertTrackingToActiveChat(data.chatFormat, data.resi, data.courier);
-  });
-  document.getElementById('btn-tracking-copy-info')?.addEventListener('click', () => {
-    copyTrackingText(data.chatFormat, data.resi);
-  });
-}
-
-function insertTrackingToActiveChat(text, resiNum, courierName) {
-  if (resiNum && typeof setCapturedClipboard === 'function') {
-    setCapturedClipboard(resiNum, '🚚 ' + (courierName || 'Ekspedisi'));
-  }
+// ── HELPER: INSERT TEXT TO ACTIVE CHAT ────────────────────────────────────────
+function insertTextToActiveChat(text) {
+  if (!text) return;
 
   const activeTabId = typeof activeStoreId !== 'undefined' && activeStoreId ? activeTabMap[activeStoreId] : null;
   const wv = activeTabId && typeof webviewMap !== 'undefined' ? webviewMap[activeTabId]?.webview : null;
@@ -127,160 +15,18 @@ function insertTrackingToActiveChat(text, resiNum, courierName) {
   if (wv) {
     try {
       wv.send('insert-chat-text', text);
-      if (typeof showToast === 'function') showToast('⚡ Info resi berhasil diketik ke chat!', 'success');
-      closeTrackingModal();
+      if (typeof showToast === 'function') showToast('⚡ Pesan berhasil diketik ke chat!', 'success');
     } catch (e) {
       if (typeof copyResolvedText === 'function') copyResolvedText(text);
-      if (typeof showToast === 'function') showToast('Info resi disalin ke clipboard!', 'success');
+      if (typeof showToast === 'function') showToast('Pesan disalin ke clipboard!', 'success');
     }
   } else {
     if (typeof copyResolvedText === 'function') copyResolvedText(text);
-    if (typeof showToast === 'function') showToast('Info resi disalin ke clipboard!', 'success');
+    if (typeof showToast === 'function') showToast('Pesan disalin ke clipboard!', 'success');
   }
 }
 
-function copyTrackingText(text, resiNum) {
-  if (resiNum && typeof setCapturedClipboard === 'function') {
-    setCapturedClipboard(resiNum, '🚚 Cek Resi');
-  }
-  if (typeof copyResolvedText === 'function') copyResolvedText(text);
-  if (typeof showToast === 'function') showToast('✓ Format pesan resi disalin ke clipboard!', 'success');
-}
-
-function openTrackingModal(prefillResi) {
-  const modal = document.getElementById('modal-tracking-overlay');
-  const input = document.getElementById('tracking-resi-input');
-  const courierSelect = document.getElementById('tracking-courier-select');
-  if (!modal) return;
-
-  if (window.AppTelemetry) {
-    window.AppTelemetry.track('tool_tracking_opened');
-  }
-
-  let resiToUse = prefillResi || '';
-  if (!resiToUse) {
-    const clip = typeof currentClipboardValue !== 'undefined' ? currentClipboardValue.trim() : '';
-    if (clip && /^[A-Z0-9]{6,30}$/i.test(clip)) {
-      resiToUse = clip;
-    }
-  }
-
-  if (input) input.value = resiToUse;
-  if (courierSelect && resiToUse) {
-    courierSelect.value = autoDetectCourier(resiToUse);
-  }
-
-  modal.classList.add('active');
-  if (resiToUse) {
-    performTrackingCheck();
-  }
-  setTimeout(() => input?.focus(), 150);
-}
-
-function closeTrackingModal() {
-  document.getElementById('modal-tracking-overlay')?.classList.remove('active');
-}
-
-
-// ── 2. KALKULATOR CS (DISCOUNT, MARGIN & ADMIN FEE) ──────────────────────────
-
-const MARKETPLACE_ADMIN_FEES = {
-  shopee_star:    { name: 'Shopee (Star / Star+ ~6.5%)', rate: 0.065 },
-  shopee_xtra:    { name: 'Shopee (Star + Gratis Ongkir XTRA ~10.5%)', rate: 0.105 },
-  shopee_nonstar: { name: 'Shopee (Non-Star ~4.0%)', rate: 0.04 },
-  shopee_mall:    { name: 'Shopee (Mall ~7.5%)', rate: 0.075 },
-  tokopedia_pm:   { name: 'Tokopedia (Power Merchant ~5.5%)', rate: 0.055 },
-  tokopedia_pm_pro:{ name: 'Tokopedia (PM PRO + Bebas Ongkir ~9.5%)', rate: 0.095 },
-  tokopedia_reg:  { name: 'Tokopedia (Reguler ~4.5%)', rate: 0.045 },
-  tiktok_shop:    { name: 'TikTok Shop (~5.0% - 7.5%)', rate: 0.05 },
-  lazada:         { name: 'Lazada (~4.0% - 6.0%)', rate: 0.04 },
-  custom:         { name: 'Biaya Kustom', rate: 0 }
-};
-
-function calculateCsFigures() {
-  const basePrice = parseFloat(document.getElementById('calc-base-price')?.value) || 0;
-  const discPercent = parseFloat(document.getElementById('calc-disc-percent')?.value) || 0;
-  const discNominal = parseFloat(document.getElementById('calc-disc-nominal')?.value) || 0;
-  const feeType = document.getElementById('calc-admin-fee-select')?.value || 'shopee_star';
-  const customFeeRate = (parseFloat(document.getElementById('calc-custom-fee')?.value) || 0) / 100;
-  const costPrice = parseFloat(document.getElementById('calc-cost-price')?.value) || 0;
-  const shippingSubsidy = parseFloat(document.getElementById('calc-subsidy')?.value) || 0;
-
-  // 1. Hitung diskon
-  let discountAmount = 0;
-  if (discPercent > 0) {
-    discountAmount = (basePrice * discPercent) / 100;
-  } else if (discNominal > 0) {
-    discountAmount = discNominal;
-  }
-
-  const finalCustomerPrice = Math.max(0, basePrice - discountAmount);
-
-  // 2. Hitung fee admin marketplace
-  const feeRate = feeType === 'custom' ? customFeeRate : (MARKETPLACE_ADMIN_FEES[feeType]?.rate || 0.065);
-  const adminFeeAmount = Math.round(finalCustomerPrice * feeRate);
-
-  // 3. Hitung dana bersih yang diterima penjual
-  const netEarnings = Math.max(0, finalCustomerPrice - adminFeeAmount - shippingSubsidy);
-
-  // 4. Hitung estimasi profit bersih jika HPP diisi
-  const profitAmount = netEarnings - costPrice;
-  const profitPercent = costPrice > 0 ? ((profitAmount / costPrice) * 100).toFixed(1) : 0;
-
-  const elFinalPrice = document.getElementById('calc-res-final-price');
-  const elDiscAmt = document.getElementById('calc-res-discount-amount');
-  const elAdminFee = document.getElementById('calc-res-admin-fee');
-  const elNetEarnings = document.getElementById('calc-res-net-earnings');
-  const elProfitRow = document.getElementById('calc-res-profit-row');
-  const elProfit = document.getElementById('calc-res-profit');
-
-  if (elFinalPrice) elFinalPrice.textContent = formatRupiah(finalCustomerPrice);
-  if (elDiscAmt) elDiscAmt.textContent = formatRupiah(discountAmount);
-  if (elAdminFee) elAdminFee.textContent = `${formatRupiah(adminFeeAmount)} (${(feeRate * 100).toFixed(1)}%)`;
-  if (elNetEarnings) elNetEarnings.textContent = formatRupiah(netEarnings);
-
-  if (elProfitRow && elProfit) {
-    if (costPrice > 0) {
-      elProfitRow.style.display = 'flex';
-      const profitColor = profitAmount >= 0 ? '#3b82f6' : '#ef4444';
-      elProfit.style.color = profitColor;
-      elProfit.textContent = `${formatRupiah(profitAmount)} (${profitPercent}%)`;
-    } else {
-      elProfitRow.style.display = 'none';
-    }
-  }
-
-  // 5. Pesan Chat Penawaran
-  const chatOffer = `Halo kak! Khusus untuk produk ini, dari harga normal ${formatRupiah(basePrice)}, setelah diskon kakak cukup bayar ${formatRupiah(finalCustomerPrice)} saja ya kak. Penawaran terbatas, silakan langsung di-checkout sebelum kehabisan ya! 😊✨`;
-  
-  const chatInvoice = `Halo kak, berikut rincian harga untuk pesanan kakak:\n• Harga Produk: ${formatRupiah(basePrice)}\n• Diskon Khusus: -${formatRupiah(discountAmount)}\n• Total Bayar: ${formatRupiah(finalCustomerPrice)}\nSilakan langsung selesaikan pesanan ya kak. Terima kasih! 🙏`;
-
-  const offerBtn = document.getElementById('btn-calc-insert-offer');
-  if (offerBtn) {
-    offerBtn.onclick = () => insertTrackingToActiveChat(chatOffer);
-  }
-
-  const invoiceBtn = document.getElementById('btn-calc-insert-invoice');
-  if (invoiceBtn) {
-    invoiceBtn.onclick = () => insertTrackingToActiveChat(chatInvoice);
-  }
-}
-
-function openCalculatorModal() {
-  document.getElementById('modal-calculator-overlay')?.classList.add('active');
-  if (window.AppTelemetry) {
-    window.AppTelemetry.track('tool_calc_opened');
-  }
-  calculateCsFigures();
-  setTimeout(() => document.getElementById('calc-base-price')?.focus(), 150);
-}
-
-function closeCalculatorModal() {
-  document.getElementById('modal-calculator-overlay')?.classList.remove('active');
-}
-
-
-// ── 3. CATATAN KHUSUS PELANGGAN (CUSTOMER STICKY NOTES) ────────────────────────
+// ── CATATAN KHUSUS PELANGGAN (CUSTOMER STICKY NOTES) ──────────────────────────
 
 let customerNotes = [];
 let editingNoteId = null;
@@ -354,14 +100,6 @@ function renderCustomerNotesList() {
     const tagInfo = tagLabels[n.tag] || tagLabels.info;
     const cleanBuyer = escapeHtml(n.buyerName);
 
-    // Dynamic greeting template for this buyer
-    let chatGreeting = `Halo kak ${cleanBuyer}! Terima kasih sudah menghubungi kami. Ada yang bisa kami bantu kak? 😊`;
-    if (n.tag === 'vip') {
-      chatGreeting = `Halo kak ${cleanBuyer}! Senang sekali melayani kakak kembali sebagai pelanggan setia kami. Ada yang bisa kami siapkan untuk pesanan kakak hari ini? ✨`;
-    } else if (n.tag === 'warning') {
-      chatGreeting = `Halo kak ${cleanBuyer}! Terkait pesanan dengan metode pembayaran COD ini kami konfirmasi kembali ya kak, mohon pastikan no. HP aktif dan alamat sudah sesuai. Terima kasih! 🙏`;
-    }
-
     return `
       <div class="cnote-card">
         <div class="cnote-header">
@@ -402,7 +140,7 @@ function renderCustomerNotesList() {
       } else if (note.tag === 'warning') {
         chatGreeting = `Halo kak ${cleanBuyer}! Terkait pesanan dengan metode pembayaran COD ini kami konfirmasi kembali ya kak, mohon pastikan no. HP aktif dan alamat sudah sesuai. Terima kasih! 🙏`;
       }
-      insertTrackingToActiveChat(chatGreeting);
+      insertTextToActiveChat(chatGreeting);
     });
   });
 }
@@ -518,6 +256,178 @@ async function deleteCustomerNote(id) {
   }
 }
 
+// ── WHATSAPP DIRECT LINKER ───────────────────────────────────────────────────
+
+function cleanIndonesianPhone(rawPhone) {
+  if (!rawPhone) return '';
+  let cleaned = String(rawPhone).replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+62')) {
+    cleaned = '62' + cleaned.substring(3);
+  } else if (cleaned.startsWith('62')) {
+    // already 62
+  } else if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.substring(1);
+  } else if (cleaned.startsWith('8')) {
+    cleaned = '62' + cleaned;
+  }
+  return cleaned;
+}
+
+function formatIndonesianPhoneDisplay(cleanPhone) {
+  if (!cleanPhone || cleanPhone.length < 8) return '+62 -';
+  let num = cleanPhone.startsWith('62') ? cleanPhone.substring(2) : cleanPhone;
+  if (num.length <= 3) return `+62 ${num}`;
+  if (num.length <= 7) return `+62 ${num.substring(0, 3)}-${num.substring(3)}`;
+  return `+62 ${num.substring(0, 3)}-${num.substring(3, 7)}-${num.substring(7)}`;
+}
+
+function updateWaLinkPreview() {
+  const phoneInput = document.getElementById('wa-input-phone');
+  const msgInput = document.getElementById('wa-input-msg');
+  const formattedEl = document.getElementById('wa-formatted-preview');
+  const linkEl = document.getElementById('wa-link-preview');
+  if (!phoneInput || !formattedEl || !linkEl) return;
+
+  const clean = cleanIndonesianPhone(phoneInput.value);
+  const msg = encodeURIComponent((msgInput?.value || '').trim());
+  const formatted = formatIndonesianPhoneDisplay(clean);
+
+  formattedEl.textContent = formatted;
+  if (clean && clean.length >= 9) {
+    const waUrl = `https://wa.me/${clean}${msg ? `?text=${msg}` : ''}`;
+    linkEl.textContent = waUrl;
+    linkEl.dataset.url = waUrl;
+  } else {
+    linkEl.textContent = 'https://wa.me/... (masukkan nomor HP yang valid)';
+    linkEl.dataset.url = '';
+  }
+}
+
+function openWaLinkerModal(initialPhone = '') {
+  const overlay = document.getElementById('modal-walinker-overlay');
+  const phoneInput = document.getElementById('wa-input-phone');
+  if (!overlay) return;
+
+  if (phoneInput) {
+    let defaultPhone = initialPhone;
+    if (!defaultPhone && typeof currentClipboardValue === 'string') {
+      const trimmed = currentClipboardValue.trim();
+      if (/^(\+?62|0)?8[\d\s-]{6,16}$/.test(trimmed)) {
+        defaultPhone = trimmed;
+      }
+    }
+    phoneInput.value = defaultPhone || '';
+  }
+  updateWaLinkPreview();
+  overlay.classList.add('active');
+  setTimeout(() => phoneInput?.focus(), 120);
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tool_walinker_opened');
+  }
+
+  if (typeof notifyAction === 'function') {
+    notifyAction('use_walinker');
+  } else if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
+    window.OnboardingManager.notifyAction('use_walinker');
+  }
+}
+
+function closeWaLinkerModal() {
+  document.getElementById('modal-walinker-overlay')?.classList.remove('active');
+}
+
+function findWhatsAppStore() {
+  if (typeof stores === 'undefined' || !Array.isArray(stores)) return null;
+  return stores.find(s => {
+    const url = (s.url || '').toLowerCase();
+    const name = (s.name || '').toLowerCase();
+    const mp = (s.marketplace || '').toLowerCase();
+    return url.includes('web.whatsapp.com') || mp === 'whatsapp' || name.includes('whatsapp') || name.includes('wa web');
+  }) || null;
+}
+
+function findWhatsAppTabInCurrentStore() {
+  if (typeof activeStoreId === 'undefined' || !activeStoreId || typeof storeTabs === 'undefined' || !storeTabs[activeStoreId]) return null;
+  return storeTabs[activeStoreId].find(t => {
+    const url = (t.url || '').toLowerCase();
+    const title = (t.title || '').toLowerCase();
+    return url.includes('web.whatsapp.com') || title.includes('whatsapp');
+  }) || null;
+}
+
+// ── SMART CASE CONVERTER ─────────────────────────────────────────────────────
+
+function toTitleCase(str) {
+  return str.replace(/[A-Za-zÀ-ÿ0-9]+/g, (txt) => {
+    if (/^(II|III|IV|VI|VII|VIII|IX|XI|XII|COD|JNE|JNT|SICEPAT|WA|CS|RT|RW|NO|KAV|BLOK|GANG|GG|JL|JLN)$/i.test(txt)) {
+      return txt.toUpperCase();
+    }
+    return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
+  });
+}
+
+function toSentenceCase(str) {
+  return str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+}
+
+function cleanExtraSpaces(str) {
+  return str
+    .split('\n')
+    .map(line => line.replace(/[ \t]+/g, ' ').trim())
+    .filter((line, idx, arr) => line !== '' || (idx > 0 && arr[idx - 1] !== ''))
+    .join('\n')
+    .trim();
+}
+
+function transformCase(mode) {
+  const input = document.getElementById('caseconv-input');
+  if (!input) return;
+  const val = input.value;
+  if (!val.trim()) {
+    if (typeof showToast === 'function') showToast('Ketik atau tempel teks terlebih dahulu!', 'error');
+    return;
+  }
+
+  let result = val;
+  if (mode === 'title') {
+    result = toTitleCase(val);
+  } else if (mode === 'upper') {
+    result = val.toUpperCase();
+  } else if (mode === 'lower') {
+    result = val.toLowerCase();
+  } else if (mode === 'sentence') {
+    result = toSentenceCase(val);
+  } else if (mode === 'clean-spaces') {
+    result = cleanExtraSpaces(val);
+  }
+
+  input.value = result;
+  if (typeof showToast === 'function') showToast('Teks berhasil diformat ✓', 'success');
+}
+
+function openCaseConvModal(initialText = '') {
+  const overlay = document.getElementById('modal-caseconv-overlay');
+  const input = document.getElementById('caseconv-input');
+  if (!overlay) return;
+
+  if (input && initialText) {
+    input.value = initialText;
+  } else if (input && !input.value && typeof currentClipboardValue === 'string') {
+    input.value = currentClipboardValue;
+  }
+  overlay.classList.add('active');
+  setTimeout(() => input?.focus(), 120);
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tool_caseconv_opened');
+  }
+}
+
+function closeCaseConvModal() {
+  document.getElementById('modal-caseconv-overlay')?.classList.remove('active');
+}
+
 // ── CS TOOLKIT FAB & SPEED DIAL MENU ─────────────────────────────────────────
 function toggleToolkitMenu(forceState) {
   const container = document.getElementById('cs-toolkit-fab-container');
@@ -561,23 +471,19 @@ function bindToolkitFab() {
     if (typeof toggleScratchpad === 'function') toggleScratchpad();
   });
 
-  document.getElementById('tool-item-tracking')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (typeof showToast === 'function') {
-      showToast('📦 Fitur Pelacak Resi sedang dalam tahap pengembangan (Segera Hadir)!', 'info');
-    }
-  });
-
-  document.getElementById('tool-item-calc')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (typeof showToast === 'function') {
-      showToast('🧮 Fitur Kalkulator Marketplace sedang dalam tahap pengembangan (Segera Hadir)!', 'info');
-    }
-  });
-
   document.getElementById('tool-item-cnotes')?.addEventListener('click', () => {
     closeToolkitMenu();
     openCustomerNotesModal();
+  });
+
+  document.getElementById('tool-item-walinker')?.addEventListener('click', () => {
+    closeToolkitMenu();
+    openWaLinkerModal();
+  });
+
+  document.getElementById('tool-item-caseconv')?.addEventListener('click', () => {
+    closeToolkitMenu();
+    openCaseConvModal();
   });
 
   document.getElementById('tool-item-feedback')?.addEventListener('click', () => {
@@ -596,49 +502,7 @@ function bindToolsEvents() {
   // Bind Floating CS Toolkit FAB
   bindToolkitFab();
 
-  // 1. Tracking modal trigger & events
-  document.getElementById('btn-tracking-tool')?.addEventListener('click', () => openTrackingModal());
-  document.getElementById('btn-tracking-close')?.addEventListener('click', closeTrackingModal);
-  document.getElementById('btn-do-tracking')?.addEventListener('click', performTrackingCheck);
-  document.getElementById('tracking-resi-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') performTrackingCheck();
-  });
-  document.getElementById('tracking-resi-input')?.addEventListener('input', (e) => {
-    const courierSelect = document.getElementById('tracking-courier-select');
-    if (courierSelect && e.target.value.trim().length >= 4) {
-      courierSelect.value = autoDetectCourier(e.target.value);
-    }
-  });
-
-  // Quick Courier Pills
-  document.querySelectorAll('.btn-pill-courier').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const courierSelect = document.getElementById('tracking-courier-select');
-      if (courierSelect && btn.dataset.courier) {
-        courierSelect.value = btn.dataset.courier;
-        const resiInput = document.getElementById('tracking-resi-input');
-        if (resiInput && resiInput.value.trim()) {
-          performTrackingCheck();
-        }
-      }
-    });
-  });
-
-  // 2. Calculator modal trigger & events
-  document.getElementById('btn-calculator-tool')?.addEventListener('click', openCalculatorModal);
-  document.getElementById('btn-calc-close')?.addEventListener('click', closeCalculatorModal);
-
-  ['calc-base-price', 'calc-disc-percent', 'calc-disc-nominal', 'calc-admin-fee-select', 'calc-custom-fee', 'calc-cost-price', 'calc-subsidy'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', calculateCsFigures);
-    document.getElementById(id)?.addEventListener('change', calculateCsFigures);
-  });
-
-  document.getElementById('calc-admin-fee-select')?.addEventListener('change', (e) => {
-    const customGroup = document.getElementById('calc-custom-fee-group');
-    if (customGroup) customGroup.style.display = e.target.value === 'custom' ? 'block' : 'none';
-  });
-
-  // 3. Customer Notes modal trigger & events
+  // 1. Customer Notes modal trigger & events
   document.getElementById('btn-cnotes-tool')?.addEventListener('click', openCustomerNotesModal);
   document.getElementById('btn-cnotes-close')?.addEventListener('click', closeCustomerNotesModal);
   document.getElementById('cnotes-search-input')?.addEventListener('input', renderCustomerNotesList);
@@ -647,7 +511,7 @@ function bindToolsEvents() {
   document.getElementById('modal-cnote-form-close')?.addEventListener('click', closeAddNoteFormModal);
   document.getElementById('btn-cnote-form-save')?.addEventListener('click', saveCustomerNoteFromForm);
 
-  // Filter Tabs
+  // Filter Tabs Customer Notes
   document.querySelectorAll('.btn-cnotes-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.btn-cnotes-tab').forEach(b => b.classList.remove('active'));
@@ -656,20 +520,141 @@ function bindToolsEvents() {
       renderCustomerNotesList();
     });
   });
+
+  // 2. WhatsApp Linker events
+  document.getElementById('btn-walinker-close')?.addEventListener('click', closeWaLinkerModal);
+  document.getElementById('wa-input-phone')?.addEventListener('input', updateWaLinkPreview);
+  document.getElementById('wa-input-msg')?.addEventListener('input', updateWaLinkPreview);
+  document.getElementById('btn-wa-copy-link')?.addEventListener('click', () => {
+    const linkEl = document.getElementById('wa-link-preview');
+    const url = linkEl?.dataset.url || linkEl?.textContent;
+    if (!url || !url.startsWith('https://wa.me/')) {
+      if (typeof showToast === 'function') showToast('Nomor WhatsApp belum valid!', 'error');
+      return;
+    }
+    if (typeof copyResolvedText === 'function') copyResolvedText(url);
+    else navigator.clipboard.writeText(url);
+    if (typeof showToast === 'function') showToast('Tautan WhatsApp disalin ke clipboard ✓', 'success');
+  });
+
+  document.getElementById('btn-wa-open-tab')?.addEventListener('click', async () => {
+    const linkEl = document.getElementById('wa-link-preview');
+    const url = linkEl?.dataset.url || linkEl?.textContent;
+    if (!url || !url.startsWith('https://wa.me/')) {
+      if (typeof showToast === 'function') showToast('Nomor WhatsApp belum valid!', 'error');
+      return;
+    }
+
+    const phoneInput = document.getElementById('wa-input-phone');
+    const msgInput = document.getElementById('wa-input-msg');
+    const cleanPhone = cleanIndonesianPhone(phoneInput?.value || '');
+    const cleanMsg = encodeURIComponent((msgInput?.value || '').trim());
+    const waWebChatUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}${cleanMsg ? `&text=${cleanMsg}` : ''}`;
+
+    const waStore = findWhatsAppStore();
+    const waTabInCurrent = findWhatsAppTabInCurrentStore();
+
+    // Skenario A: Toko aktif saat ini adalah WhatsApp atau memiliki tab WhatsApp Web
+    const curStore = (typeof stores !== 'undefined' && Array.isArray(stores)) ? stores.find(s => s.id === activeStoreId) : null;
+    const isCurrentStoreWa = curStore && ((curStore.url || '').toLowerCase().includes('web.whatsapp.com') || (curStore.marketplace || '').toLowerCase() === 'whatsapp' || (curStore.name || '').toLowerCase().includes('whatsapp'));
+
+    if (isCurrentStoreWa || waTabInCurrent) {
+      closeWaLinkerModal();
+      if (typeof addTab === 'function' && activeStoreId) {
+        addTab(activeStoreId, waWebChatUrl, 'Chat WhatsApp');
+      }
+      if (typeof showToast === 'function') showToast('Membuka obrolan di WhatsApp Web...', 'success');
+      return;
+    }
+
+    // Skenario B: Pengguna memiliki Toko WhatsApp di toko lain di dashboard
+    if (waStore) {
+      closeWaLinkerModal();
+      if (typeof activateStore === 'function') {
+        activateStore(waStore.id);
+        setTimeout(() => {
+          if (typeof addTab === 'function') {
+            addTab(waStore.id, waWebChatUrl, 'Chat WhatsApp');
+          }
+        }, 150);
+      }
+      if (typeof showToast === 'function') showToast(`Beralih ke "${waStore.name}" & membuka chat WhatsApp...`, 'success');
+      return;
+    }
+
+    // Skenario C (FALLBACK): Belum memiliki toko ataupun tab web.whatsapp.com
+    const confirmed = await showConfirmDialog({
+      title: 'Toko WhatsApp Web Belum Tersedia',
+      message: `Fitur WhatsApp Direct membutuhkan toko atau tab <strong>WhatsApp Web (web.whatsapp.com)</strong> agar sesi login Anda tersimpan aman dan tidak ter-logout.<br><br>Buat <strong>Toko WhatsApp Web</strong> sekarang untuk melanjutkan?`,
+      type: 'warning',
+      icon: '💬',
+      confirmText: '+ Buat Toko WhatsApp',
+      cancelText: 'Batal',
+      confirmBtnClass: 'btn-primary'
+    });
+
+    if (confirmed) {
+      closeWaLinkerModal();
+      if (typeof openAddModal === 'function') {
+        openAddModal();
+        setTimeout(() => {
+          const customOpt = document.querySelector('.mp-option[data-value="custom"]');
+          customOpt?.click();
+          const nameInput = document.getElementById('store-name');
+          const initialsInput = document.getElementById('store-initials');
+          const urlInput = document.getElementById('store-url');
+          const colorInput = document.getElementById('store-color');
+          if (nameInput) nameInput.value = 'WhatsApp Web';
+          if (initialsInput) initialsInput.value = 'WA';
+          if (urlInput) urlInput.value = 'https://web.whatsapp.com/';
+          if (colorInput) colorInput.value = '#25d366';
+          if (typeof updateUrlPreview === 'function') updateUrlPreview();
+        }, 120);
+      }
+    }
+  });
+
+  // 3. Smart Case Converter events
+  document.getElementById('btn-caseconv-close')?.addEventListener('click', closeCaseConvModal);
+  document.querySelectorAll('.btn-case-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      transformCase(btn.dataset.mode);
+    });
+  });
+  document.getElementById('btn-caseconv-copy')?.addEventListener('click', () => {
+    const input = document.getElementById('caseconv-input');
+    const val = input?.value || '';
+    if (!val.trim()) {
+      if (typeof showToast === 'function') showToast('Teks masih kosong!', 'error');
+      return;
+    }
+    if (typeof copyResolvedText === 'function') copyResolvedText(val);
+    else navigator.clipboard.writeText(val);
+    if (typeof showToast === 'function') showToast('Hasil teks disalin ke clipboard ✓', 'success');
+  });
+  document.getElementById('btn-caseconv-insert-chat')?.addEventListener('click', () => {
+    const input = document.getElementById('caseconv-input');
+    const val = input?.value || '';
+    if (!val.trim()) {
+      if (typeof showToast === 'function') showToast('Teks masih kosong!', 'error');
+      return;
+    }
+    insertTextToActiveChat(val);
+    closeCaseConvModal();
+  });
 }
 
 // Expose globals
-window.openTrackingModal          = openTrackingModal;
-window.closeTrackingModal         = closeTrackingModal;
-window.performTrackingCheck       = performTrackingCheck;
-window.insertTrackingToActiveChat = insertTrackingToActiveChat;
-window.copyTrackingText           = copyTrackingText;
-window.openCalculatorModal        = openCalculatorModal;
-window.closeCalculatorModal       = closeCalculatorModal;
+window.insertTextToActiveChat     = insertTextToActiveChat;
 window.openCustomerNotesModal     = openCustomerNotesModal;
 window.closeCustomerNotesModal    = closeCustomerNotesModal;
 window.openEditNoteModal          = openEditNoteModal;
 window.deleteCustomerNote         = deleteCustomerNote;
+window.openWaLinkerModal          = openWaLinkerModal;
+window.closeWaLinkerModal         = closeWaLinkerModal;
+window.openCaseConvModal          = openCaseConvModal;
+window.closeCaseConvModal         = closeCaseConvModal;
+window.transformCase              = transformCase;
 window.toggleToolkitMenu          = toggleToolkitMenu;
 window.closeToolkitMenu           = closeToolkitMenu;
 window.bindToolsEvents            = bindToolsEvents;

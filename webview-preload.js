@@ -167,6 +167,7 @@ function isEditable(el) {
   if (el.tagName === 'TEXTAREA') return true;
   if (el.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'submit', 'button', 'color', 'hidden'].includes(el.type)) return true;
   if (el.isContentEditable) return true;
+  if (el.getAttribute && el.getAttribute('contenteditable') === 'true') return true;
   if (el.closest && el.closest('[contenteditable="true"]')) return true;
   return false;
 }
@@ -178,20 +179,42 @@ function findChatInput() {
   }
 
   const selectors = [
+    // Shopee
     '.chat-input-textarea',
     '.chat-input [contenteditable="true"]',
+    '.shopee-react-chat-input',
+    '[class*="chat-input"] textarea',
+    '[class*="chat-input"] [contenteditable="true"]',
+    // Tokopedia
+    '[data-testid*="chat-input"]',
+    '[data-testid="input-chat"]',
+    '.css-chat-input',
+    // WhatsApp Web
+    'footer div[contenteditable="true"]',
+    'div[data-tab="10"]',
+    'div[title*="pesan" i]',
+    'div[title*="message" i]',
+    // Lazada
+    '.chat-editor [contenteditable="true"]',
+    '.next-input textarea',
+    // TikTok Shop
+    'div[data-slate-editor="true"]',
+    '.chat-input-box textarea',
+    // General fallback
     '[contenteditable="true"]',
     'textarea',
     'input[type="text"]',
     'input[type="search"]'
   ];
   for (const s of selectors) {
-    const list = document.querySelectorAll(s);
-    for (const el of list) {
-      if (el.offsetParent !== null && !el.disabled && !el.readOnly) {
-        return el;
+    try {
+      const list = document.querySelectorAll(s);
+      for (const el of list) {
+        if (el.offsetParent !== null && !el.disabled && !el.readOnly) {
+          return el;
+        }
       }
-    }
+    } catch (e) {}
   }
   return null;
 }
@@ -750,20 +773,63 @@ function selectInlineTemplate(index) {
   closeInlineSmartQuickReply();
 }
 
+function setNativeValue(element, value) {
+  try {
+    const valueSetter = Object.getOwnPropertyDescriptor(element, 'value')?.set;
+    const prototype = Object.getPrototypeOf(element);
+    const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+    if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+      prototypeValueSetter.call(element, value);
+    } else if (valueSetter) {
+      valueSetter.call(element, value);
+    } else {
+      element.value = value;
+    }
+    if (element._valueTracker) {
+      element._valueTracker.setValue(value);
+    }
+  } catch (e) {
+    element.value = value;
+  }
+}
+
 function insertTextIntoTarget(target, text, replaceQuery = '') {
   if (!target || !text) return;
   target.focus();
 
-  if (target.isContentEditable) {
+  if (target.isContentEditable || (target.getAttribute && target.getAttribute('contenteditable') === 'true')) {
     target.focus();
     if (replaceQuery && target.innerText && target.innerText.endsWith(replaceQuery)) {
       for (let i = 0; i < replaceQuery.length; i++) {
-        document.execCommand('delete', false, null);
+        try { document.execCommand('delete', false, null); } catch (e) {}
       }
     }
-    document.execCommand('insertText', false, text);
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-    target.dispatchEvent(new Event('change', { bubbles: true }));
+    let inserted = false;
+    try {
+      inserted = document.execCommand('insertText', false, text);
+    } catch (e) {}
+
+    if (!inserted) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        target.textContent += text;
+      }
+    }
+
+    try {
+      target.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, cancelable: true }));
+      target.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
+      target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    } catch (e) {}
   } else if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
     target.focus();
     const val = target.value || '';
@@ -774,10 +840,18 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
       start -= replaceQuery.length;
     }
 
-    target.value = val.substring(0, start) + text + val.substring(end);
+    const newVal = val.substring(0, start) + text + val.substring(end);
+    setNativeValue(target, newVal);
     target.selectionStart = target.selectionEnd = start + text.length;
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-    target.dispatchEvent(new Event('change', { bubbles: true }));
+
+    try {
+      target.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, cancelable: true }));
+      target.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
+      target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    } catch (e) {
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   }
 }
 

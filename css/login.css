@@ -17,9 +17,30 @@
   border-radius: var(--modal-radius, 16px);
   width: 100%;
   max-width: 420px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
   padding: 32px;
   box-shadow: var(--shadow-lg);
   animation: slideUpFade 0.4s ease-out forwards;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.login-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.login-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.login-container::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 99px;
+}
+
+.login-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .login-header {
@@ -68,6 +89,282 @@
 .login-body input[type="password"]:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(223, 22, 131, 0.15);
+}
+
+/* Password Field with Eye Toggle */
+.pwd-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pwd-input-group input {
+  padding-right: 38px !important;
+}
+
+.btn-toggle-pwd {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-toggle-pwd:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* Login Visual User Selector */
+.user-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 2px 4px 6px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+  scroll-behavior: smooth;
+}
+
+.user-selector-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.user-selector-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-selector-grid::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 99px;
+}
+
+.user-selector-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.user-selector-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  user-select: none;
+}
+
+.user-selector-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.user-selector-card.selected {
+  border-color: var(--accent-primary);
+  background: rgba(223, 22, 131, 0.12);
+  box-shadow: 0 0 14px rgba(223, 22, 131, 0.25);
+}
+
+.user-selector-card.is-superadmin {
+  border-color: rgba(225, 29, 72, 0.35);
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.08), rgba(245, 158, 11, 0.05));
+}
+
+.user-selector-card.is-superadmin.selected {
+  border-color: #e11d48;
+  box-shadow: 0 0 16px rgba(225, 29, 72, 0.35);
+}
+
+.user-selector-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.user-selector-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.user-selector-role {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Single User Display Card on Login */
+.user-single-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 6px;
+  transition: all var(--transition-fast);
+}
+
+.user-single-card.is-superadmin {
+  border-color: rgba(225, 29, 72, 0.4);
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.1), rgba(245, 158, 11, 0.06));
+}
+
+.user-single-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.user-single-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.user-single-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-single-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-single-username {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Avatar Customizer (Picker for Register & Settings) */
+.avatar-customizer-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.avatar-preview-box {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--border-hover);
+  transition: all 0.2s ease;
+}
+
+.avatar-picker-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.color-swatch-list, .icon-swatch-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.color-swatch-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.color-swatch-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch-btn.active {
+  border-color: white;
+  box-shadow: 0 0 0 2px var(--accent-primary);
+  transform: scale(1.15);
+}
+
+.icon-swatch-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-swatch-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.icon-swatch-btn.active {
+  background: rgba(223, 22, 131, 0.15);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(223, 22, 131, 0.2);
 }
 
 .login-actions {

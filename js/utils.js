@@ -270,3 +270,96 @@ function showConfirmDialog(options = {}) {
 }
 
 window.showConfirmDialog = showConfirmDialog;
+
+/**
+ * Modern Custom Prompt Dialog (for PIN/Input verification)
+ */
+function showPromptDialog(options = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-modal-overlay');
+    if (!overlay) {
+      resolve(window.prompt(options.message || 'Masukkan PIN:'));
+      return;
+    }
+
+    const titleEl = document.getElementById('confirm-modal-title');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const iconEl = document.getElementById('confirm-modal-icon');
+    const btnCancel = document.getElementById('btn-confirm-cancel');
+    const btnConfirm = document.getElementById('btn-confirm-ok');
+    const inputGroup = document.getElementById('confirm-modal-input-group');
+    const inputField = document.getElementById('confirm-modal-input');
+    const inputHint = document.getElementById('confirm-modal-input-hint');
+
+    const type = options.type || 'critical';
+    if (titleEl) titleEl.textContent = options.title || 'Verifikasi PIN';
+    if (msgEl) {
+      const msg = options.message || '';
+      msgEl.innerHTML = msg.includes('<') ? msg : escapeHtml(msg).replace(/\n/g, '<br>');
+    }
+    if (iconEl) {
+      iconEl.className = `confirm-icon-box type-${type}`;
+      iconEl.innerHTML = options.icon || '🔐';
+    }
+
+    if (btnCancel) btnCancel.textContent = options.cancelText || 'Batal';
+    if (btnConfirm) {
+      btnConfirm.textContent = options.confirmText || 'Konfirmasi';
+      btnConfirm.className = options.confirmBtnClass || 'btn-danger';
+    }
+
+    if (inputGroup && inputField) {
+      inputGroup.style.display = 'flex';
+      inputField.value = '';
+      inputField.type = options.inputType || 'password';
+      inputField.placeholder = options.placeholder || 'Masukkan PIN Anda';
+      if (inputHint) {
+        inputHint.innerHTML = options.hint || 'Ketik PIN Anda untuk verifikasi:';
+      }
+      btnConfirm.disabled = true;
+      btnConfirm.style.opacity = '0.4';
+
+      inputField.oninput = () => {
+        const val = inputField.value.trim();
+        btnConfirm.disabled = val.length === 0;
+        btnConfirm.style.opacity = val.length > 0 ? '1' : '0.4';
+      };
+    }
+
+    let isHandled = false;
+    const cleanup = (val) => {
+      if (isHandled) return;
+      isHandled = true;
+      overlay.classList.remove('active');
+      document.removeEventListener('keydown', onKeyDown);
+      btnCancel.onclick = null;
+      btnConfirm.onclick = null;
+      overlay.onclick = null;
+      if (inputField) {
+        inputField.type = 'text';
+        inputField.oninput = null;
+      }
+      resolve(val);
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        cleanup(null);
+      } else if (e.key === 'Enter') {
+        if (!btnConfirm.disabled && inputField) {
+          cleanup(inputField.value);
+        }
+      }
+    };
+
+    btnCancel.onclick = (e) => { e.preventDefault(); cleanup(null); };
+    btnConfirm.onclick = (e) => { e.preventDefault(); if (inputField && !btnConfirm.disabled) cleanup(inputField.value); };
+    overlay.onclick = (e) => { if (e.target === overlay) cleanup(null); };
+
+    document.addEventListener('keydown', onKeyDown);
+    overlay.classList.add('active');
+    setTimeout(() => { if (inputField) inputField.focus(); }, 120);
+  });
+}
+
+window.showPromptDialog = showPromptDialog;

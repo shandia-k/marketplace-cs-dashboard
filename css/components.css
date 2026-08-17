@@ -246,7 +246,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
-  border: 1.5px solid var(--bg-sidebar, #1e1e24);
+  border: 1.5px solid var(--bg-secondary);
 }
 
 
@@ -396,7 +396,7 @@
 .cs-toolkit-item:hover {
   background: var(--bg-hover);
   border-color: var(--border-color);
-  transform: translateX(-2px);
+  transform: translateY(-1px);
 }
 
 .cs-toolkit-item-icon {
@@ -743,30 +743,47 @@
 
 .scratchpad-footer {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-top: 1px solid var(--border-color);
   background: var(--bg-tertiary);
+  flex-wrap: wrap;
 }
+
+.scratchpad-footer-left,
+.scratchpad-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.scratchpad-footer-right {
+  justify-content: flex-end;
+}
+
 .btn-sp-action {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 7px;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   font-family: 'Outfit', sans-serif;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 .btn-sp-action svg {
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 .btn-sp-action:hover {
   background: var(--bg-hover);
@@ -1432,7 +1449,7 @@ body:has(.modal-overlay.active) .cs-toolkit-fab-container,
 }
 
 /* ==========================================================================
-   CS TOOLKIT: CEK RESI, KALKULATOR, CATATAN PELANGGAN
+   CS TOOLKIT: CATATAN PELANGGAN
    ========================================================================== */
 
 .modal-tool {
@@ -1440,202 +1457,7 @@ body:has(.modal-overlay.active) .cs-toolkit-fab-container,
   max-width: 95vw;
 }
 
-/* 1. Logistics Tracker (Cek Resi) */
-.tracking-summary-card {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius, 12px);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.tracking-summary-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.tracking-courier-pill {
-  font-size: 11px;
-  font-weight: 600;
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.12);
-  padding: 2px 8px;
-  border-radius: 99px;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  display: inline-block;
-  margin-bottom: 4px;
-}
-
-.tracking-resi-num {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
-.tracking-status-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 99px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.tracking-status-badge.in-transit {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.tracking-status-badge.delivered {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.tracking-last-update {
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
-
-.tracking-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: relative;
-  padding-left: 20px;
-  border-left: 2px solid var(--border-color);
-  margin: 4px 0 4px 6px;
-}
-
-.timeline-item {
-  position: relative;
-}
-
-.timeline-dot {
-  position: absolute;
-  left: -26px;
-  top: 3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--bg-tertiary);
-  border: 2px solid var(--text-muted);
-}
-
-.timeline-item.current .timeline-dot {
-  background: #3b82f6;
-  border-color: #93c5fd;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-}
-
-.timeline-time {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.timeline-desc {
-  font-size: 12.5px;
-  color: var(--text-primary);
-  margin: 2px 0 0;
-  line-height: 1.4;
-}
-
-.tracking-card-actions {
-  display: flex;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
-}
-
-.courier-quick-pills {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-
-.btn-pill-courier {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-pill-courier:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-hover);
-  color: var(--text-primary);
-}
-
-/* 2. Kalkulator CS Grid */
-.calc-grid-layout {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 18px;
-}
-
-@media (max-width: 600px) {
-  .calc-grid-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.calc-results-pane {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius, 12px);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.calc-results-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.calc-result-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  padding: 6px 0;
-  color: var(--text-secondary);
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.calc-result-row.main {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.calc-result-row.highlight {
-  font-size: 14px;
-  padding: 10px 0 4px;
-  border-bottom: none;
-}
-
-/* 3. Catatan Pelanggan (Customer Notes) */
+/* Catatan Pelanggan (Customer Notes) */
 .cnotes-filter-tabs {
   display: flex;
   gap: 6px;
@@ -1785,6 +1607,8 @@ body:has(.modal-overlay.active) .cs-toolkit-fab-container,
   right: 22px !important;
   left: auto !important;
   transform: rotate(45deg) !important;
+  border-left-color: #f59e0b !important;
+  border-top-color: #f59e0b !important;
 }
 
 .clip-history-flyout {
@@ -2009,6 +1833,49 @@ body:has(.modal-overlay.active) .cs-toolkit-fab-container,
 .qr-hist-row.active {
   background: rgba(245, 158, 11, 0.15);
   border-left: 2px solid #f59e0b;
+}
+
+/* ==============
+   CS TOOLKIT: WHATSAPP LINKER & CASE CONVERTER
+   ============================================= */
+.btn-case-action {
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-case-action:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-primary, #DF1683);
+  color: var(--accent-primary, #DF1683);
+}
+
+.switch-toggle input:checked + .switch-slider {
+  background-color: #10b981 !important;
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .25s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.switch-toggle input:checked + .switch-slider:before {
+  transform: translateX(20px);
 }
 
 

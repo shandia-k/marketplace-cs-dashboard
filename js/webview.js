@@ -307,9 +307,12 @@ function createWebview(store, tab) {
     if (tabEntry?.zoom && tabEntry.zoom !== 1.0) {
       wv.setZoomFactor(tabEntry.zoom);
     }
-    // Update back/forward button states
+    // Update back/forward button states & Address Bar
     if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
       updateNavButtonStates();
+      if (typeof updateAddressBarUrl === 'function' && typeof wv.getURL === 'function') {
+        try { updateAddressBarUrl(wv.getURL()); } catch (err) {}
+      }
     }
 
     // Sync templates, theme, clipboard, dan history ke webview
@@ -325,18 +328,28 @@ function createWebview(store, tab) {
     });
   });
 
-  // Update nav state saat navigasi dalam halaman (SPA routing)
-  wv.addEventListener('did-navigate', () => {
-    if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
-      updateNavButtonStates();
+  // Update nav state & sinkronisasi tab.url saat navigasi dalam halaman (SPA routing & hard wakeup resilience)
+  const handleNavChange = (e) => {
+    let currentUrl = e?.url;
+    if (!currentUrl && typeof wv.getURL === 'function') {
+      try { currentUrl = wv.getURL(); } catch (err) {}
     }
-  });
+    if (currentUrl && currentUrl !== 'about:blank') {
+      const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
+      if (tabEntry) {
+        tabEntry.url = currentUrl;
+      }
+      if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
+        updateNavButtonStates();
+        if (typeof updateAddressBarUrl === 'function') {
+          updateAddressBarUrl(currentUrl);
+        }
+      }
+    }
+  };
 
-  wv.addEventListener('did-navigate-in-page', () => {
-    if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
-      updateNavButtonStates();
-    }
-  });
+  wv.addEventListener('did-navigate', handleNavChange);
+  wv.addEventListener('did-navigate-in-page', handleNavChange);
 
   wv.addEventListener('did-fail-load', e => {
     if (e.errorCode !== -3) {
@@ -347,7 +360,7 @@ function createWebview(store, tab) {
         <p style="color:#fca5a5">Gagal memuat halaman.<br>
         <small style="color:#64748b">${escapeHtml(e.errorDescription || 'Periksa koneksi internet.')}</small></p>
         <button onclick="document.querySelector('webview[partition=\\'${actualPartition}\\']').reload()" 
-          style="margin-top:8px;padding:8px 16px;background:#DF1683;border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;font-family:'Nexa', sans-serif;">
+          style="margin-top:8px;padding:8px 16px;background:var(--accent-primary, #DF1683);border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;font-family:'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:500;">
           Muat Ulang
         </button>`;
     }
@@ -364,6 +377,11 @@ let pingInterval = null;
 
 function runNextBackgroundPing() {
   if (isPingRunning) return;
+
+  // Proteksi RAM Guard: Jangan jalankan background ping jika pemakaian RAM mendekati batas
+  if (typeof ramUsageMB === 'number' && ramUsageMB > 1200) {
+    return;
+  }
 
   // Kumpulkan tab yang saat ini sedang di-hard hibernate
   if (pingQueue.length === 0) {
@@ -402,11 +420,16 @@ function runNextBackgroundPing() {
 
   let unreadDetected = 0;
   let hasCleanedUp = false;
+  let pingTimeout = null;
 
   const cleanupPing = (keepAlive = false) => {
     if (hasCleanedUp) return;
     hasCleanedUp = true;
     isPingRunning = false;
+    if (pingTimeout) {
+      clearTimeout(pingTimeout);
+      pingTimeout = null;
+    }
 
     // Jika tab sudah dibuka/diaktifkan secara manual oleh user saat ping berjalan
     const currentEntry = webviewMap[tab.id];
@@ -476,7 +499,7 @@ function runNextBackgroundPing() {
   });
 
   // Timeout maksimal 12 detik per ping
-  const pingTimeout = setTimeout(() => {
+  pingTimeout = setTimeout(() => {
     cleanupPing(false);
   }, 12000);
 
@@ -484,14 +507,12 @@ function runNextBackgroundPing() {
     // Beri waktu 3.5 detik setelah load untuk mendeteksi chat badge/title
     setTimeout(() => {
       if (unreadDetected === 0) {
-        clearTimeout(pingTimeout);
         cleanupPing(false);
       }
     }, 3500);
   });
 
   pingWv.addEventListener('did-fail-load', () => {
-    clearTimeout(pingTimeout);
     cleanupPing(false);
   });
 

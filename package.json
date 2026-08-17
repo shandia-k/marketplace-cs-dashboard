@@ -1,11 +1,12 @@
 {
   "name": "marketplace-cs-dashboard",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Dashboard CS Multi-Marketplace - Kelola semua akun chat marketplace dalam 1 jendela",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder --win --x64"
+    "start": "node scripts/validate-version.js && electron .",
+    "validate": "node scripts/validate-version.js",
+    "build": "node scripts/validate-version.js && electron-builder --win --x64"
   },
   "keywords": [
     "marketplace",

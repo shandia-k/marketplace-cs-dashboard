@@ -7,6 +7,25 @@ const docx = require('docx');
 const { autoUpdater } = require('electron-updater');
 const crypto = require('crypto');
 
+// ── Release Guard Validation ────────────────────────────────────────────────
+// Memastikan changelog versi di package.json sudah tersedia di js/versions-registry.js sebelum startup
+try {
+  const versionsRegistry = require('./js/versions-registry.js');
+  const pkg = require('./package.json');
+  versionsRegistry.validateVersion(pkg.version);
+} catch (err) {
+  console.error('\x1b[31m%s\x1b[0m', err.message);
+  app.whenReady().then(() => {
+    dialog.showErrorBox(
+      '🚨 Release Guard: Changelog Belum Didaftarkan!',
+      `Nomor versi di package.json belum memiliki catatan changelog di js/versions-registry.js!\n\n` +
+      `Detail Error:\n${err.message}\n\n` +
+      `Silakan tambahkan changelog versi terkait sebelum merilis atau menjalankan aplikasi.`
+    );
+    app.quit();
+  });
+}
+
 // ── Chromium Memory & Performance Switches ──────────────────────────────────
 // Berikan headroom V8 heap hingga 1024 MB agar sinkronisasi chat besar (WA/Shopee) tidak memicu GC thrashing
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024');
@@ -43,69 +62,242 @@ const defaultStores = [
   }
 ];
 
+function atomicWriteJsonSync(filePath, data) {
+  const tmpPath = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 6)}.tmp`;
+  const bakPath = `${filePath}.bak`;
+  try {
+    const jsonStr = JSON.stringify(data, null, 2);
+    fs.writeFileSync(tmpPath, jsonStr, 'utf8');
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.copyFileSync(filePath, bakPath);
+      } catch (e) {}
+    }
+    fs.renameSync(tmpPath, filePath);
+    return true;
+  } catch (err) {
+    console.error(`Atomic write failed for ${filePath}:`, err);
+    try {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    } catch (e) {}
+    return false;
+  }
+}
+
 function getStoresFilePath(username) {
   const safeUsername = username ? String(username).trim().replace(/[/\\?%*:|"<>]/g, '_') : '';
   const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
   return path.join(userDataPath, fileName);
 }
 
-// Baca stores dari file JSON
+// Baca stores dari file JSON dengan fallback ke backup
 function readStores(username) {
   const filePath = getStoresFilePath(username);
+  const bakPath = `${filePath}.bak`;
   try {
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
       return JSON.parse(data);
     }
   } catch (err) {
-    console.error('Error reading stores:', err);
+    console.error('Error reading stores, trying backup:', err);
+    try {
+      if (fs.existsSync(bakPath)) {
+        const bakData = fs.readFileSync(bakPath, 'utf8');
+        return JSON.parse(bakData);
+      }
+    } catch (bakErr) {
+      console.error('Error reading stores backup:', bakErr);
+    }
   }
-  // Buat file default jika belum ada (aman dalam try-catch)
+  // Buat file default jika belum ada (aman dengan atomic write)
   try {
-    fs.writeFileSync(filePath, JSON.stringify(defaultStores, null, 2));
+    atomicWriteJsonSync(filePath, defaultStores);
   } catch (err) {
     console.error('Error creating default stores file:', err);
   }
   return defaultStores;
 }
 
-// Simpan stores ke file JSON
+// Simpan stores ke file JSON dengan atomic write
 function saveStores(stores, username) {
   const filePath = getStoresFilePath(username);
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(stores, null, 2));
-    return true;
-  } catch (err) {
-    console.error('Error saving stores:', err);
-    return false;
-  }
+  return atomicWriteJsonSync(filePath, stores);
 }
 
-// ── Logika Users ─────────────────────────────────────────────────────────────
+// ── Logika Users & Autentikasi Kriptografi Aman ─────────────────────────────
+const ROLE_INTEGRITY_SALT = 'cs_marketplace_role_hmac_secret_v2_99a8b7c6';
+
+function computeRoleSig(username, role, passwordSalt) {
+  const cleanUser = String(username || '').toLowerCase().trim();
+  const cleanRole = String(role || '').trim();
+  const cleanSalt = String(passwordSalt || '');
+  return crypto.createHmac('sha256', ROLE_INTEGRITY_SALT).update(`${cleanUser}:${cleanRole}:${cleanSalt}`, 'utf8').digest('hex');
+}
+
+function verifyUserRoleSig(u) {
+  if (!u || typeof u !== 'object') return false;
+  if (!u.roleSig) return false;
+  const expected = computeRoleSig(u.username, u.role, u.passwordSalt);
+  return u.roleSig === expected;
+}
+
+function isUserSuperAdmin(user) {
+  if (!user || typeof user !== 'object') return false;
+  if (String(user.username || '').toLowerCase() === 'superadmin') return true;
+  return user.role === 'Super Admin' && user.isSuperAdmin === true;
+}
+
 function readUsers() {
+  let users = [];
+  const bakPath = `${usersFilePath}.bak`;
+
   try {
     if (fs.existsSync(usersFilePath)) {
       const data = fs.readFileSync(usersFilePath, 'utf8');
-      return JSON.parse(data);
+      users = JSON.parse(data);
     }
   } catch (err) {
-    console.error('Error reading users:', err);
+    console.error('Error reading users, trying backup:', err);
+    try {
+      if (fs.existsSync(bakPath)) {
+        const bakData = fs.readFileSync(bakPath, 'utf8');
+        users = JSON.parse(bakData);
+      }
+    } catch (bakErr) {
+      console.error('Error reading users backup:', bakErr);
+    }
+    users = [];
   }
-  return [];
+
+  if (!Array.isArray(users)) users = [];
+
+  let needsResave = false;
+
+  // 1. Validasi & Sanitasi Setiap Akun Berdasarkan Cryptographic Role Signature
+  users = users.map((u, index) => {
+    if (!u || typeof u !== 'object') return u;
+
+    const isFirstUser = index === 0;
+    const isHardcodedSA = String(u.username || '').toLowerCase() === 'superadmin';
+
+    // Kasus migrasi dari versi lama (belum punya roleSig)
+    if (!u.roleSig) {
+      const isSA = isFirstUser || u.role === 'Super Admin' || u.isSuperAdmin === true || isHardcodedSA;
+      u.role = isSA ? 'Super Admin' : (u.role || 'Customer Service');
+      u.isSuperAdmin = isSA;
+      u.roleSig = computeRoleSig(u.username, u.role, u.passwordSalt);
+      needsResave = true;
+    } else {
+      // Verifikasi apakah role di users.json sesuai dengan signature yang sah
+      const isValidRole = verifyUserRoleSig(u);
+      if (!isValidRole) {
+        // Tampering detected khusus pada user ini (misal user CS diedit jadi Super Admin lewat Notepad)
+        console.warn(`[Security Alert] Unauthorized role tampering detected on user "${u.username}". Reverting to Customer Service.`);
+        u.role = 'Customer Service';
+        u.isSuperAdmin = false;
+        u.roleSig = computeRoleSig(u.username, 'Customer Service', u.passwordSalt);
+        needsResave = true;
+      } else {
+        u.isSuperAdmin = (u.role === 'Super Admin') || isHardcodedSA;
+      }
+    }
+
+    if (u.isSuperAdmin) {
+      u.role = 'Super Admin';
+      if (!u.avatarIcon || u.avatarIcon === '👩‍💼') u.avatarIcon = '👑';
+      if (!u.avatarColor || u.avatarColor === '#df1683') u.avatarColor = '#e11d48';
+    } else {
+      u.role = 'Customer Service';
+      if (!u.avatarIcon || u.avatarIcon === '👑') u.avatarIcon = '👩‍💼';
+      if (!u.avatarColor || u.avatarColor === '#e11d48') u.avatarColor = '#df1683';
+    }
+
+    return u;
+  });
+
+  // 2. Safety Net Kritis: Pastikan SELALU ada minimal 1 Super Admin di sistem (akun pendiri/pertama)
+  const hasSuperAdmin = users.some(u => isUserSuperAdmin(u));
+  if (!hasSuperAdmin && users.length > 0) {
+    console.warn('[Security Notice] No active Super Admin found. Preserving/Promoting primary founder account to Super Admin.');
+    users[0].role = 'Super Admin';
+    users[0].isSuperAdmin = true;
+    users[0].avatarIcon = '👑';
+    users[0].avatarColor = '#e11d48';
+    users[0].roleSig = computeRoleSig(users[0].username, 'Super Admin', users[0].passwordSalt);
+    needsResave = true;
+  }
+
+  if (needsResave) {
+    try {
+      saveUsers(users);
+    } catch (e) {}
+  }
+
+  return users;
 }
 
 function saveUsers(users) {
+  if (!Array.isArray(users)) users = [];
+  const sanitized = users.map(u => {
+    const isSA = (u.role === 'Super Admin') || String(u.username || '').toLowerCase() === 'superadmin';
+    u.role = isSA ? 'Super Admin' : 'Customer Service';
+    u.isSuperAdmin = isSA;
+    u.roleSig = computeRoleSig(u.username, u.role, u.passwordSalt);
+    return u;
+  });
+  return atomicWriteJsonSync(usersFilePath, sanitized);
+}
+
+function generateSalt() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+function hashPassword(password, salt) {
+  if (!password) return '';
+  if (!salt) {
+    // Legacy unsalted SHA-256 fallback
+    return crypto.createHash('sha256').update(password).digest('hex');
+  }
+  return crypto.scryptSync(password, salt, 32).toString('hex');
+}
+
+function verifyPassword(password, storedHash, storedSalt) {
+  if (!password || !storedHash) return false;
   try {
-    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-    return true;
-  } catch (err) {
-    console.error('Error saving users:', err);
+    if (storedSalt) {
+      const computed = hashPassword(password, storedSalt);
+      return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(storedHash, 'hex'));
+    }
+    // Fallback for legacy unsalted SHA-256
+    const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
+    if (legacyHash.length === storedHash.length) {
+      return crypto.timingSafeEqual(Buffer.from(legacyHash, 'hex'), Buffer.from(storedHash, 'hex'));
+    }
+    return legacyHash === storedHash;
+  } catch (e) {
     return false;
   }
 }
 
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+function safeDeletePartitionDisk(part) {
+  try {
+    if (!part || typeof part !== 'string') return;
+    const rawName = part.replace(/^persist:/, '');
+    const safeFolderName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    if (!safeFolderName) return;
+
+    const partitionsBaseDir = path.join(app.getPath('userData'), 'Partitions');
+    const targetDir = path.join(partitionsBaseDir, safeFolderName);
+
+    // Pastikan targetDir benar-benar berada di dalam partitionsBaseDir (Anti Path-Traversal)
+    const relative = path.relative(partitionsBaseDir, targetDir);
+    if (!relative.startsWith('..') && !path.isAbsolute(relative) && fs.existsSync(targetDir)) {
+      fs.rmSync(targetDir, { recursive: true, force: true });
+    }
+  } catch (e) {
+    console.error('Error safe deleting partition disk:', e);
+  }
 }
 
 let mainWindow;
@@ -131,12 +323,12 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  // Izinkan webview menggunakan berbagai fitur yang dibutuhkan marketplace
+  // Content-Security-Policy yang aman dan ketat untuk aplikasi desktop (tanpa unsafe-eval)
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' 'unsafe-eval' *"]
+        'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' https: http: data:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"]
       }
     });
   });
@@ -146,12 +338,22 @@ function createWindow() {
   });
 }
 
+// ── Sesi Aktif & Rate-Limiting Keamanan ──────────────────────────────────────
+let currentActiveSession = null;
+const failedResetAttempts = new Map(); // username -> { count: number, lockedUntil: timestamp }
+
 // IPC Handlers
 ipcMain.handle('get-stores', (event, username) => {
   return readStores(username);
 });
 
 ipcMain.handle('save-stores', (event, stores, username) => {
+  const cleanUsername = String(username || '').trim();
+  // Proteksi IDOR: CS hanya boleh menyimpan file toko miliknya sendiri (atau Super Admin)
+  if (currentActiveSession && !currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
+    console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession.username}" for user "${cleanUsername}"`);
+    return false;
+  }
   return saveStores(stores, username);
 });
 
@@ -159,23 +361,529 @@ ipcMain.handle('save-stores', (event, stores, username) => {
 // IPC Users
 ipcMain.handle('get-users', () => {
   const users = readUsers();
-  return users.map(u => ({ username: u.username }));
+  return users.map(u => {
+    const isSA = isUserSuperAdmin(u);
+    return {
+      username: u.username,
+      displayName: u.displayName || u.username,
+      role: isSA ? 'Super Admin' : 'Customer Service',
+      isSuperAdmin: isSA,
+      avatarColor: u.avatarColor || (isSA ? '#e11d48' : '#df1683'),
+      avatarIcon: u.avatarIcon || (isSA ? '👑' : '👩‍💼'),
+      createdAt: u.createdAt || null
+    };
+  });
 });
 
-ipcMain.handle('create-user', (event, { username, password, securityQuestion, securityAnswer }) => {
+ipcMain.handle('get-user-profile', (event, username) => {
   const users = readUsers();
-  if (users.find(u => u.username === username)) {
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  const isSA = isUserSuperAdmin(user);
+  return {
+    success: true,
+    user: {
+      username: user.username,
+      displayName: user.displayName || user.username,
+      role: isSA ? 'Super Admin' : 'Customer Service',
+      isSuperAdmin: isSA,
+      avatarColor: user.avatarColor || (isSA ? '#e11d48' : '#df1683'),
+      avatarIcon: user.avatarIcon || (isSA ? '👑' : '👩‍💼'),
+      autoLockMinutes: user.autoLockMinutes || 0,
+      hasSecurityQuestion: !!user.securityQuestion,
+      securityQuestion: user.securityQuestion || null,
+      createdAt: user.createdAt || null
+    }
+  };
+});
+
+ipcMain.handle('create-user', (event, { username, password, displayName, role, avatarColor, avatarIcon, securityQuestion, securityAnswer, adminApprovalPin }) => {
+  const users = readUsers();
+  const cleanUsername = String(username || '').trim();
+  if (!cleanUsername) return { success: false, error: 'Username tidak boleh kosong' };
+  if (users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase())) {
     return { success: false, error: 'Username sudah digunakan' };
   }
+
+  const isFirstUser = users.length === 0;
+  const isSuperAdminRequested = role === 'Super Admin' || cleanUsername.toLowerCase() === 'superadmin';
+
+  if (isSuperAdminRequested && !isFirstUser) {
+    // Validasi bahwa PIN otorisasi dari Super Admin yang ada sudah benar
+    const superAdmins = users.filter(u => isUserSuperAdmin(u));
+    const isApproved = superAdmins.some(sa => verifyPassword(adminApprovalPin, sa.passwordHash, sa.passwordSalt));
+    if (!isApproved) {
+      return { success: false, error: 'PIN Otorisasi Super Admin salah atau tidak valid untuk membuat akun Super Admin baru.' };
+    }
+  }
+
+  const isSuperAdminRole = isFirstUser || isSuperAdminRequested;
+  
+  const pwdSalt = generateSalt();
+  const secAnswerSalt = securityAnswer ? generateSalt() : null;
+
   const newUser = {
-    username,
-    passwordHash: hashPassword(password),
+    username: cleanUsername,
+    displayName: displayName ? String(displayName).trim() : cleanUsername,
+    role: isSuperAdminRole ? 'Super Admin' : (role || 'Customer Service'),
+    isSuperAdmin: isSuperAdminRole,
+    avatarColor: avatarColor || (isSuperAdminRole ? '#e11d48' : '#df1683'),
+    avatarIcon: avatarIcon || (isSuperAdminRole ? '👑' : '👩‍💼'),
+    passwordHash: hashPassword(password, pwdSalt),
+    passwordSalt: pwdSalt,
     securityQuestion: securityQuestion || null,
-    securityAnswerHash: securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim()) : null
+    securityAnswerHash: securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim(), secAnswerSalt) : null,
+    securityAnswerSalt: secAnswerSalt,
+    autoLockMinutes: 0,
+    createdAt: new Date().toISOString()
   };
   users.push(newUser);
   saveUsers(users);
+  return {
+    success: true,
+    user: {
+      username: newUser.username,
+      displayName: newUser.displayName,
+      role: newUser.role,
+      isSuperAdmin: newUser.isSuperAdmin,
+      avatarColor: newUser.avatarColor,
+      avatarIcon: newUser.avatarIcon
+    }
+  };
+});
+
+ipcMain.handle('update-user-profile', (event, { username, displayName, avatarColor, avatarIcon, autoLockMinutes }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  
+  if (displayName !== undefined) user.displayName = String(displayName).trim() || user.username;
+  // Catatan Keamanan: Pengubahan role dan isSuperAdmin sengaja ditiadakan di sini (wajib lewat admin-change-user-role)
+  if (avatarColor !== undefined) user.avatarColor = avatarColor;
+  if (avatarIcon !== undefined) user.avatarIcon = avatarIcon;
+  if (autoLockMinutes !== undefined) user.autoLockMinutes = Math.max(0, parseInt(autoLockMinutes, 10) || 0);
+
+  saveUsers(users);
+  const isSA = isUserSuperAdmin(user);
+  return {
+    success: true,
+    user: {
+      username: user.username,
+      displayName: user.displayName,
+      role: user.role,
+      isSuperAdmin: isSA,
+      avatarColor: user.avatarColor,
+      avatarIcon: user.avatarIcon,
+      autoLockMinutes: user.autoLockMinutes
+    }
+  };
+});
+
+ipcMain.handle('delete-user', async (event, { usernameToDelete, requestingUsername, password }) => {
+  const users = readUsers();
+  const reqUser = users.find(u => u.username === requestingUsername);
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN verifikasi salah. Tindakan dibatalkan.' };
+  }
+
+  // Proteksi Hak Akses: HANYA Super Admin yang boleh menghapus akun
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang memiliki hak untuk menghapus akun pengguna.' };
+  }
+
+  // Cegah penghapusan akun Super Admin utama jika hanya satu-satunya Super Admin
+  const targetUser = users.find(u => u.username === usernameToDelete);
+  if (targetUser && isUserSuperAdmin(targetUser)) {
+    const superAdminCount = users.filter(u => isUserSuperAdmin(u)).length;
+    if (superAdminCount <= 1) {
+      return { success: false, error: 'Akun Super Admin utama tidak dapat dihapus (harus ada minimal 1 Super Admin).' };
+    }
+  }
+
+  if (users.length <= 1) {
+    return { success: false, error: 'Tidak dapat menghapus satu-satunya akun yang ada.' };
+  }
+
+  const deleteIndex = users.findIndex(u => u.username === usernameToDelete);
+  if (deleteIndex === -1) return { success: false, error: 'Akun yang akan dihapus tidak ditemukan' };
+
+  users.splice(deleteIndex, 1);
+  saveUsers(users);
+
+  // Bersihkan seluruh sesi/cookies/cache marketplace akun tersebut dengan aman
+  try {
+    const userStores = readStores(usernameToDelete);
+    const partitions = new Set();
+    userStores.forEach(s => {
+      if (usernameToDelete && s.id) {
+        partitions.add(`persist:user_${usernameToDelete}_${s.id}`);
+      } else if (s.partition) {
+        partitions.add(s.partition);
+      }
+    });
+
+    for (const part of partitions) {
+      try {
+        const ses = session.fromPartition(part);
+        await ses.clearCache();
+        await ses.clearStorageData();
+        safeDeletePartitionDisk(part);
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.error('Error clearing sessions for deleted user:', e);
+  }
+
+  // Hapus file data toko user jika ada
+  try {
+    const storePath = getStoresFilePath(usernameToDelete);
+    if (fs.existsSync(storePath)) {
+      fs.unlinkSync(storePath);
+    }
+  } catch (err) {
+    console.error('Error deleting user stores file:', err);
+  }
+
   return { success: true };
+});
+
+// Handler Super Admin: Reset PIN pengguna lain
+ipcMain.handle('admin-reset-user-pin', (event, { requestingUsername, password, targetUsername, newPin }) => {
+  const users = readUsers();
+  const reqUser = users.find(u => u.username === requestingUsername);
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat mereset PIN pengguna.' };
+  }
+
+  const targetUser = users.find(u => u.username === targetUsername);
+  if (!targetUser) return { success: false, error: 'Pengguna tujuan tidak ditemukan.' };
+
+  const cleanPin = String(newPin || '').trim();
+  if (!cleanPin) return { success: false, error: 'PIN baru tidak boleh kosong.' };
+
+  const newSalt = generateSalt();
+  targetUser.passwordSalt = newSalt;
+  targetUser.passwordHash = hashPassword(cleanPin, newSalt);
+  saveUsers(users);
+
+  return { success: true, message: `PIN untuk "${targetUser.displayName || targetUser.username}" berhasil direset.` };
+});
+
+// Handler Super Admin: Bersihkan sesi / cookies / cache user lain
+ipcMain.handle('admin-clear-user-session', async (event, { requestingUsername, password, targetUsername }) => {
+  const users = readUsers();
+  const reqUser = users.find(u => u.username === requestingUsername);
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat membersihkan sesi pengguna.' };
+  }
+
+  const targetUser = users.find(u => u.username === targetUsername);
+  if (!targetUser) return { success: false, error: 'Pengguna tujuan tidak ditemukan.' };
+
+  try {
+    const stores = readStores(targetUsername);
+    const partitions = new Set();
+
+    stores.forEach(s => {
+      if (targetUsername && s.id) {
+        partitions.add(`persist:user_${targetUsername}_${s.id}`);
+      } else if (s.partition) {
+        partitions.add(s.partition);
+      }
+    });
+
+    for (const part of partitions) {
+      try {
+        const ses = session.fromPartition(part);
+        await ses.clearCache();
+        await ses.clearStorageData();
+        safeDeletePartitionDisk(part);
+      } catch (e) {}
+    }
+
+    return {
+      success: true,
+      message: `Seluruh sesi, cookies, dan cache toko milik "${targetUser.displayName || targetUser.username}" berhasil dibersihkan total.`
+    };
+  } catch (err) {
+    return { success: false, error: 'Gagal membersihkan sesi: ' + err.message };
+  }
+});
+
+// Handler Super Admin: Ubah Role Pengguna (Promote to Super Admin / Demote to CS)
+ipcMain.handle('admin-change-user-role', async (event, { requestingUsername, password, targetUsername, newRole }) => {
+  const users = readUsers();
+  const cleanReqUser = String(requestingUsername || '').trim();
+  const reqUser = users.find(u => u.username.toLowerCase() === cleanReqUser.toLowerCase());
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat mengubah role pengguna.' };
+  }
+
+  const cleanTarget = String(targetUsername || '').trim();
+  const targetUser = users.find(u => u.username.toLowerCase() === cleanTarget.toLowerCase());
+  if (!targetUser) return { success: false, error: 'Pengguna target tidak ditemukan.' };
+
+  const targetIsSuperAdmin = isUserSuperAdmin(targetUser);
+  const isPromotingToSuperAdmin = newRole === 'Super Admin';
+
+  // Proteksi: cegah penurunan role jika hanya tersisa 1 Super Admin
+  if (targetIsSuperAdmin && !isPromotingToSuperAdmin) {
+    const superAdminCount = users.filter(u => isUserSuperAdmin(u)).length;
+    if (superAdminCount <= 1) {
+      return { success: false, error: 'Tidak dapat menurunkan role satu-satunya Super Admin (harus ada minimal 1 Super Admin).' };
+    }
+  }
+
+  targetUser.role = isPromotingToSuperAdmin ? 'Super Admin' : 'Customer Service';
+  targetUser.isSuperAdmin = isPromotingToSuperAdmin;
+  if (isPromotingToSuperAdmin) {
+    targetUser.avatarIcon = '👑';
+    targetUser.avatarColor = '#e11d48';
+  } else {
+    targetUser.avatarIcon = '👩‍💼';
+    targetUser.avatarColor = '#df1683';
+  }
+  saveUsers(users);
+
+  return {
+    success: true,
+    message: `Role untuk "${targetUser.displayName || targetUser.username}" berhasil diubah menjadi ${targetUser.role}.`,
+    user: {
+      username: targetUser.username,
+      displayName: targetUser.displayName,
+      role: targetUser.role,
+      isSuperAdmin: targetUser.isSuperAdmin
+    }
+  };
+});
+
+// Handler Super Admin: Tambah Pengguna / Super Admin Baru Langsung dari Panel Admin
+ipcMain.handle('admin-create-user', async (event, { requestingUsername, password, newUsername, newDisplayName, newRole, newPassword, avatarColor, avatarIcon, securityQuestion, securityAnswer }) => {
+  const users = readUsers();
+  const cleanReqUser = String(requestingUsername || '').trim();
+  const reqUser = users.find(u => u.username.toLowerCase() === cleanReqUser.toLowerCase());
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat menambahkan pengguna baru dari panel admin.' };
+  }
+
+  const cleanNewUser = String(newUsername || '').trim();
+  if (!cleanNewUser) return { success: false, error: 'Username tidak boleh kosong' };
+  if (users.find(u => u.username.toLowerCase() === cleanNewUser.toLowerCase())) {
+    return { success: false, error: 'Username sudah digunakan' };
+  }
+
+  const cleanNewPin = String(newPassword || '').trim();
+  if (!cleanNewPin) return { success: false, error: 'PIN baru tidak boleh kosong' };
+
+  const isSuperAdminRole = newRole === 'Super Admin';
+  const pwdSalt = generateSalt();
+  const secAnswerSalt = securityAnswer ? generateSalt() : null;
+
+  const newUser = {
+    username: cleanNewUser,
+    displayName: newDisplayName ? String(newDisplayName).trim() : cleanNewUser,
+    role: isSuperAdminRole ? 'Super Admin' : 'Customer Service',
+    isSuperAdmin: isSuperAdminRole,
+    avatarColor: avatarColor || (isSuperAdminRole ? '#e11d48' : '#df1683'),
+    avatarIcon: avatarIcon || (isSuperAdminRole ? '👑' : '👩‍💼'),
+    passwordHash: hashPassword(cleanNewPin, pwdSalt),
+    passwordSalt: pwdSalt,
+    securityQuestion: securityQuestion || null,
+    securityAnswerHash: securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim(), secAnswerSalt) : null,
+    securityAnswerSalt: secAnswerSalt,
+    autoLockMinutes: 0,
+    createdAt: new Date().toISOString()
+  };
+  users.push(newUser);
+  saveUsers(users);
+
+  return {
+    success: true,
+    message: `Akun "${newUser.displayName}" (${newUser.role}) berhasil dibuat!`,
+    user: {
+      username: newUser.username,
+      displayName: newUser.displayName,
+      role: newUser.role,
+      isSuperAdmin: newUser.isSuperAdmin
+    }
+  };
+});
+
+// Handler Super Admin: Audit Sesi & Toko Semua Pengguna (Dengan Verifikasi Akses)
+ipcMain.handle('admin-get-full-audit', async (event, payload = {}) => {
+  const { requestingUsername, password } = (typeof payload === 'object' && payload !== null) ? payload : { requestingUsername: payload };
+  const cleanUsername = String(requestingUsername || '').trim();
+  const users = readUsers();
+  const reqUser = users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang memiliki hak akses panel audit.' };
+  }
+
+  // Wajibkan verifikasi sesi aktif atau verifikasi password Super Admin yang sah
+  const hasValidActiveSession = currentActiveSession && currentActiveSession.username.toLowerCase() === cleanUsername.toLowerCase() && currentActiveSession.isSuperAdmin;
+  if (password) {
+    if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+      return { success: false, error: 'PIN Super Admin salah atau tidak valid.' };
+    }
+  } else if (!hasValidActiveSession) {
+    return { success: false, error: 'Akses ditolak: Sesi Super Admin tidak valid atau telah berakhir.' };
+  }
+
+  const auditData = [];
+  let totalStoresCount = 0;
+  const totalPartitionsSet = new Set();
+
+  for (const u of users) {
+    const userStores = readStores(u.username);
+    totalStoresCount += userStores.length;
+    const isSA = isUserSuperAdmin(u);
+    
+    const storesWithPartition = userStores.map(s => {
+      const part = u.username && s.id ? `persist:user_${u.username}_${s.id}` : (s.partition || 'persist:default');
+      totalPartitionsSet.add(part);
+      return {
+        id: s.id,
+        name: s.name,
+        marketplace: s.marketplace || 'custom',
+        url: s.url || '',
+        color: s.color || '',
+        initials: s.initials || s.name.substring(0, 2),
+        partition: part
+      };
+    });
+
+    auditData.push({
+      username: u.username,
+      displayName: u.displayName || u.username,
+      role: isSA ? 'Super Admin' : 'Customer Service',
+      isSuperAdmin: isSA,
+      avatarColor: u.avatarColor || (isSA ? '#e11d48' : '#df1683'),
+      avatarIcon: u.avatarIcon || (isSA ? '👑' : '👩‍💼'),
+      createdAt: u.createdAt || null,
+      storesCount: userStores.length,
+      stores: storesWithPartition
+    });
+  }
+
+  return {
+    success: true,
+    stats: {
+      totalUsers: users.length,
+      totalStores: totalStoresCount,
+      totalPartitions: totalPartitionsSet.size
+    },
+    users: auditData
+  };
+});
+
+// Handler Super Admin: Bersihkan sesi 1 toko spesifik milik CS
+ipcMain.handle('admin-clear-store-session', async (event, { requestingUsername, password, targetUsername, storeId }) => {
+  const users = readUsers();
+  const reqUser = users.find(u => u.username === requestingUsername);
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat membersihkan sesi toko.' };
+  }
+
+  try {
+    const partition = `persist:user_${targetUsername}_${storeId}`;
+    const ses = session.fromPartition(partition);
+    await ses.clearCache();
+    await ses.clearStorageData();
+    safeDeletePartitionDisk(partition);
+
+    return {
+      success: true,
+      message: `Sesi toko (Partisi: ${partition}) berhasil dibersihkan total.`
+    };
+  } catch (err) {
+    return { success: false, error: 'Gagal membersihkan sesi toko: ' + err.message };
+  }
+});
+
+// Handler Super Admin: Hapus 1 toko dari akun CS
+ipcMain.handle('admin-delete-user-store', async (event, { requestingUsername, password, targetUsername, storeId }) => {
+  const users = readUsers();
+  const reqUser = users.find(u => u.username === requestingUsername);
+  if (!reqUser) return { success: false, error: 'Akun pemohon tidak ditemukan' };
+  if (!verifyPassword(password, reqUser.passwordHash, reqUser.passwordSalt)) {
+    return { success: false, error: 'PIN Super Admin salah.' };
+  }
+
+  const isSuperAdmin = isUserSuperAdmin(reqUser);
+  if (!isSuperAdmin) {
+    return { success: false, error: 'Akses ditolak: Hanya Super Admin yang dapat menghapus toko user.' };
+  }
+
+  try {
+    let stores = readStores(targetUsername);
+    const storeToDelete = stores.find(s => s.id === storeId);
+    stores = stores.filter(s => s.id !== storeId);
+    saveStores(stores, targetUsername);
+
+    // Clear its partition both via Chromium API & Physical disk
+    try {
+      const partition = `persist:user_${targetUsername}_${storeId}`;
+      const ses = session.fromPartition(partition);
+      await ses.clearCache();
+      await ses.clearStorageData();
+      safeDeletePartitionDisk(partition);
+    } catch (e) {}
+
+    return {
+      success: true,
+      message: `Toko "${storeToDelete ? storeToDelete.name : storeId}" berhasil dihapus dari akun ${targetUsername}.`
+    };
+  } catch (err) {
+    return { success: false, error: 'Gagal menghapus toko: ' + err.message };
+  }
+});
+
+ipcMain.handle('verify-user-pin', (event, { username, password }) => {
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return { success: false, error: 'User tidak ditemukan' };
+  if (verifyPassword(password, user.passwordHash, user.passwordSalt)) {
+    currentActiveSession = {
+      username: user.username,
+      isSuperAdmin: isUserSuperAdmin(user)
+    };
+    return { success: true };
+  } else {
+    return { success: false, error: 'PIN salah' };
+  }
 });
 
 ipcMain.handle('login-user', (event, { username, password }) => {
@@ -183,11 +891,39 @@ ipcMain.handle('login-user', (event, { username, password }) => {
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
   
-  if (user.passwordHash === hashPassword(password)) {
-    return { success: true };
+  if (verifyPassword(password, user.passwordHash, user.passwordSalt)) {
+    // Transparently upgrade legacy unsalted passwords to secure salted scrypt
+    if (!user.passwordSalt) {
+      user.passwordSalt = generateSalt();
+      user.passwordHash = hashPassword(password, user.passwordSalt);
+      saveUsers(users);
+    }
+
+    const isSA = isUserSuperAdmin(user);
+    currentActiveSession = {
+      username: user.username,
+      isSuperAdmin: isSA
+    };
+
+    return {
+      success: true,
+      user: {
+        username: user.username,
+        displayName: user.displayName || user.username,
+        role: isSA ? 'Super Admin' : 'Customer Service',
+        avatarColor: user.avatarColor || '#df1683',
+        avatarIcon: user.avatarIcon || '👩‍💼',
+        autoLockMinutes: user.autoLockMinutes || 0
+      }
+    };
   } else {
     return { success: false, error: 'PIN/Password salah' };
   }
+});
+
+ipcMain.handle('logout-user', () => {
+  currentActiveSession = null;
+  return { success: true };
 });
 
 ipcMain.handle('get-security-question', (event, { username }) => {
@@ -199,22 +935,303 @@ ipcMain.handle('get-security-question', (event, { username }) => {
 });
 
 ipcMain.handle('reset-user-password', (event, { username, securityAnswer, newPassword }) => {
+  const cleanUsername = String(username || '').trim().toLowerCase();
+  const now = Date.now();
+  const attemptData = failedResetAttempts.get(cleanUsername) || { count: 0, lockedUntil: 0 };
+
+  if (attemptData.lockedUntil && now < attemptData.lockedUntil) {
+    const remainingMinutes = Math.ceil((attemptData.lockedUntil - now) / 60000);
+    return { success: false, error: `Terlalu banyak percobaan gagal. Akun dikunci sementara. Coba lagi dalam ${remainingMinutes} menit.` };
+  }
+
   const users = readUsers();
-  const user = users.find(u => u.username === username);
+  const user = users.find(u => u.username.toLowerCase() === cleanUsername);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
   if (!user.securityAnswerHash) return { success: false, error: 'Tidak ada pertanyaan keamanan yang diset untuk akun ini' };
   
-  if (user.securityAnswerHash !== hashPassword(securityAnswer.toLowerCase().trim())) {
-    return { success: false, error: 'Jawaban keamanan salah' };
+  const isAnswerValid = verifyPassword(securityAnswer.toLowerCase().trim(), user.securityAnswerHash, user.securityAnswerSalt);
+  if (!isAnswerValid) {
+    attemptData.count = (attemptData.count || 0) + 1;
+    if (attemptData.count >= 5) {
+      attemptData.lockedUntil = now + (15 * 60 * 1000); // 15 menit lockout
+      attemptData.count = 0;
+      failedResetAttempts.set(cleanUsername, attemptData);
+      return { success: false, error: 'Percobaan gagal 5 kali berturut-turut. Fitur reset PIN dikunci sementara selama 15 menit demi keamanan.' };
+    }
+    failedResetAttempts.set(cleanUsername, attemptData);
+    const sisa = 5 - attemptData.count;
+    return { success: false, error: `Jawaban keamanan salah. Sisa kesempatan: ${sisa} kali.` };
   }
   
-  user.passwordHash = hashPassword(newPassword);
+  // Reset berhasil, bersihkan tracking kegagalan
+  failedResetAttempts.delete(cleanUsername);
+
+  const newSalt = generateSalt();
+  user.passwordSalt = newSalt;
+  user.passwordHash = hashPassword(newPassword, newSalt);
   saveUsers(users);
   return { success: true };
 });
 
 ipcMain.handle('get-app-path', () => {
   return __dirname;
+});
+
+// ── Smart URL Search & Suggestion for Custom Marketplace ─────────────────────
+const POPULAR_MARKETPLACE_PRESETS = [
+  { keywords: ['grab', 'grab merchant', 'grabfood', 'grab merchant portal', 'grab seller'], title: 'GrabMerchant Portal', url: 'https://merchant.grab.com/portal/', domain: 'merchant.grab.com', snippet: 'Portal resmi GrabMerchant & GrabFood Indonesia' },
+  { keywords: ['gobiz', 'gofood', 'gojek merchant', 'go food'], title: 'GoBiz Portal Mitra Usaha Gojek', url: 'https://app.gobiz.com/', domain: 'app.gobiz.com', snippet: 'Dashboard resmi GoBiz untuk GoFood & GoPay' },
+  { keywords: ['shopeefood', 'shopee partner', 'shopee merchant'], title: 'Shopee Partner Merchant Portal', url: 'https://partner.shopee.co.id/', domain: 'partner.shopee.co.id', snippet: 'Portal resmi Merchant ShopeeFood & ShopeePay' },
+  { keywords: ['dokterin', 'dokter in', 'dokterin seller', 'dokterin partner'], title: 'DokterIN Partner / Seller', url: 'https://partner.dokterin.co.id/', domain: 'partner.dokterin.co.id', snippet: 'Portal resmi DokterIN Partner & Tenaga Medis' },
+  { keywords: ['zalora', 'zalora seller', 'zalora seller center'], title: 'Zalora Seller Center Indonesia', url: 'https://sellercenter.zalora.co.id/', domain: 'sellercenter.zalora.co.id', snippet: 'Pusat kelola toko resmi Zalora Indonesia' },
+  { keywords: ['evermos', 'evermos reseller', 'evermos login'], title: 'Evermos Reseller & Commerce', url: 'https://evermos.com/login', domain: 'evermos.com', snippet: 'Platform social commerce & reseller Evermos' },
+  { keywords: ['whatsapp', 'wa', 'wa web', 'whatsapp web'], title: 'WhatsApp Web', url: 'https://web.whatsapp.com/', domain: 'web.whatsapp.com', snippet: 'Official WhatsApp Web Messenger' },
+  { keywords: ['telegram', 'tele', 'telegram web'], title: 'Telegram Web', url: 'https://web.telegram.org/', domain: 'web.telegram.org', snippet: 'Official Telegram Web Client' },
+  { keywords: ['shopify', 'shopify admin', 'shopify seller'], title: 'Shopify Admin Portal', url: 'https://accounts.shopify.com/store-login', domain: 'accounts.shopify.com', snippet: 'Shopify Store Admin & Dashboard' },
+  { keywords: ['olx', 'olx indonesia', 'olx seller'], title: 'OLX Indonesia', url: 'https://www.olx.co.id/', domain: 'olx.co.id', snippet: 'Pusat jual beli online OLX Indonesia' },
+  { keywords: ['bhinneka', 'bhinneka merchant'], title: 'Bhinneka Merchant Center', url: 'https://merchant.bhinneka.com/', domain: 'merchant.bhinneka.com', snippet: 'Portal Merchant Partner Bhinneka' },
+  { keywords: ['padi', 'padi umkm', 'padi seller'], title: 'PaDi UMKM Seller', url: 'https://seller.padiumkm.id/', domain: 'seller.padiumkm.id', snippet: 'Pasar Digital UMKM BUMN Seller Center' },
+  { keywords: ['sirclo', 'sirclo store'], title: 'SIRCLO Store Admin', url: 'https://admin.sirclo.com/', domain: 'admin.sirclo.com', snippet: 'Dashboard Admin Sirclo Store' },
+  { keywords: ['jakmall', 'jakmall mitra'], title: 'Jakmall Mitra Dropship', url: 'https://mitra.jakmall.com/', domain: 'mitra.jakmall.com', snippet: 'Pusat Mitra Dropship Jakmall' },
+  { keywords: ['orderonline', 'order online', 'orderonline.id'], title: 'OrderOnline.id Portal', url: 'https://orderonline.id/login/', domain: 'orderonline.id', snippet: 'Platform otomasi order & checkout' },
+  { keywords: ['mengantar', 'mengantar.com', 'mengantar app'], title: 'Mengantar Shipping Dashboard', url: 'https://app.mengantar.com/', domain: 'app.mengantar.com', snippet: 'Platform pengiriman & COD Mengantar' },
+  { keywords: ['kiriminaja', 'kirimin aja'], title: 'KiriminAja Dashboard Ekspedisi', url: 'https://dashboard.kiriminaja.com/', domain: 'dashboard.kiriminaja.com', snippet: 'Dashboard pengiriman multi ekspedisi KiriminAja' },
+  { keywords: ['biteship', 'biteship dashboard'], title: 'Biteship Dashboard', url: 'https://dashboard.biteship.com/', domain: 'dashboard.biteship.com', snippet: 'Layanan API logistik & ekspedisi Biteship' },
+  { keywords: ['instagram', 'ig web', 'instagram direct'], title: 'Instagram Web Inbox', url: 'https://www.instagram.com/direct/inbox/', domain: 'instagram.com', snippet: 'Instagram Direct Messages Web' },
+  { keywords: ['lazada', 'lazada seller center'], title: 'Lazada Seller Center', url: 'https://sellercenter.lazada.co.id/apps/seller/chat', domain: 'sellercenter.lazada.co.id', snippet: 'Lazada Seller Center Chat' },
+  { keywords: ['tiktok', 'tiktok shop', 'tiktok seller'], title: 'TikTok Shop Seller Center', url: 'https://seller-id.tokopedia.com/account/login', domain: 'seller-id.tokopedia.com', snippet: 'TikTok Shop / Tokopedia Seller Center' },
+  { keywords: ['blibli', 'blibli seller'], title: 'Blibli Seller Center', url: 'https://seller.blibli.com/backend/chat', domain: 'seller.blibli.com', snippet: 'Blibli Seller Chat Portal' },
+  { keywords: ['bukalapak', 'bukalapak seller'], title: 'Bukalapak Seller Center', url: 'https://seller.bukalapak.com/message', domain: 'seller.bukalapak.com', snippet: 'Bukalapak Seller Message' },
+  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Center', url: 'https://seller.shopee.co.id/portal/chat', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Chat Portal' },
+  { keywords: ['tokopedia', 'tokopedia seller'], title: 'Tokopedia Seller Center', url: 'https://seller.tokopedia.com/chat', domain: 'seller.tokopedia.com', snippet: 'Tokopedia Seller Chat Portal' }
+];
+
+const dnsPromises = require('dns').promises;
+
+async function searchWebUrls(query) {
+  const q = (query || '').trim();
+  if (!q) return [];
+
+  const results = [];
+  const addedUrls = new Set();
+
+  function addResult(item) {
+    if (!item || !item.url) return;
+    const cleanUrl = item.url.toLowerCase().replace(/\/+$/, '');
+    if (!addedUrls.has(cleanUrl)) {
+      addedUrls.add(cleanUrl);
+      results.push(item);
+    }
+  }
+
+  // 1. Direct domain detection: e.g. "partner.dokterin.co.id" or "myshop.com/admin"
+  const isDirectDomain = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(q) && !q.includes(' ');
+  const isHttpUrl = /^https?:\/\//i.test(q);
+
+  if (isDirectDomain || isHttpUrl) {
+    const directUrl = isHttpUrl ? q : `https://${q}`;
+    let hostname = '';
+    try {
+      hostname = new URL(directUrl).hostname.replace(/^www\./, '');
+    } catch (e) {
+      hostname = q;
+    }
+    addResult({
+      title: `Buka Alamat Langsung: ${hostname}`,
+      url: directUrl,
+      domain: hostname,
+      snippet: `Alamat web langsung: ${directUrl}`,
+      isDirect: true
+    });
+  }
+
+  // 2. Preset match
+  const lowerQ = q.toLowerCase();
+  for (const preset of POPULAR_MARKETPLACE_PRESETS) {
+    if (preset.keywords.some(k => lowerQ.includes(k) || k.includes(lowerQ))) {
+      addResult({ ...preset, isPreset: true });
+    }
+  }
+
+  // 3. Multi-Source Parallel Search
+  const searchTasks = [];
+
+  // (a) Google Suggestion API
+  searchTasks.push((async () => {
+    try {
+      const res = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&hl=id&q=${encodeURIComponent(q)}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const suggestions = data[1] || [];
+        for (const s of suggestions) {
+          if (typeof s === 'string' && /^https?:\/\//i.test(s)) {
+            let hostname = '';
+            try { hostname = new URL(s).hostname.replace(/^www\./, ''); } catch (e) { hostname = s; }
+            addResult({
+              title: `${hostname} (Website Resmi)`,
+              url: s,
+              domain: hostname,
+              snippet: `Tautan navigasi resmi untuk "${q}"`,
+              isPreset: false
+            });
+          }
+        }
+      }
+    } catch (e) {}
+  })());
+
+  // (b) Wikipedia Opensearch API (verified encyclopedia/brand links)
+  searchTasks.push((async () => {
+    try {
+      const res = await fetch(`https://id.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=3&format=json`);
+      if (res.ok) {
+        const data = await res.json();
+        const titles = data[1] || [];
+        const descriptions = data[2] || [];
+        const urls = data[3] || [];
+        for (let i = 0; i < titles.length; i++) {
+          if (urls[i]) {
+            addResult({
+              title: titles[i],
+              url: urls[i],
+              domain: 'id.wikipedia.org',
+              snippet: descriptions[i] || `Informasi resmi ${titles[i]} di Wikipedia`,
+              isPreset: false
+            });
+          }
+        }
+      }
+    } catch (e) {}
+  })());
+
+  // (c) Fast DNS TLD Probing for brand keywords
+  const cleanQ = q.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (cleanQ.length >= 3 && cleanQ.length <= 30 && !q.includes('.')) {
+    const tldsToProbe = ['.id', '.co.id', '.com', '.app', '.net'];
+    for (const tld of tldsToProbe) {
+      searchTasks.push((async () => {
+        const domain = `${cleanQ}${tld}`;
+        try {
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+          await Promise.race([dnsPromises.lookup(domain), timeoutPromise]);
+          const probedUrl = `https://${domain}/`;
+          addResult({
+            title: `${q.charAt(0).toUpperCase() + q.slice(1)} (${domain})`,
+            url: probedUrl,
+            domain: domain,
+            snippet: `Domain resmi terverifikasi: ${domain}`,
+            isDirect: true
+          });
+        } catch (e) {}
+      })());
+    }
+  }
+
+  // (d) DuckDuckGo Lite search with Chrome User-Agent
+  searchTasks.push((async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch('https://lite.duckduckgo.com/lite/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        },
+        body: `q=${encodeURIComponent(q)}`,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const html = await res.text();
+        const linkRegex = /<a\s+(?:[^>]*?\s+)?href=['"]([^'"]+)['"][^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>|<a\s+(?:[^>]*?\s+)?class=['"]result-link['"][^>]*href=['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/a>/gi;
+        const snippetRegex = /<td\s+class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/gi;
+
+        const snippets = [];
+        let sm;
+        while ((sm = snippetRegex.exec(html)) !== null) {
+          snippets.push(sm[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim());
+        }
+
+        let lm;
+        let index = 0;
+        while ((lm = linkRegex.exec(html)) !== null && results.length < 10) {
+          let rawHref = lm[1] || lm[3];
+          let rawTitle = lm[2] || lm[4];
+
+          if (rawHref) {
+            let finalUrl = rawHref;
+            if (finalUrl.includes('uddg=')) {
+              const urlParams = new URLSearchParams(finalUrl.substring(finalUrl.indexOf('?')));
+              finalUrl = decodeURIComponent(urlParams.get('uddg') || finalUrl);
+            }
+
+            if (
+              (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) &&
+              !finalUrl.includes('duckduckgo.com/') &&
+              !finalUrl.includes('bing.com/aclick') &&
+              !finalUrl.includes('google.com/aclk')
+            ) {
+              const title = (rawTitle || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
+              const snippet = snippets[index] || '';
+
+              let hostname = '';
+              try {
+                hostname = new URL(finalUrl).hostname.replace(/^www\./, '');
+              } catch (e) {
+                hostname = finalUrl;
+              }
+
+              addResult({
+                title: title || hostname,
+                url: finalUrl,
+                domain: hostname,
+                snippet
+              });
+            }
+          }
+          index++;
+        }
+      }
+    } catch (err) {}
+  })());
+
+  await Promise.allSettled(searchTasks);
+
+  // Fallback domain synthesizer if no results
+  if (results.length === 0 && cleanQ.length >= 2) {
+    addResult({
+      title: `${q.charAt(0).toUpperCase() + q.slice(1)} Indonesia (.id)`,
+      url: `https://${cleanQ}.id/`,
+      domain: `${cleanQ}.id`,
+      snippet: `Rekomendasi URL Indonesia untuk ${q}`,
+      isDirect: true
+    });
+    addResult({
+      title: `${q.charAt(0).toUpperCase() + q.slice(1)} Global (.com)`,
+      url: `https://${cleanQ}.com/`,
+      domain: `${cleanQ}.com`,
+      snippet: `Rekomendasi URL Global untuk ${q}`,
+      isDirect: true
+    });
+    addResult({
+      title: `${q.charAt(0).toUpperCase() + q.slice(1)} Co.id (.co.id)`,
+      url: `https://${cleanQ}.co.id/`,
+      domain: `${cleanQ}.co.id`,
+      snippet: `Rekomendasi URL Perusahaan untuk ${q}`,
+      isDirect: true
+    });
+  }
+
+  return results.slice(0, 6);
+}
+
+ipcMain.handle('search-urls', async (event, query) => {
+  return await searchWebUrls(query);
 });
 
 ipcMain.handle('read-clipboard', () => {
@@ -234,10 +1251,12 @@ ipcMain.handle('write-clipboard', (event, text) => {
   }
 });
 
-// Auto-Watcher Clipboard Windows (Real-Time Background Polling for Copy & Cut)
+// Auto-Watcher Clipboard Windows (Focus-aware: hanya memantau saat jendela aplikasi aktif)
 let lastClipboardText = '';
 function checkClipboardNow() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  // Jangan sadap clipboard jika aplikasi terminimalkan atau user sedang di aplikasi lain
+  if (!mainWindow.isFocused()) return;
   try {
     const text = clipboard.readText()?.trim();
     if (text && text !== lastClipboardText) {
@@ -253,11 +1272,18 @@ ipcMain.handle('update-security-question', (event, { username, password, securit
   const users = readUsers();
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
-  if (user.passwordHash !== hashPassword(password)) {
+  if (!verifyPassword(password, user.passwordHash, user.passwordSalt)) {
     return { success: false, error: 'PIN saat ini salah' };
   }
-  user.securityQuestion    = securityQuestion || null;
-  user.securityAnswerHash  = securityAnswer ? hashPassword(securityAnswer.toLowerCase().trim()) : null;
+  user.securityQuestion = securityQuestion || null;
+  if (securityAnswer) {
+    const secSalt = generateSalt();
+    user.securityAnswerSalt = secSalt;
+    user.securityAnswerHash = hashPassword(securityAnswer.toLowerCase().trim(), secSalt);
+  } else {
+    user.securityAnswerSalt = null;
+    user.securityAnswerHash = null;
+  }
   saveUsers(users);
   return { success: true };
 });
@@ -266,27 +1292,29 @@ ipcMain.handle('change-password', (event, { username, currentPassword, newPasswo
   const users = readUsers();
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
-  if (user.passwordHash !== hashPassword(currentPassword)) {
+  if (!verifyPassword(currentPassword, user.passwordHash, user.passwordSalt)) {
     return { success: false, error: 'PIN saat ini salah' };
   }
-  user.passwordHash = hashPassword(newPassword);
+  const newSalt = generateSalt();
+  user.passwordSalt = newSalt;
+  user.passwordHash = hashPassword(newPassword, newSalt);
   saveUsers(users);
   return { success: true };
 });
 
-// ── Helper & IPC Cache Management ──────────────────────────────────────────────
-function getDirSize(dirPath) {
+// ── Helper & IPC Cache Management (Asynchronous & Non-blocking) ─────────────────
+async function getDirSizeAsync(dirPath) {
   let total = 0;
   try {
     if (!fs.existsSync(dirPath)) return 0;
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       try {
         if (entry.isDirectory()) {
-          total += getDirSize(fullPath);
+          total += await getDirSizeAsync(fullPath);
         } else if (entry.isFile()) {
-          const stat = fs.statSync(fullPath);
+          const stat = await fs.promises.stat(fullPath);
           total += stat.size;
         }
       } catch (e) {}
@@ -304,7 +1332,7 @@ function formatBytes(bytes, decimals = 1) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function calculateAppCacheSize() {
+async function calculateAppCacheSizeAsync() {
   const cacheDirs = [
     path.join(userDataPath, 'Cache'),
     path.join(userDataPath, 'GPUCache'),
@@ -314,13 +1342,13 @@ function calculateAppCacheSize() {
   ];
   let total = 0;
   for (const dir of cacheDirs) {
-    total += getDirSize(dir);
+    total += await getDirSizeAsync(dir);
   }
   return total;
 }
 
-ipcMain.handle('get-cache-size', () => {
-  const total = calculateAppCacheSize();
+ipcMain.handle('get-cache-size', async () => {
+  const total = await calculateAppCacheSizeAsync();
   return { bytes: total, formatted: formatBytes(total) };
 });
 
@@ -355,7 +1383,7 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
       } catch (e) {}
     }
 
-    const newSize = calculateAppCacheSize();
+    const newSize = await calculateAppCacheSizeAsync();
     return { success: true, newFormatted: formatBytes(newSize), message: 'Cache aman berhasil dibersihkan! Sesi login toko tetap terjaga.' };
   } catch (err) {
     return { success: false, error: err.message };
@@ -384,6 +1412,7 @@ ipcMain.handle('deep-clean-store', async (event, { partition }) => {
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
+    safeDeletePartitionDisk(partition);
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -410,10 +1439,11 @@ ipcMain.handle('deep-clean-all', async (event, username) => {
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData();
+        safeDeletePartitionDisk(part);
       } catch (e) {}
     }
 
-    const newSize = calculateAppCacheSize();
+    const newSize = await calculateAppCacheSizeAsync();
     return { success: true, newFormatted: formatBytes(newSize) };
   } catch (err) {
     return { success: false, error: err.message };
@@ -521,9 +1551,9 @@ ipcMain.handle('load-scratchpad-file', async () => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       // Convert sheet to json arrays
-      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
-      // Extract text from the first column or just join everything
-      content = data.map(row => row.join('\t')).join('\n');
+      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      // Map each row array to tab-separated string for multi-column representation
+      content = data.map(row => (Array.isArray(row) ? row.map(cell => (cell !== null && cell !== undefined ? String(cell) : '')).join('\t') : String(row))).join('\n');
     } else if (ext === '.docx') {
       const result = await mammoth.extractRawText({ path: filePath });
       content = result.value;
@@ -555,10 +1585,9 @@ ipcMain.handle('save-scratchpad-file', async (event, content) => {
     if (ext === '.txt') {
       fs.writeFileSync(filePath, content, 'utf8');
     } else if (ext === '.xlsx') {
-      // Create a new workbook and add a worksheet
+      // Create a new workbook and add a worksheet with multi-column support
       const wb = xlsx.utils.book_new();
-      // Split content by newline to put each line in a new row
-      const data = content.split('\n').map(line => [line]);
+      const data = (content || '').split('\n').map(line => line.split('\t'));
       const ws = xlsx.utils.aoa_to_sheet(data);
       xlsx.utils.book_append_sheet(wb, ws, 'Catatan');
       xlsx.writeFile(wb, filePath);
@@ -609,15 +1638,22 @@ App Version: ${app.getVersion()}
 Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB
     `.trim();
 
-    // Kirim data ke Google Apps Script Proxy Anda
+    // Sanitasi data toko (hanya platform dan nama publik, tanpa token/URL internal)
+    const cleanStoresSummary = Array.isArray(data.storesConfig) ? data.storesConfig.map(s => ({
+      marketplace: s.marketplace || 'custom',
+      name: (s.name || '').substring(0, 30)
+    })) : [];
+
+    // Kirim data yang telah disanitasi ke Google Apps Script Proxy
     const response = await fetch(GAS_WEB_APP_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: data.type.toUpperCase(),
-        message: data.message,
+        type: String(data.type || 'FEEDBACK').toUpperCase(),
+        message: String(data.message || '').substring(0, 5000),
         systemInfo: systemInfo,
-        storesConfig: data.storesConfig
+        storeCount: cleanStoresSummary.length,
+        marketplaces: cleanStoresSummary.map(s => s.marketplace).join(', ')
       })
     });
 
@@ -811,7 +1847,7 @@ function setupAutoUpdater(window) {
   });
 }
 
-// Setup webview permissions untuk semua partisi
+// Setup webview permissions & navigation security guard untuk semua partisi
 app.on('web-contents-created', (event, contents) => {
   if (contents.getType() === 'webview') {
     const allowedPermissions = [
@@ -832,9 +1868,30 @@ app.on('web-contents-created', (event, contents) => {
       return allowedPermissions.includes(permission);
     });
 
-    // Tangani navigasi di webview agar tetap di domain marketplace
+    // Guard navigasi di webview dari skema berbahaya
     contents.on('will-navigate', (event, url) => {
-      console.log('Webview navigating to:', url);
+      try {
+        const parsed = new URL(url);
+        // Blokir skema lokal atau berbahaya yang dapat mengeksekusi kode
+        if (['file:', 'javascript:', 'data:', 'vbscript:'].includes(parsed.protocol)) {
+          console.warn('Blocked dangerous webview navigation scheme:', url);
+          event.preventDefault();
+          return;
+        }
+      } catch (e) {
+        event.preventDefault();
+      }
+    });
+
+    // Cegah popup arbitrary atau skema tidak valid
+    contents.setWindowOpenHandler(({ url }) => {
+      try {
+        const parsed = new URL(url);
+        if (['http:', 'https:'].includes(parsed.protocol)) {
+          return { action: 'allow' };
+        }
+      } catch (e) {}
+      return { action: 'deny' };
     });
   }
 });

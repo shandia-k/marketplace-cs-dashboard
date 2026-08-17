@@ -1,9 +1,9 @@
 /**
  * js/onboarding.js
- * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.5)
+ * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.6)
  * 
  * Features:
- * 1. Welcome Modal with v1.0.5 Production Readiness Changelog & Overview
+ * 1. Welcome Modal with v1.0.6 Production Readiness Changelog & System Overview
  * 2. Step-by-Step Interactive Guided Tour (Spotlight Highlight)
  * 3. Interactive Checklist Setup Tasks with Real-Time Action Triggers
  * 4. Extensible Versioned Architecture for Seamless Future Feature Onboarding
@@ -12,45 +12,51 @@
 
 // ── ONBOARDING CONFIGURATION (MODULAR REGISTRY) ──────────────────────────────
 const ONBOARDING_CONFIG = {
-  version: '1.0.5',
+  get version() {
+    if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function') {
+      const latest = window.VERSIONS_REGISTRY.getLatestVersion();
+      return latest ? latest.version : '1.0.6';
+    }
+    return '1.0.6';
+  },
   welcomeTitle: 'Selamat Datang di CS Marketplace Dashboard',
   welcomeSubtitle: 'Pusat komando Customer Service Multi-Marketplace dalam 1 jendela kerja terpadu.',
-  
-  // Informational Highlights (Fitur yang hanya perlu diketahui saja)
-  infoCards: [
-    {
-      icon: '🛡️',
-      iconBg: 'rgba(59, 130, 246, 0.15)',
-      title: 'Isolasi Sesi Multi-Toko',
-      desc: 'Setiap toko berjalan pada partisi cookies mandiri. Login puluhan akun tanpa bentrok sesi.'
-    },
-    {
-      icon: '🍃',
-      iconBg: 'rgba(16, 185, 129, 0.15)',
-      title: 'Smart RAM Auto-Hibernation',
-      desc: 'Otomatis menidurkan tab yang lama tidak aktif saat RAM > 2GB, menghemat memori komputer.'
-    },
-    {
-      icon: '⚡',
-      iconBg: 'rgba(245, 158, 11, 0.15)',
-      title: 'Staggered Background Ping',
-      desc: 'Mengecek pesan baru secara berkala pada toko yang tidur (45s) tanpa membebani resource.'
-    },
-    {
-      icon: '🔒',
-      iconBg: 'rgba(223, 22, 131, 0.15)',
-      title: 'Proteksi Draft & Whitelist Tab',
-      desc: 'Teks yang sedang diketik aman dari mode tidur, dan tab penting bisa dilindungi (🛡️).'
-    }
-  ],
 
-  // Production Changelog Highlights (v1.0.5)
-  changelog: [
-    'Optimalisasi memori V8 heap (1024 MB) untuk kelancaran sinkronisasi chat WhatsApp & marketplace.',
-    'Penyelarasan variabel smart clipboard {clipboard}, {toko}, dan {waktu} secara global.',
-    'Integrasi tema Dark & Light mode adaptif dengan transisi visual ultra-halus.',
-    'Peningkatan aksesibilitas keyboard (A11y) dan sistem multi-tab per toko.'
-  ],
+  get currentVersionObj() {
+    if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function') {
+      return window.VERSIONS_REGISTRY.getLatestVersion();
+    }
+    return null;
+  },
+
+  // Informational Highlights (Mengambil dinamis dari versi rilis terbaru di VERSIONS_REGISTRY)
+  get infoCards() {
+    const ver = this.currentVersionObj;
+    return ver && Array.isArray(ver.highlights) ? ver.highlights : [];
+  },
+
+  // Production Changelog Highlights (Mengambil dinamis dari versi rilis terbaru di VERSIONS_REGISTRY)
+  get changelogCategories() {
+    const ver = this.currentVersionObj;
+    return ver && Array.isArray(ver.categories) ? ver.categories : [];
+  },
+
+  // Full Multi-Version History Registry (Mengambil dinamis dari js/versions-registry.js)
+  get versions() {
+    if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getAllVersions === 'function') {
+      return window.VERSIONS_REGISTRY.getAllVersions();
+    }
+    return [];
+  },
+
+  // Fallback flat changelog array (for backward compatibility)
+  get changelog() {
+    const ver = this.currentVersionObj;
+    if (ver && Array.isArray(ver.categories)) {
+      return ver.categories.flatMap(c => c.items.map(item => `[${c.tag}] ${item}`));
+    }
+    return [];
+  },
 
   // Step-by-Step Guided Tour Steps (5 Langkah Ringkas & Komprehensif)
   tourSteps: [
@@ -83,7 +89,7 @@ const ONBOARDING_CONFIG = {
       target: '#cs-toolkit-menu',
       fallbackTarget: '#btn-cs-toolkit-fab',
       title: 'Floating Tools CS & Speed Dial Menu',
-      desc: 'Pusat produktivitas CS! Buka menu dial cepat ini untuk mengakses Smart Quick Reply (Ctrl+Space), Floating Scratchpad Multi-Tab (bisa simpan Word/Excel/TXT), Cek Resi kurir ekspedisi, Kalkulator Margin CS, dan Catatan Pembeli / Warning COD.',
+      desc: 'Pusat produktivitas CS! Buka menu dial cepat ini untuk mengakses Smart Quick Reply (Ctrl+Space), Floating Scratchpad Multi-Tab (bisa simpan Word/Excel/TXT), dan Catatan Pembeli / Warning COD.',
       position: 'left'
     },
     {
@@ -1338,6 +1344,120 @@ const ONBOARDING_CONFIG = {
           return () => btnClose?.removeEventListener('click', onClose);
         }
       }
+    ],
+
+    task_whatsapp_linker: [
+      {
+        id: 'wa_step_open_fab',
+        target: '#btn-cs-toolkit-fab',
+        fallbackTarget: '#sidebar',
+        title: '1. Buka Menu Tools CS (🛠️)',
+        desc: 'Klik tombol mengambang <b>"Tools CS"</b> di pojok kanan bawah untuk membuka menu asisten dan utilitas cepat.',
+        position: 'top',
+        bindEvents: (manager) => {
+          const menu = document.getElementById('cs-toolkit-menu');
+          if (menu && menu.classList.contains('active')) {
+            setTimeout(() => manager.goToStep(1), 100);
+            return;
+          }
+          const fab = document.getElementById('btn-cs-toolkit-fab');
+          const onClick = () => {
+            setTimeout(() => manager.goToStep(1), 150);
+          };
+          fab?.addEventListener('click', onClick, { once: true });
+          return () => fab?.removeEventListener('click', onClick);
+        }
+      },
+      {
+        id: 'wa_step_click_linker',
+        target: '#tool-item-walinker',
+        fallbackTarget: '#cs-toolkit-menu',
+        title: '2. Buka WhatsApp Direct Linker',
+        desc: 'Klik menu <b>"WhatsApp Direct Linker"</b> untuk membuka generator tautan chat wa.me otomatis.',
+        position: 'left',
+        bindEvents: (manager) => {
+          const item = document.getElementById('tool-item-walinker');
+          const onClick = () => {
+            setTimeout(() => manager.goToStep(2), 200);
+          };
+          item?.addEventListener('click', onClick, { once: true });
+          return () => item?.removeEventListener('click', onClick);
+        }
+      },
+      {
+        id: 'wa_step_input_phone',
+        target: '#wa-input-phone',
+        fallbackTarget: '#modal-walinker',
+        title: '3. Ketik Nomor HP Pembeli',
+        desc: 'Ketik nomor HP pelanggan (misal: <code>081234567890</code>). Sistem otomatis menormalkan ke format internasional (+62) dan membuat tautan wa.me instan!',
+        position: 'bottom',
+        allowNextButton: true,
+        nextButtonLabel: 'Lanjut ke Selesai →',
+        bindEvents: (manager) => {
+          const input = document.getElementById('wa-input-phone');
+          if (input) {
+            setTimeout(() => input.focus(), 80);
+          }
+          return () => {};
+        }
+      },
+      {
+        id: 'wa_step_close',
+        target: '#btn-walinker-close',
+        fallbackTarget: '#modal-walinker-overlay .modal-header',
+        title: '4. Selesai! Tutup WA Linker 🎉',
+        desc: 'Anda bisa langsung menyalin tautan atau membuka WhatsApp ke pembeli. Klik <b>[X]</b> untuk menyelesaikan tugas ini.',
+        position: 'left',
+        bindEvents: (manager) => {
+          const btnClose = document.getElementById('btn-walinker-close');
+          const onClose = () => {
+            if (typeof notifyAction === 'function' || (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function')) {
+              window.OnboardingManager.notifyAction('use_walinker');
+            }
+            setTimeout(() => manager.endTour(), 400);
+          };
+          btnClose?.addEventListener('click', onClose, { once: true });
+          return () => btnClose?.removeEventListener('click', onClose);
+        }
+      }
+    ],
+
+    task_network_sop: [
+      {
+        id: 'net_step_avatar_status',
+        target: '#cs-user-avatar',
+        fallbackTarget: '#user-profile-bar',
+        title: '1. Indikator Status Ping Real-Time',
+        desc: 'Titik hijau/merah pada avatar CS Anda memantau konektivitas internet secara otomatis setiap 20 detik.',
+        position: 'right',
+        allowNextButton: true,
+        nextButtonLabel: 'Buka SOP Tethering →',
+        bindEvents: (manager) => {
+          return () => {};
+        }
+      },
+      {
+        id: 'net_step_open_sop',
+        target: '#btn-net-guide-done',
+        fallbackTarget: '#modal-network-guide',
+        title: '2. Modal SOP Penambatan HP 6 Langkah',
+        desc: 'Saat internet kantor bermasalah, buka SOP 6 langkah ini untuk mengaktifkan USB/Wi-Fi Tethering HP darurat dan menjaga toko tetap online. Klik tombol di bawah untuk menyelesaikan.',
+        position: 'top',
+        bindEvents: (manager) => {
+          if (window.NetworkMonitor && typeof window.NetworkMonitor.openGuide === 'function') {
+            window.NetworkMonitor.openGuide();
+          }
+          const btnDone = document.getElementById('btn-net-guide-done');
+          const onDone = () => {
+            if (typeof notifyAction === 'function' || (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function')) {
+              window.OnboardingManager.notifyAction('open_network_sop');
+            }
+            setTimeout(() => manager.endTour(), 400);
+          };
+          btnDone?.addEventListener('click', onDone, { once: true });
+          return () => btnDone?.removeEventListener('click', onDone);
+        }
+      }
     ]
   },
 
@@ -1365,6 +1485,13 @@ const ONBOARDING_CONFIG = {
       btnLabel: 'Coba Quick Reply'
     },
     {
+      id: 'task_whatsapp_linker',
+      title: 'Coba WhatsApp Direct Linker (wa.me)',
+      desc: 'Buat tautan chat wa.me otomatis dari nomor HP atau Smart Clipboard.',
+      actionKey: 'use_walinker',
+      btnLabel: 'Buka WA Linker'
+    },
+    {
       id: 'task_scratchpad',
       title: 'Buka & Buat Catatan di Scratchpad',
       desc: 'Buka jendela floating scratchpad untuk draft teks CS.',
@@ -1377,6 +1504,13 @@ const ONBOARDING_CONFIG = {
       desc: 'Buka database pembeli & catatan retur pelanggan.',
       actionKey: 'use_cnotes',
       btnLabel: 'Catatan Pembeli'
+    },
+    {
+      id: 'task_network_sop',
+      title: 'Pantau Latensi & SOP Tethering HP',
+      desc: 'Cek status ping 20s real-time dan infografik 6 langkah backup tethering darurat.',
+      actionKey: 'open_network_sop',
+      btnLabel: 'SOP Tethering'
     },
     {
       id: 'task_settings_cache',
@@ -1632,7 +1766,7 @@ const OnboardingManager = {
 
   // ── Inject Necessary HTML Containers if not present ────────────────────────
   injectElements() {
-    // 1. Welcome Modal
+    // 1. Welcome Modal with Horizontal Multi-Version Carousel
     if (!document.getElementById('onboarding-welcome-modal-overlay')) {
       const welcomeOverlay = document.createElement('div');
       welcomeOverlay.id = 'onboarding-welcome-modal-overlay';
@@ -1657,41 +1791,39 @@ const OnboardingManager = {
             </div>
           </div>
 
-          <div class="onboarding-welcome-body">
-            <!-- Informational Feature Cards -->
-            <div>
-              <div class="onboarding-section-title">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Arsitektur & Keunggulan Sistem
-              </div>
-              <div class="onboarding-cards-grid">
-                ${ONBOARDING_CONFIG.infoCards.map(c => `
-                  <div class="onboarding-info-card">
-                    <div class="onboarding-info-card-icon" style="background:${c.iconBg}">${c.icon}</div>
-                    <div class="onboarding-info-card-content">
-                      <h4>${c.title}</h4>
-                      <p>${c.desc}</p>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+          <!-- Horizontal Version Navigator Carousel Bar -->
+          <div class="onboarding-version-carousel-section">
+            <div class="onboarding-carousel-top-bar">
+              <span class="onboarding-carousel-title-label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.6)
+              </span>
+              <span class="onboarding-carousel-hint">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Geser / Klik pill versi untuk melihat update
+              </span>
             </div>
+            <div class="onboarding-version-carousel-bar">
+              <button class="onboarding-carousel-nav-btn" id="btn-ver-carousel-prev" title="Versi Lebih Baru (Geser Kiri)" aria-label="Versi Lebih Baru">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div class="onboarding-version-pills-track" id="onboarding-version-pills-track" role="tablist" aria-label="Daftar Versi">
+                <!-- Populated dynamically by renderVersionPills() -->
+              </div>
+              <button class="onboarding-carousel-nav-btn" id="btn-ver-carousel-next" title="Versi Lebih Lama (Geser Kanan)" aria-label="Versi Lebih Lama">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
 
-            <!-- v1.0.5 Production Changelog Box -->
-            <div class="onboarding-changelog-box">
-              <div class="onboarding-changelog-header">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                <span>Catatan Rilis Produksi (v${ONBOARDING_CONFIG.version}):</span>
-              </div>
-              <ul class="onboarding-changelog-list">
-                ${ONBOARDING_CONFIG.changelog.map(item => `<li>${item}</li>`).join('')}
-              </ul>
-            </div>
+          <!-- Dynamic Version Content Body -->
+          <div class="onboarding-welcome-body" id="onboarding-version-content-area">
+            <!-- Populated dynamically by renderVersionContent() -->
           </div>
 
           <div class="onboarding-welcome-footer">
             <div class="onboarding-welcome-footer-left">
-              <span>💡 Panduan ini bisa dibuka kapan saja dari menu Pengaturan.</span>
+              <span>💡 Panduan & Riwayat Changelog bisa dibuka kapan saja dari menu Pengaturan.</span>
             </div>
             <div class="onboarding-welcome-footer-right">
               <button class="btn-secondary" id="btn-onboarding-welcome-close">Tutup & Eksplorasi</button>
@@ -1721,6 +1853,23 @@ const OnboardingManager = {
           this.closeWelcomeModal();
         }
       });
+
+      // Bind carousel arrow navigation
+      document.getElementById('btn-ver-carousel-prev')?.addEventListener('click', () => {
+        this.selectVersion(this.activeVersionIndex - 1);
+      });
+      document.getElementById('btn-ver-carousel-next')?.addEventListener('click', () => {
+        this.selectVersion(this.activeVersionIndex + 1);
+      });
+
+      // Bind mouse wheel horizontal scroll on pills track
+      const pillsTrack = document.getElementById('onboarding-version-pills-track');
+      pillsTrack?.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          pillsTrack.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
     }
 
     // 2. Guided Tour Overlay & Popover
@@ -1804,8 +1953,16 @@ const OnboardingManager = {
           }
         } else {
           const welcomeModal = document.getElementById('onboarding-welcome-modal-overlay');
-          if (welcomeModal && welcomeModal.classList.contains('active') && e.key === 'Escape') {
-            this.closeWelcomeModal();
+          if (welcomeModal && welcomeModal.classList.contains('active')) {
+            if (e.key === 'Escape') {
+              this.closeWelcomeModal();
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              this.selectVersion(this.activeVersionIndex - 1);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              this.selectVersion(this.activeVersionIndex + 1);
+            }
           }
         }
       });
@@ -1814,9 +1971,167 @@ const OnboardingManager = {
     }
   },
 
-  // ── Welcome Modal Controls ─────────────────────────────────────────────────
+  // ── Welcome Modal Controls & Multi-Version Carousel ────────────────────────
+  activeVersionIndex: 0,
+
+  renderVersionPills() {
+    const track = document.getElementById('onboarding-version-pills-track');
+    if (!track) return;
+    track.innerHTML = '';
+    const versions = ONBOARDING_CONFIG.versions || [];
+    versions.forEach((ver, idx) => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = `onboarding-version-pill ${idx === this.activeVersionIndex ? 'active' : ''}`;
+      pill.id = `onboarding-ver-pill-${ver.version.replace(/\./g, '_')}`;
+      const tagText = idx === 0 ? 'Terbaru' : (ver.badge.split(' ')[0] || `v${ver.version}`);
+      pill.innerHTML = `
+        <span>v${ver.version}</span>
+        <span class="onboarding-version-pill-tag">${tagText}</span>
+      `;
+      pill.addEventListener('click', () => {
+        this.selectVersion(idx);
+      });
+      track.appendChild(pill);
+    });
+  },
+
+  renderVersionContent() {
+    const contentArea = document.getElementById('onboarding-version-content-area');
+    if (!contentArea) return;
+    const versions = ONBOARDING_CONFIG.versions || [];
+    const total = versions.length;
+    const ver = versions[this.activeVersionIndex] || versions[0];
+    if (!ver) return;
+
+    const prevVerObj = versions[this.activeVersionIndex + 1];
+    const nextVerObj = versions[this.activeVersionIndex - 1];
+
+    contentArea.innerHTML = `
+      <!-- 1. Version Milestone Header Banner -->
+      <div class="onboarding-version-header-banner">
+        <div class="onboarding-version-banner-top">
+          <div class="onboarding-version-title-group">
+            <h3>
+              Versi ${ver.version}
+              <span class="onboarding-version-badge" style="background: ${ver.badgeColor || '#df1683'}">${ver.badge}</span>
+            </h3>
+            <span class="onboarding-version-date">Rilis: ${ver.releaseDate}</span>
+          </div>
+          <span class="onboarding-version-index-badge">Rilis ${this.activeVersionIndex + 1} dari ${total}</span>
+        </div>
+        <p class="onboarding-version-tagline"><strong>${ver.title}</strong> — ${ver.tagline}</p>
+      </div>
+
+      <!-- 2. Highlights & Keunggulan Versi -->
+      <div>
+        <div class="onboarding-section-title">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Highlight Fitur Utama (v${ver.version})
+        </div>
+        <div class="onboarding-cards-grid">
+          ${(ver.highlights || []).map(c => `
+            <div class="onboarding-info-card">
+              <div class="onboarding-info-card-icon" style="background:${c.iconBg}">${c.icon}</div>
+              <div class="onboarding-info-card-content">
+                <h4>${c.title}</h4>
+                <p>${c.desc}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- 3. Catatan Rilis Lengkap -->
+      <div class="onboarding-changelog-box">
+        <div class="onboarding-changelog-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Catatan Rilis Lengkap (v${ver.version}):</span>
+        </div>
+        ${ver.categories ? `
+          <div class="onboarding-changelog-categories">
+            ${ver.categories.map(cat => `
+              <div class="onboarding-changelog-category-group">
+                <div class="onboarding-changelog-cat-header">
+                  <span class="onboarding-changelog-cat-badge" style="color: ${cat.color}; background: ${cat.bgColor}; border: 1px solid ${cat.color}33;">${cat.tag}</span>
+                  <strong class="onboarding-changelog-cat-title">${cat.category}</strong>
+                </div>
+                <ul class="onboarding-changelog-list">
+                  ${cat.items.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <ul class="onboarding-changelog-list">
+            ${(ver.items || []).map(item => `<li>${item}</li>`).join('')}
+          </ul>
+        `}
+      </div>
+
+      <!-- 4. Bottom Horizontal Navigation Controls -->
+      <div class="onboarding-version-bottom-nav">
+        <button class="btn-secondary" id="btn-ver-prev-card" style="padding: 5px 12px; font-size: 11.5px;" ${!prevVerObj ? 'disabled' : ''}>
+          &larr; ${prevVerObj ? `v${prevVerObj.version}` : 'Versi Awal'}
+        </button>
+        <div class="onboarding-version-dots">
+          ${versions.map((v, i) => `
+            <div class="onboarding-version-dot ${i === this.activeVersionIndex ? 'active' : ''}" data-idx="${i}" title="Ke v${v.version} (${v.title})"></div>
+          `).join('')}
+        </div>
+        <button class="btn-secondary" id="btn-ver-next-card" style="padding: 5px 12px; font-size: 11.5px;" ${!nextVerObj ? 'disabled' : ''}>
+          ${nextVerObj ? `v${nextVerObj.version}` : 'Versi Terbaru'} &rarr;
+        </button>
+      </div>
+    `;
+
+    // Bind bottom pagination events
+    document.getElementById('btn-ver-prev-card')?.addEventListener('click', () => {
+      if (prevVerObj) this.selectVersion(this.activeVersionIndex + 1);
+    });
+    document.getElementById('btn-ver-next-card')?.addEventListener('click', () => {
+      if (nextVerObj) this.selectVersion(this.activeVersionIndex - 1);
+    });
+    contentArea.querySelectorAll('.onboarding-version-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const idx = parseInt(dot.dataset.idx, 10);
+        if (!isNaN(idx)) this.selectVersion(idx);
+      });
+    });
+  },
+
+  selectVersion(index) {
+    const versions = ONBOARDING_CONFIG.versions || [];
+    if (!versions.length) return;
+    const clampedIndex = Math.max(0, Math.min(index, versions.length - 1));
+    this.activeVersionIndex = clampedIndex;
+
+    const track = document.getElementById('onboarding-version-pills-track');
+    if (track) {
+      const pills = track.querySelectorAll('.onboarding-version-pill');
+      pills.forEach((p, i) => {
+        const isActive = (i === clampedIndex);
+        p.classList.toggle('active', isActive);
+        if (isActive) {
+          // Scroll ONLY the pills track horizontally without shifting ancestors/modal
+          const targetLeft = p.offsetLeft - (track.clientWidth / 2) + (p.clientWidth / 2);
+          track.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+        }
+      });
+    }
+
+    const btnPrev = document.getElementById('btn-ver-carousel-prev');
+    const btnNext = document.getElementById('btn-ver-carousel-next');
+    if (btnPrev) btnPrev.disabled = (clampedIndex === 0);
+    if (btnNext) btnNext.disabled = (clampedIndex === versions.length - 1);
+
+    this.renderVersionContent();
+  },
+
   showWelcomeModal(force = false) {
     this.injectElements();
+    this.renderVersionPills();
+    this.selectVersion(0);
     const modal = document.getElementById('onboarding-welcome-modal-overlay');
     if (modal) {
       modal.classList.add('active');
@@ -2667,6 +2982,10 @@ const OnboardingManager = {
           // Biarkan task_scratchpad tetap aktif hingga langkah 9 (tutup scratchpad)
         } else if (this.currentGuideTaskId === 'task_settings_cache' && this.currentTourStepIndex < 6) {
           // Biarkan task_settings_cache tetap aktif hingga langkah 7 (tutup pengaturan)
+        } else if (this.currentGuideTaskId === 'task_whatsapp_linker' && this.currentTourStepIndex < 3) {
+          // Biarkan task_whatsapp_linker tetap aktif hingga langkah 4 (tutup WA Linker)
+        } else if (this.currentGuideTaskId === 'task_network_sop' && this.currentTourStepIndex < 1) {
+          // Biarkan task_network_sop tetap aktif hingga langkah 2 (buka SOP)
         } else {
           this.endTour();
         }
@@ -2697,11 +3016,17 @@ const OnboardingManager = {
       case 'task_quick_reply':
         this.startTaskGuide('task_quick_reply');
         break;
+      case 'task_whatsapp_linker':
+        this.startTaskGuide('task_whatsapp_linker');
+        break;
       case 'task_scratchpad':
         this.startTaskGuide('task_scratchpad');
         break;
       case 'task_customer_notes':
         this.startTaskGuide('task_customer_notes');
+        break;
+      case 'task_network_sop':
+        this.startTaskGuide('task_network_sop');
         break;
       case 'task_settings_cache':
         this.startTaskGuide('task_settings_cache');

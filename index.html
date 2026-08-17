@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+    content="default-src 'self' 'unsafe-inline' https: http: data:; img-src 'self' data: https: http:; connect-src 'self' https: http:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:;">
   <title>CS Marketplace Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,13 +21,20 @@
     <div class="titlebar-drag-region"></div>
     <div class="titlebar-title">
       <div class="titlebar-logo">
-        <img src="assets/icon.ico" alt="Logo" width="18" height="18" style="object-fit: contain;">
+        <img src="assets/icon.png" alt="Logo" width="18" height="18" style="object-fit: contain;">
       </div>
       <span>CS Marketplace Dashboard</span>
     </div>
     <!-- Status Bar (includes RAM) -->
     <div class="status-bar" id="status-bar" style="display:none;"></div>
     <div class="titlebar-controls">
+      <!-- Quick Lock -->
+      <button class="titlebar-btn quick-lock" id="btn-quick-lock" title="Kunci Layar (Quick Lock)" aria-label="Kunci Layar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </button>
       <!-- Theme Toggle -->
       <button class="titlebar-btn theme-toggle" id="btn-theme-toggle" title="Ganti Tema" aria-label="Ganti Tema Terang atau Gelap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -52,24 +59,66 @@
     </div>
   </div>
 
+  <!-- Lock Screen Overlay (Quick Lock) -->
+  <div class="lockscreen-overlay" id="lockscreen-overlay">
+    <div class="lockscreen-card" id="lockscreen-card">
+      <div class="lockscreen-avatar-wrap">
+        <div class="lockscreen-avatar" id="lockscreen-avatar">👩‍💼</div>
+        <div class="lockscreen-lock-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="lockscreen-title" id="lockscreen-user-name">Nama CS</div>
+      <div class="lockscreen-role" id="lockscreen-user-role">Customer Service &middot; Layar Terkunci</div>
+      
+      <form class="lockscreen-form" id="lockscreen-form">
+        <div class="form-group">
+          <div class="pwd-input-group">
+            <input type="password" id="lockscreen-password" placeholder="Masukkan PIN untuk membuka" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-pwd" data-target="lockscreen-password" title="Lihat PIN" aria-label="Lihat PIN">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="lockscreen-actions">
+          <button type="submit" class="btn-primary" id="btn-lockscreen-unlock">Buka Kunci</button>
+        </div>
+      </form>
+      
+      <button type="button" class="lockscreen-switch-link" id="btn-lockscreen-switch">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Ganti Akun / Keluar
+      </button>
+    </div>
+  </div>
+
   <!-- Login Layout -->
   <div class="login-layout" id="login-layout">
     <div class="login-container" id="login-container">
       <div class="login-header">
-        <img src="assets/icon.ico" alt="Logo" width="48" height="48">
+        <img src="assets/icon.png" alt="Logo" width="48" height="48">
         <h2>Dashboard Login</h2>
         <p id="login-subtitle">Memuat data pengguna...</p>
       </div>
       
       <div class="login-body">
         <form id="login-form" style="display: none;">
-          <div class="form-group">
-            <label for="login-username">Pilih Pengguna</label>
-            <select id="login-username" required></select>
+          <div class="form-group" id="login-user-group">
+            <label id="login-user-label">Pilih Pengguna</label>
+            <div class="user-selector-grid" id="login-user-grid"></div>
+            <select id="login-username" required style="display: none;"></select>
           </div>
           <div class="form-group">
             <label for="login-password">PIN / Password</label>
-            <input type="password" id="login-password" placeholder="Masukkan PIN" required>
+            <div class="pwd-input-group">
+              <input type="password" id="login-password" placeholder="Masukkan PIN" required autocomplete="current-password">
+              <button type="button" class="btn-toggle-pwd" data-target="login-password" title="Lihat PIN" aria-label="Lihat PIN">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
           </div>
           <div class="login-actions">
             <button type="submit" class="btn-primary" id="btn-login" style="width: 100%;">Masuk</button>
@@ -83,19 +132,60 @@
 
         <form id="register-form" style="display: none;">
           <div class="form-group">
-            <label for="reg-username">Nama Pengguna Baru</label>
-            <input type="text" id="reg-username" placeholder="Cth: CS Budi" required>
+            <label for="reg-username">Username Login <span style="color:var(--accent-primary)">*</span></label>
+            <input type="text" id="reg-username" placeholder="Cth: budi_cs" required autocomplete="username">
+          </div>
+          <div class="form-group" id="reg-role-group">
+            <label for="reg-role">Tipe Akun / Hak Akses <span style="color:var(--accent-primary)">*</span></label>
+            <select id="reg-role">
+              <option value="Customer Service">👩‍💼 Customer Service (CS)</option>
+              <option value="Super Admin">👑 Super Administrator (Super Admin)</option>
+            </select>
+          </div>
+          <div class="form-group" id="reg-admin-pin-group" style="display: none;">
+            <label for="reg-admin-pin">PIN Otorisasi Super Admin Yang Ada <span style="color:#e11d48">*</span></label>
+            <div class="pwd-input-group">
+              <input type="password" id="reg-admin-pin" placeholder="Masukkan PIN Super Admin aktif">
+              <button type="button" class="btn-toggle-pwd" data-target="reg-admin-pin" title="Lihat PIN" aria-label="Lihat PIN">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <small style="color:var(--text-muted);font-size:11px;margin-top:3px;display:block;">Wajib memasukkan PIN Super Admin lama untuk mengizinkan pembuatan Super Admin baru.</small>
           </div>
           <div class="form-group">
-            <label for="reg-password">PIN / Password</label>
-            <input type="password" id="reg-password" placeholder="Buat PIN" required>
+            <label for="reg-display-name">Nama Lengkap / Panggilan</label>
+            <input type="text" id="reg-display-name" placeholder="Cth: Budi Santoso">
           </div>
           <div class="form-group">
-            <label for="reg-password-confirm">Konfirmasi PIN</label>
-            <input type="password" id="reg-password-confirm" placeholder="Ulangi PIN" required>
+            <label>Pilih Avatar & Warna Profil</label>
+            <div class="avatar-customizer-row">
+              <div class="avatar-preview-box" id="reg-avatar-preview" style="background:#df1683;">👩‍💼</div>
+              <div class="avatar-picker-tabs">
+                <div class="color-swatch-list" id="reg-color-swatches"></div>
+                <div class="icon-swatch-list" id="reg-icon-swatches"></div>
+              </div>
+            </div>
           </div>
           <div class="form-group">
-            <label for="reg-security-question">Pertanyaan Keamanan <span style="font-weight:400;color:var(--text-muted)">(untuk reset PIN)</span></label>
+            <label for="reg-password">PIN / Password <span style="color:var(--accent-primary)">*</span></label>
+            <div class="pwd-input-group">
+              <input type="password" id="reg-password" placeholder="Buat PIN baru" required autocomplete="new-password">
+              <button type="button" class="btn-toggle-pwd" data-target="reg-password" title="Lihat PIN" aria-label="Lihat PIN">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="reg-password-confirm">Konfirmasi PIN <span style="color:var(--accent-primary)">*</span></label>
+            <div class="pwd-input-group">
+              <input type="password" id="reg-password-confirm" placeholder="Ulangi PIN baru" required autocomplete="new-password">
+              <button type="button" class="btn-toggle-pwd" data-target="reg-password-confirm" title="Lihat PIN" aria-label="Lihat PIN">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="reg-security-question">Pertanyaan Keamanan <span style="font-weight:400;color:var(--text-muted)">(untuk reset PIN jika lupa)</span></label>
             <select id="reg-security-question">
               <option value="">-- Pilih pertanyaan --</option>
               <option value="Nama hewan peliharaan pertama Anda?">Nama hewan peliharaan pertama Anda?</option>
@@ -134,7 +224,12 @@
             </div>
             <div class="form-group">
               <label for="reset-new-password">PIN Baru</label>
-              <input type="password" id="reset-new-password" placeholder="PIN baru">
+              <div class="pwd-input-group">
+                <input type="password" id="reset-new-password" placeholder="Masukkan PIN baru" autocomplete="new-password">
+                <button type="button" class="btn-toggle-pwd" data-target="reset-new-password" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="login-actions">
               <button type="submit" class="btn-primary" id="btn-reset-password" style="width:100%;">Reset PIN</button>
@@ -199,10 +294,77 @@
           </svg>
         </button>
       </div>
+
+      <!-- Sidebar User Profile Widget -->
+      <div class="sidebar-user-wrapper" id="sidebar-user-wrapper">
+        <div class="sidebar-user-card" id="sidebar-user-card" title="Profil Pengguna (Klik untuk Opsi)">
+          <div class="sidebar-user-avatar-wrap">
+            <div class="sidebar-user-avatar" id="sidebar-user-avatar">👩‍💼</div>
+            <div class="sidebar-user-online-dot"></div>
+          </div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebar-user-name">Pengguna</div>
+            <div class="sidebar-user-role" id="sidebar-user-role">Customer Service</div>
+          </div>
+          <div class="sidebar-user-menu-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <!-- User Popover Menu -->
+        <div class="user-popover-menu" id="user-popover-menu">
+          <div class="user-popover-header">
+            <div class="user-popover-header-name" id="popover-user-name">Pengguna</div>
+            <div class="user-popover-header-role" id="popover-user-role" style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Customer Service</div>
+            <div class="user-popover-header-meta">
+              <span class="status-dot status-green" id="popover-net-dot"></span>
+              <span id="popover-net-status">Internet: Online (Stabil)</span>
+            </div>
+          </div>
+          <button type="button" class="user-popover-item" id="popover-btn-net-guide">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            Panduan Backup Internet (Tethering)
+          </button>
+          <button type="button" class="user-popover-item" id="popover-btn-lock">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            Kunci Layar (Quick Lock)
+          </button>
+          <button type="button" class="user-popover-item" id="popover-btn-account">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Profil & Pengaturan Akun
+          </button>
+          <div class="user-popover-divider"></div>
+          <button type="button" class="user-popover-item danger" id="popover-btn-logout">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Keluar / Ganti Akun
+          </button>
+        </div>
+      </div>
     </aside>
 
     <!-- Main Panel -->
     <main class="main-panel" id="main-panel">
+
+      <!-- Offline Warning Alert Banner -->
+      <div class="network-offline-banner" id="network-offline-banner" style="display: none;">
+        <div class="network-offline-content">
+          <div class="network-offline-icon">📡❌</div>
+          <div class="network-offline-text">
+            <strong>Koneksi Internet Terputus!</strong>
+            <span>Toko & chat marketplace tidak dapat menerima pesan baru secara real-time.</span>
+          </div>
+        </div>
+        <div class="network-offline-actions">
+          <button type="button" class="btn-network-guide" id="btn-open-network-guide">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Panduan Tethering HP
+          </button>
+          <button type="button" class="btn-network-retry" id="btn-network-retry" title="Uji Ulang Koneksi">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Cek Koneksi
+          </button>
+        </div>
+      </div>
 
       <!-- Tab Bar -->
       <div class="tab-bar" id="tab-bar" style="display:none;">
@@ -213,7 +375,7 @@
       <!-- Empty State -->
       <div class="empty-state" id="empty-state">
         <div class="empty-icon">
-          <img src="assets/icon.ico" alt="VIVA Logo" width="80" height="80"
+          <img src="assets/icon.png" alt="Logo CS Dashboard" width="80" height="80"
             style="object-fit: contain; filter: drop-shadow(0 4px 12px rgba(223, 22, 131, 0.3));">
         </div>
         <h2>Selamat Datang di CS Dashboard</h2>
@@ -318,9 +480,49 @@
         </div>
 
         <div class="form-group" id="custom-url-group" style="display:none;">
-          <label for="store-url">URL Chat Kustom</label>
-          <input type="url" id="store-url" placeholder="https://...">
-          <small>Masukkan URL halaman chat marketplace kamu</small>
+          <div class="form-label-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label for="store-url" style="margin: 0; font-weight: 600;">Cari Marketplace / URL Kustom</label>
+            <span class="badge-smart-search">⚡ Smart Search</span>
+          </div>
+
+          <div class="custom-url-input-wrap">
+            <div class="custom-url-input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <input type="text" id="store-url" placeholder="Ketik nama (e.g. Dokterin, Grab, Zalora) atau domain..." autocomplete="off" spellcheck="false">
+            <button type="button" id="btn-clear-url" class="btn-clear-url" title="Hapus pencarian" style="display:none;">&times;</button>
+            <div class="custom-url-spinner" id="custom-url-spinner" style="display: none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="spin">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Preset Chips -->
+          <div class="custom-preset-chips" id="custom-preset-chips">
+            <span class="preset-label">Rekomendasi Cepat:</span>
+            <button type="button" class="preset-chip" data-query="grab merchant" data-name="GrabMerchant" data-initials="GM" data-url="https://merchant.grab.com/portal/">🟢 GrabMerchant</button>
+            <button type="button" class="preset-chip" data-query="gobiz gojek" data-name="GoBiz" data-initials="GB" data-url="https://app.gobiz.com/">🔴 GoBiz</button>
+            <button type="button" class="preset-chip" data-query="dokterin partner" data-name="DokterIN" data-initials="DI" data-url="https://partner.dokterin.co.id/">🏥 DokterIN</button>
+            <button type="button" class="preset-chip" data-query="zalora seller" data-name="Zalora Seller" data-initials="ZA" data-url="https://sellercenter.zalora.co.id/">👗 Zalora</button>
+            <button type="button" class="preset-chip" data-query="whatsapp web" data-name="WhatsApp Web" data-initials="WA" data-url="https://web.whatsapp.com/">💬 WA Web</button>
+            <button type="button" class="preset-chip" data-query="telegram web" data-name="Telegram" data-initials="TG" data-url="https://web.telegram.org/">✈️ Telegram</button>
+            <button type="button" class="preset-chip" data-query="shopify admin" data-name="Shopify" data-initials="SF" data-url="https://accounts.shopify.com/store-login">🛒 Shopify</button>
+            <button type="button" class="preset-chip" data-query="padi umkm seller" data-name="PaDi UMKM" data-initials="PU" data-url="https://seller.padiumkm.id/">🏢 PaDi UMKM</button>
+            <button type="button" class="preset-chip" data-query="olx indonesia" data-name="OLX" data-initials="OL" data-url="https://www.olx.co.id/">📦 OLX</button>
+          </div>
+
+          <!-- Dynamic Search Results List -->
+          <div class="custom-url-results" id="custom-url-results" style="display: none;">
+            <div class="custom-results-header">
+              <span>DAFTAR URL YANG TERSEDIA</span>
+              <small>Klik untuk memilih</small>
+            </div>
+            <div class="custom-results-list" id="custom-results-list"></div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -368,6 +570,10 @@
             </svg>
             Cache & Data
           </button>
+          <button type="button" class="settings-tab-btn" data-tab="superadmin" id="tab-btn-superadmin" style="display: none; border-color: rgba(225, 29, 72, 0.35); background: rgba(225, 29, 72, 0.06);">
+            <span style="font-size: 14px;">👑</span>
+            Panel Super Admin
+          </button>
         </div>
         <button class="modal-close" id="settings-close" aria-label="Tutup Pengaturan">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -387,26 +593,71 @@
 
         <!-- Tab 2: Akun Saya -->
         <div class="settings-tab-pane" id="settings-pane-account" style="display: none;">
+          
+          <!-- Card 1: Profil CS -->
+          <div class="settings-card">
+            <h4>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              Profil CS
+            </h4>
+            <p class="settings-hint" style="margin: 4px 0 12px;">Sesuaikan nama panggilan dan avatar personal Anda.</p>
+            
+            <div class="form-group">
+              <label>Avatar & Warna Personal</label>
+              <div class="avatar-customizer-row">
+                <div class="avatar-preview-box" id="acc-avatar-preview" style="background:#df1683;">👩‍💼</div>
+                <div class="avatar-picker-tabs">
+                  <div class="color-swatch-list" id="acc-color-swatches"></div>
+                  <div class="icon-swatch-list" id="acc-icon-swatches"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="acc-display-name">Nama Lengkap / Panggilan</label>
+              <input type="text" id="acc-display-name" placeholder="Nama lengkap Anda">
+            </div>
+
+            <button class="btn-primary" id="btn-save-profile" style="align-self: flex-start; margin-top: 4px;">Simpan Profil CS</button>
+          </div>
+
+          <!-- Card 2: Ganti PIN -->
           <div class="settings-card">
             <h4>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              Ganti PIN
+              Ganti PIN Akun
             </h4>
             <div class="form-group">
               <label for="acc-current-password">PIN Saat Ini</label>
-              <input type="password" id="acc-current-password" placeholder="Masukkan PIN saat ini">
+              <div class="pwd-input-group">
+                <input type="password" id="acc-current-password" placeholder="Masukkan PIN saat ini" autocomplete="current-password">
+                <button type="button" class="btn-toggle-pwd" data-target="acc-current-password" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label for="acc-new-password">PIN Baru</label>
-              <input type="password" id="acc-new-password" placeholder="PIN baru">
+              <div class="pwd-input-group">
+                <input type="password" id="acc-new-password" placeholder="PIN baru" autocomplete="new-password">
+                <button type="button" class="btn-toggle-pwd" data-target="acc-new-password" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label for="acc-new-password-confirm">Konfirmasi PIN Baru</label>
-              <input type="password" id="acc-new-password-confirm" placeholder="Ulangi PIN baru">
+              <div class="pwd-input-group">
+                <input type="password" id="acc-new-password-confirm" placeholder="Ulangi PIN baru" autocomplete="new-password">
+                <button type="button" class="btn-toggle-pwd" data-target="acc-new-password-confirm" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <button class="btn-primary" id="btn-change-password" style="align-self: flex-start; margin-top: 4px;">Simpan PIN Baru</button>
           </div>
 
+          <!-- Card 3: Pertanyaan Keamanan -->
           <div class="settings-card">
             <h4>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -429,11 +680,37 @@
             </div>
             <div class="form-group">
               <label for="acc-pin-for-security">Konfirmasi PIN Saat Ini</label>
-              <input type="password" id="acc-pin-for-security" placeholder="Masukkan PIN untuk konfirmasi">
+              <div class="pwd-input-group">
+                <input type="password" id="acc-pin-for-security" placeholder="Masukkan PIN untuk konfirmasi" autocomplete="current-password">
+                <button type="button" class="btn-toggle-pwd" data-target="acc-pin-for-security" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <button class="btn-secondary" id="btn-save-security-question" style="align-self: flex-start; margin-top: 4px;">Simpan Pertanyaan Keamanan</button>
           </div>
 
+          <!-- Card 4: Kunci Layar Otomatis -->
+          <div class="settings-card">
+            <h4>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Kunci Layar Otomatis (Auto-Lock)
+            </h4>
+            <p class="settings-hint" style="margin: 4px 0 10px;">Otomatis mengunci layar jika tidak ada aktivitas mouse/keyboard untuk keamanan saat meninggalkan meja kerja.</p>
+            <div class="form-group">
+              <label for="acc-autolock-select">Batas Waktu Tidak Aktif</label>
+              <select id="acc-autolock-select">
+                <option value="0">Mati (Kunci Manual Saja)</option>
+                <option value="5">5 Menit Tidak Aktif</option>
+                <option value="10">10 Menit Tidak Aktif</option>
+                <option value="15">15 Menit Tidak Aktif</option>
+                <option value="30">30 Menit Tidak Aktif</option>
+              </select>
+            </div>
+            <button class="btn-secondary" id="btn-save-autolock" style="align-self: flex-start; margin-top: 4px;">Simpan Pengaturan Kunci Otomatis</button>
+          </div>
+
+          <!-- Card 5: Panduan & Onboarding -->
           <div class="settings-card">
             <h4>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#df1683" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
@@ -451,7 +728,7 @@
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.5 🚀
+                Info Sistem & Changelog v1.0.6 🚀
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -460,6 +737,7 @@
             </div>
           </div>
 
+          <!-- Card 7: Versi & Pembaruan -->
           <div class="settings-card">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
               <div>
@@ -478,6 +756,7 @@
             </div>
           </div>
 
+          <!-- Card 8: Keluar dari Akun -->
           <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
               <div>
@@ -569,6 +848,60 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab 4: Panel Super Admin -->
+        <div class="settings-tab-pane" id="settings-pane-superadmin" style="display: none;">
+          <div class="superadmin-panel-header">
+            <div class="superadmin-title-row">
+              <div class="superadmin-badge-crown">👑</div>
+              <div>
+                <h3 class="superadmin-panel-title">Panel Pusat Kendali Super Admin</h3>
+                <p class="settings-hint" style="margin: 2px 0 0;">Audit sesi seluruh marketplace, pantau toko CS, reset PIN, dan kendali data akun di komputer ini.</p>
+              </div>
+            </div>
+            <button class="btn-primary" id="btn-superadmin-add-user" style="font-size: 12px; padding: 7px 14px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Tambah CS Baru
+            </button>
+          </div>
+
+          <!-- Stats Tiles -->
+          <div class="superadmin-stats-grid">
+            <div class="superadmin-stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-meta">
+                <div class="stat-value" id="sa-stat-users">-</div>
+                <div class="stat-label">Akun CS Terdaftar</div>
+              </div>
+            </div>
+            <div class="superadmin-stat-card">
+              <div class="stat-icon">🏪</div>
+              <div class="stat-meta">
+                <div class="stat-value" id="sa-stat-stores">-</div>
+                <div class="stat-label">Total Toko Marketplace</div>
+              </div>
+            </div>
+            <div class="superadmin-stat-card">
+              <div class="stat-icon">🔐</div>
+              <div class="stat-meta">
+                <div class="stat-value" id="sa-stat-partitions">-</div>
+                <div class="stat-label">Partisi Sesi Terisolasi</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit List Section -->
+          <div class="superadmin-section-header">
+            <h4>Daftar Pengguna, Toko & Audit Sesi Aktif</h4>
+            <button class="btn-icon" id="btn-superadmin-refresh" title="Muat Ulang Data Audit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
+
+          <div class="superadmin-audit-container" id="superadmin-audit-list">
+            <!-- Rendered by renderSuperAdminPanel() -->
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer settings-footer" id="settings-stores-footer">
@@ -629,24 +962,41 @@
       <textarea id="scratchpad-textarea" placeholder="Paste data dari notepad, word, atau excel di sini..."></textarea>
     </div>
     <div class="scratchpad-footer">
-      <button class="btn-sp-action" id="btn-sp-load" title="Load dari TXT/XLSX/DOCX">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        Load
-      </button>
-      <button class="btn-sp-action primary" id="btn-sp-save" title="Save ke TXT/XLSX/DOCX">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        Save
-      </button>
+      <div class="scratchpad-footer-left">
+        <button class="btn-sp-action" id="btn-sp-copy" title="Salin seluruh catatan tab ini">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Salin
+        </button>
+        <button class="btn-sp-action" id="btn-sp-insert-chat" title="Ketik langsung catatan ini ke chat marketplace aktif">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          Ketik
+        </button>
+      </div>
+      <div class="scratchpad-footer-right">
+        <button class="btn-sp-action" id="btn-sp-load" title="Load dari TXT/XLSX/DOCX">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Load
+        </button>
+        <button class="btn-sp-action primary" id="btn-sp-save" title="Save ke TXT/XLSX/DOCX">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          Save
+        </button>
+      </div>
     </div>
   </div>
 
@@ -699,7 +1049,7 @@
     <div class="modal modal-update" id="modal-update" role="dialog" aria-labelledby="updater-status-title" aria-modal="true">
       <div class="modal-header">
         <div class="updater-header-title">
-          <img src="assets/icon.ico" width="20" height="20" style="object-fit:contain;" alt="Logo">
+          <img src="assets/icon.png" width="20" height="20" style="object-fit:contain;" alt="Logo">
           <h3 id="updater-modal-title">Pembaruan Aplikasi</h3>
         </div>
         <button class="modal-close" id="updater-modal-close" aria-label="Tutup Modal">
@@ -718,7 +1068,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.5</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.6</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -867,29 +1217,6 @@
           </div>
         </div>
 
-        <!-- 3. Logistics Tracker (Cek Resi) - Disabled (Dalam Pengembangan) -->
-        <div class="cs-toolkit-item disabled" id="tool-item-tracking" role="menuitem" tabindex="-1" aria-disabled="true" title="Fitur Pelacak Resi sedang dalam tahap pengembangan (Segera Hadir)">
-          <div class="cs-toolkit-item-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Pelacak Resi (Cek Resi)</div>
-            <div class="cs-toolkit-item-desc">SPX, J&T, SiCepat, dll + auto-ketik status</div>
-          </div>
-          <span class="cs-toolkit-item-badge badge-dev">Segera Hadir</span>
-        </div>
-
-        <!-- 4. Calculator CS - Disabled (Dalam Pengembangan) -->
-        <div class="cs-toolkit-item disabled" id="tool-item-calc" role="menuitem" tabindex="-1" aria-disabled="true" title="Fitur Kalkulator Marketplace sedang dalam tahap pengembangan (Segera Hadir)">
-          <div class="cs-toolkit-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Kalkulator Diskon & Margin</div>
-            <div class="cs-toolkit-item-desc">Hitung fee admin marketplace & profit HPP</div>
-          </div>
-          <span class="cs-toolkit-item-badge badge-dev">Segera Hadir</span>
-        </div>
 
         <!-- 5. Customer Notes -->
         <div class="cs-toolkit-item" id="tool-item-cnotes" role="menuitem" tabindex="0">
@@ -902,7 +1229,29 @@
           </div>
         </div>
 
-        <!-- 6. Feedback / Bug Report -->
+        <!-- 6. WhatsApp Direct Link -->
+        <div class="cs-toolkit-item" id="tool-item-walinker" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(37, 211, 102, 0.15); color: #25d366;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">WhatsApp Direct Linker</div>
+            <div class="cs-toolkit-item-desc">Format nomor HP & buka chat tanpa simpan kontak</div>
+          </div>
+        </div>
+
+        <!-- 7. Smart Case Converter -->
+        <div class="cs-toolkit-item" id="tool-item-caseconv" role="menuitem" tabindex="0">
+          <div class="cs-toolkit-item-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          </div>
+          <div class="cs-toolkit-item-info">
+            <div class="cs-toolkit-item-name">Smart Case Converter</div>
+            <div class="cs-toolkit-item-desc">Kapitalisasi alamat, format resi & rapikan spasi</div>
+          </div>
+        </div>
+
+        <!-- 8. Feedback / Bug Report -->
         <div class="cs-toolkit-item" id="tool-item-feedback" role="menuitem" tabindex="0">
           <div class="cs-toolkit-item-icon" style="background: rgba(100, 116, 139, 0.15); color: var(--text-secondary);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -922,7 +1271,7 @@
             <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
             <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
           </div>
-          <span class="cs-toolkit-item-badge">v1.0.5</span>
+          <span class="cs-toolkit-item-badge">v1.0.6</span>
         </div>
       </div>
     </div>
@@ -1058,161 +1407,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-secondary" id="btn-tpl-modal-cancel">Batal</button>
-        <button class="btn-primary" id="btn-tpl-modal-save">Simpan Template</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Logistics Tracker (Cek Resi) -->
-  <div class="modal-overlay" id="modal-tracking-overlay">
-    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-tracking-title" aria-modal="true">
-      <div class="modal-header">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:18px;">🚚</span>
-          <h3 id="modal-tracking-title">Pelacak Resi Multi-Ekspedisi</h3>
-        </div>
-        <button class="modal-close" id="btn-tracking-close" aria-label="Tutup Pelacak Resi">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="tracking-search-bar" style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-          <input type="text" id="tracking-resi-input" placeholder="Masukkan nomor resi (SPX, J&T, SiCepat, JNE, dll)..." style="flex:2; min-width:200px;">
-          <select id="tracking-courier-select" style="flex:1; min-width:140px;">
-            <option value="spx">Shopee Xpress (SPX)</option>
-            <option value="jnt">J&T Express</option>
-            <option value="sicepat">SiCepat</option>
-            <option value="jne">JNE Express</option>
-            <option value="anteraja">Anteraja</option>
-            <option value="idexpress">ID Express</option>
-            <option value="ninja">Ninja Xpress</option>
-            <option value="lion">Lion Parcel</option>
-          </select>
-          <button class="btn-primary" id="btn-do-tracking" style="padding:0 18px;">Cek Resi</button>
-        </div>
-        <div class="courier-quick-pills" style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
-          <span style="font-size:11px; color:var(--text-muted); align-self:center;">Pilih Cepat:</span>
-          <button type="button" class="btn-pill-courier" data-courier="spx">SPX</button>
-          <button type="button" class="btn-pill-courier" data-courier="jnt">J&T</button>
-          <button type="button" class="btn-pill-courier" data-courier="sicepat">SiCepat</button>
-          <button type="button" class="btn-pill-courier" data-courier="jne">JNE</button>
-          <button type="button" class="btn-pill-courier" data-courier="anteraja">Anteraja</button>
-          <button type="button" class="btn-pill-courier" data-courier="idexpress">ID Express</button>
-          <button type="button" class="btn-pill-courier" data-courier="ninja">Ninja</button>
-          <button type="button" class="btn-pill-courier" data-courier="lion">Lion Parcel</button>
-        </div>
-
-        <div id="tracking-results-box">
-          <div class="qr-empty-state" style="padding:32px 20px;">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-            </svg>
-            <p>Masukkan nomor resi di atas untuk melacak status paket.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: CS Fee & Discount Calculator -->
-  <div class="modal-overlay" id="modal-calculator-overlay">
-    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-calc-title" aria-modal="true">
-      <div class="modal-header">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:18px;">🧮</span>
-          <h3 id="modal-calc-title">Kalkulator Diskon & Biaya Admin CS</h3>
-        </div>
-        <button class="modal-close" id="btn-calc-close" aria-label="Tutup Kalkulator">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="calc-grid-layout">
-          <div class="calc-form-pane">
-            <div class="form-group">
-              <label for="calc-base-price">Harga Normal Produk (Rp)</label>
-              <input type="number" id="calc-base-price" placeholder="Cth: 150000" value="100000">
-            </div>
-            <div class="form-row" style="display:flex; gap:10px;">
-              <div class="form-group" style="flex:1;">
-                <label for="calc-disc-percent">Diskon (%)</label>
-                <input type="number" id="calc-disc-percent" placeholder="Cth: 10" max="100" min="0">
-              </div>
-              <div class="form-group" style="flex:1;">
-                <label for="calc-disc-nominal">Atau Diskon (Rp)</label>
-                <input type="number" id="calc-disc-nominal" placeholder="Cth: 10000" min="0">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="calc-admin-fee-select">Skema Admin Marketplace</label>
-              <select id="calc-admin-fee-select">
-                <option value="shopee_star">Shopee (Star / Star+ ~6.5%)</option>
-                <option value="shopee_xtra">Shopee (Star + Gratis Ongkir XTRA ~10.5%)</option>
-                <option value="shopee_nonstar">Shopee (Non-Star ~4.0%)</option>
-                <option value="shopee_mall">Shopee (Mall ~7.5%)</option>
-                <option value="tokopedia_pm">Tokopedia (Power Merchant ~5.5%)</option>
-                <option value="tokopedia_pm_pro">Tokopedia (PM PRO + Bebas Ongkir ~9.5%)</option>
-                <option value="tokopedia_reg">Tokopedia (Reguler ~4.5%)</option>
-                <option value="tiktok_shop">TikTok Shop (~5.0% - 7.5%)</option>
-                <option value="lazada">Lazada (~4.0% - 6.0%)</option>
-                <option value="custom">Biaya Kustom</option>
-              </select>
-            </div>
-            <div class="form-group" id="calc-custom-fee-group" style="display:none;">
-              <label for="calc-custom-fee">Persentase Fee Kustom (%)</label>
-              <input type="number" id="calc-custom-fee" placeholder="Cth: 5" value="5">
-            </div>
-            <div class="form-row" style="display:flex; gap:10px;">
-              <div class="form-group" style="flex:1;">
-                <label for="calc-cost-price">Modal / HPP (Opsional)</label>
-                <input type="number" id="calc-cost-price" placeholder="Cth: 60000" value="0">
-              </div>
-              <div class="form-group" style="flex:1;">
-                <label for="calc-subsidy">Subsidi Ongkir / Potongan (Rp)</label>
-                <input type="number" id="calc-subsidy" placeholder="0" value="0">
-              </div>
-            </div>
-          </div>
-
-          <div class="calc-results-pane">
-            <h4 class="calc-results-title">Ringkasan Perhitungan</h4>
-            <div class="calc-result-row main">
-              <span>Harga Bayar Pembeli:</span>
-              <strong id="calc-res-final-price">Rp 100.000</strong>
-            </div>
-            <div class="calc-result-row">
-              <span>Nominal Diskon:</span>
-              <span id="calc-res-discount-amount" style="color:#ef4444;">Rp 0</span>
-            </div>
-            <div class="calc-result-row">
-              <span>Potongan Admin:</span>
-              <span id="calc-res-admin-fee" style="color:#f59e0b;">Rp 6.500 (6.5%)</span>
-            </div>
-            <div class="calc-result-row highlight">
-              <span>Dana Bersih Diterima:</span>
-              <strong id="calc-res-net-earnings" style="color:#10b981;">Rp 93.500</strong>
-            </div>
-            <div class="calc-result-row" id="calc-res-profit-row" style="display:none;">
-              <span>Estimasi Profit Bersih:</span>
-              <strong id="calc-res-profit" style="color:#3b82f6;">Rp 0 (0%)</strong>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-              <button class="btn-primary" id="btn-calc-insert-offer" style="width:100%;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                Ketik Penawaran Diskon ke Chat
-              </button>
-              <button class="btn-secondary" id="btn-calc-insert-invoice" style="width:100%;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Ketik Rincian Harga ke Chat
-              </button>
-            </div>
-          </div>
-        </div>
+        <button type="button" class="btn-secondary" id="btn-tpl-modal-cancel">Batal</button>
+        <button type="button" class="btn-primary" id="btn-tpl-modal-save">Simpan Template</button>
       </div>
     </div>
   </div>
@@ -1296,6 +1492,152 @@
     </div>
   </div>
 
+  <!-- Modal: WhatsApp Direct Linker -->
+  <div class="modal-overlay" id="modal-walinker-overlay" style="z-index: 9996;">
+    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-walinker-title" aria-modal="true" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">💬</span>
+          <h3 id="modal-walinker-title">WhatsApp Direct Linker</h3>
+        </div>
+        <button class="modal-close" id="btn-walinker-close" aria-label="Tutup WhatsApp Linker">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-group">
+          <label for="wa-input-phone">Nomor WhatsApp Pembeli <span style="color:#ef4444;">*</span></label>
+          <input type="text" id="wa-input-phone" placeholder="Contoh: 08123456789 atau 628123456789" autocomplete="off">
+          <small style="color:var(--text-muted);font-size:11px;margin-top:3px;display:block;">Mendukung format 08xxx, +62xxx, tanda hubung, spasi, atau copy-paste langsung dari resi.</small>
+        </div>
+        <div class="form-group">
+          <label for="wa-input-msg">Draft Pesan Awal (Opsional)</label>
+          <textarea id="wa-input-msg" rows="2" placeholder="Halo kak, kami dari Toko terkait pesanan kakak..."></textarea>
+        </div>
+        <div class="wa-preview-card" style="background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;">Format Standar & Tautan:</div>
+          <div id="wa-formatted-preview" style="font-size:13px;color:var(--text-primary);font-weight:600;margin-bottom:4px;">+62 -</div>
+          <div id="wa-link-preview" style="font-size:11px;color:var(--accent-primary);word-break:break-all;font-family:monospace;">https://wa.me/...</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn-secondary" id="btn-wa-copy-link" style="flex:1;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Salin Link WA
+        </button>
+        <button type="button" class="btn-primary" id="btn-wa-open-tab" style="flex:1; background:#25d366; border-color:#25d366; color:#ffffff;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Buka di Tab Baru
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Smart Case Converter & Text Transformer -->
+  <div class="modal-overlay" id="modal-caseconv-overlay" style="z-index: 9996;">
+    <div class="modal modal-tool" role="dialog" aria-labelledby="modal-caseconv-title" aria-modal="true" style="max-width: 540px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">🔤</span>
+          <h3 id="modal-caseconv-title">Smart Case Converter & Text Formatter</h3>
+        </div>
+        <button class="modal-close" id="btn-caseconv-close" aria-label="Tutup Case Converter">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-group">
+          <label for="caseconv-input">Teks / Alamat / Resi Yang Ingin Diformat</label>
+          <textarea id="caseconv-input" rows="4" placeholder="Tempel atau ketik teks di sini (contoh: jl. mawar no. 10 rt 01/02 kel. sukamaju kota jakarta barat)..."></textarea>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          <button type="button" class="btn-case-action" data-mode="title" title="Kapitalisasi Tiap Kata (Cocok untuk Nama & Alamat)">Aa Title Case</button>
+          <button type="button" class="btn-case-action" data-mode="upper" title="Huruf Besar Semua (Cocok untuk Resi/Voucher)">AA UPPERCASE</button>
+          <button type="button" class="btn-case-action" data-mode="lower" title="Huruf Kecil Semua">aa lowercase</button>
+          <button type="button" class="btn-case-action" data-mode="sentence" title="Awal Kalimat Huruf Besar">A. Sentence case</button>
+          <button type="button" class="btn-case-action" data-mode="clean-spaces" title="Hapus Spasi Ganda & Rapikan Baris">🧹 Rapikan Spasi</button>
+        </div>
+      </div>
+      <div class="modal-footer" id="caseconv-footer" style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn-secondary" id="btn-caseconv-copy" style="flex:1;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Salin Hasil
+        </button>
+        <button type="button" class="btn-primary" id="btn-caseconv-insert-chat" style="flex:1;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Ketik ke Chat
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Super Admin Tambah Pengguna / Admin Baru -->
+  <div class="modal-overlay" id="modal-admin-create-user-overlay" style="z-index: 9999;">
+    <div class="modal modal-template" role="dialog" aria-labelledby="modal-admin-create-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">👤</span>
+          <h3 id="modal-admin-create-title">Tambah Pengguna / Super Admin Baru</h3>
+        </div>
+        <button class="modal-close" id="modal-admin-create-close" aria-label="Tutup Form">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="admin-create-user-form">
+          <div class="form-row" style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;">
+              <label for="adm-new-username">Username Login <span style="color:#ef4444;">*</span></label>
+              <input type="text" id="adm-new-username" placeholder="Cth: citra_cs atau admin_2" required autocomplete="off">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="adm-new-role">Tipe Akun (Role) <span style="color:#ef4444;">*</span></label>
+              <select id="adm-new-role">
+                <option value="Customer Service">👩‍💼 Customer Service (CS)</option>
+                <option value="Super Admin">👑 Super Administrator</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="adm-new-display-name">Nama Lengkap / Panggilan</label>
+            <input type="text" id="adm-new-display-name" placeholder="Cth: Citra Lestari">
+          </div>
+          <div class="form-row" style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;">
+              <label for="adm-new-password">PIN Akun Baru <span style="color:#ef4444;">*</span></label>
+              <div class="pwd-input-group">
+                <input type="password" id="adm-new-password" placeholder="PIN awal" required autocomplete="new-password">
+                <button type="button" class="btn-toggle-pwd" data-target="adm-new-password" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="adm-confirm-admin-pin">PIN Super Admin Anda <span style="color:#ef4444;">*</span></label>
+              <div class="pwd-input-group">
+                <input type="password" id="adm-confirm-admin-pin" placeholder="PIN Anda untuk konfirmasi" required autocomplete="current-password">
+                <button type="button" class="btn-toggle-pwd" data-target="adm-confirm-admin-pin" title="Lihat PIN" aria-label="Lihat PIN">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 14px;">
+            <button type="button" class="btn-secondary" id="btn-admin-create-cancel">Batal</button>
+            <button type="submit" class="btn-primary" id="btn-admin-create-submit">Buat Pengguna Baru</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Modern Custom Confirmation Modal & Danger Zone -->
   <div class="modal-overlay" id="confirm-modal-overlay" style="z-index: 10050;">
     <div class="modal modal-confirm" id="confirm-modal" role="dialog" aria-labelledby="confirm-modal-title" aria-modal="true">
@@ -1319,6 +1661,163 @@
     </div>
   </div>
 
+  <!-- Modal: Panduan Infografik Backup Internet (Tethering HP CS) -->
+  <div class="modal-overlay" id="modal-network-guide-overlay" style="z-index: 9998;">
+    <div class="modal modal-infographic" role="dialog" aria-labelledby="modal-net-guide-title" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-header-icon">📡</div>
+        <div class="modal-header-text">
+          <h3 id="modal-net-guide-title">PANDUAN TETHERING HP CS (SOLUSI BACKUP INTERNET)</h3>
+          <p>SOP Penyelamatan Koneksi Dashboard CS Marketplace Saat Wi-Fi / IndiHome Trouble</p>
+        </div>
+        <button class="modal-close" id="btn-net-guide-close" aria-label="Tutup Panduan">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Banner Ringkasan & Status Live -->
+        <div class="infographic-header-banner">
+          <div class="infographic-title-wrap">
+            <h3>📶 Solusi Darurat Koneksi Chat CS</h3>
+            <p>Gunakan kuota HP CS sementara agar chat pelanggan & notifikasi pesanan tetap aktif tanpa delay.</p>
+          </div>
+          <div class="net-status-badge badge-online" id="modal-net-guide-status">
+            <span class="pulse-dot green"></span> Internet Terhubung (Normal)
+          </div>
+        </div>
+
+        <!-- Section 1: Indikasi & Langkah Awal -->
+        <div class="infographic-section">
+          <div class="infographic-section-header">
+            <span class="section-num-badge">1</span>
+            <span class="section-title">Ketika Masalah Terjadi (Indikasi Awal)</span>
+          </div>
+          <div class="indication-grid">
+            <div class="indication-card">
+              <div class="indication-icon">🔴</div>
+              <div class="indication-content">
+                <h4>1a. Kendala Modem Wi-Fi / LAN</h4>
+                <p>Lampu modem merah (LOS) atau Wi-Fi PC bertanda seru (!). <strong>Langkah Awal:</strong> Matikan saklar power modem, tunggu 2 menit, lalu nyalakan kembali.</p>
+              </div>
+            </div>
+            <div class="indication-card">
+              <div class="indication-icon">💬</div>
+              <div class="indication-content">
+                <h4>1b. Lapor Tim & Aktifkan Backup</h4>
+                <p>Jika dalam 2 menit modem tetap mati, segera lapor ke Grup WhatsApp Lead / IT Support dan langsung jalankan Prosedur Tethering di bawah.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Prosedur 6 Langkah Penambatan HP -->
+        <div class="infographic-section">
+          <div class="infographic-section-header">
+            <span class="section-num-badge">2</span>
+            <span class="section-title">Prosedur Tethering USB HP (6 Langkah Cepat)</span>
+          </div>
+          <div class="tethering-steps-grid">
+            <!-- Step 1 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 1</span>
+                <span class="step-icon-illus">📱</span>
+              </div>
+              <div class="step-title">Siapkan HP CS</div>
+              <div class="step-desc">Pastikan kuota/paket data seluler di HP aktif dan sinyal 4G/5G stabil.</div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 2</span>
+                <span class="step-icon-illus">🔌</span>
+              </div>
+              <div class="step-title">Colok Kabel USB ke PC</div>
+              <div class="step-desc">Hubungkan HP ke port USB komputer/laptop CS menggunakan kabel data.</div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 3</span>
+                <span class="step-icon-illus">⚙️</span>
+              </div>
+              <div class="step-title">Buka PENGATURAN</div>
+              <div class="step-desc">Buka aplikasi <strong>Settings (Pengaturan)</strong> di smartphone HP Anda.</div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 4</span>
+                <span class="step-icon-illus">🌐</span>
+              </div>
+              <div class="step-title">Pilih menu KONEKSI</div>
+              <div class="step-desc">Ketuk menu <strong>Koneksi (Connections / Jaringan & Internet)</strong>.</div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 5</span>
+                <span class="step-icon-illus">📡</span>
+              </div>
+              <div class="step-title">Hotspot & Penambatan</div>
+              <div class="step-desc">Pilih submenu <strong>Hotspot Seluler & Penambatan (Tethering)</strong>.</div>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="step-card">
+              <div class="step-card-header">
+                <span class="step-badge">Langkah 6</span>
+                <span class="step-icon-illus">🟢</span>
+              </div>
+              <div class="step-title">Aktifkan Penambatan USB</div>
+              <div class="step-desc">Geser toggle <strong>Penambatan USB (USB Tethering)</strong> hingga aktif / ON.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Hasil & Catatan Penting -->
+        <div class="infographic-section">
+          <div class="infographic-section-header">
+            <span class="section-num-badge">3</span>
+            <span class="section-title">Hasil: Komputer CS Kembali Online & Catatan Penting</span>
+          </div>
+          <div class="callout-grid">
+            <div class="callout-card">
+              <div class="callout-card-title">⚡ Kabel USB Data Berkualitas</div>
+              <div class="callout-card-desc">Gunakan kabel data asli (original) bawaan HP. Jika hanya mengisi daya tanpa terdeteksi jaringan, coba ganti kabel.</div>
+            </div>
+            <div class="callout-card">
+              <div class="callout-card-title">🔌 Cabut Kabel LAN Sementara</div>
+              <div class="callout-card-desc">Jika tethering sudah aktif di HP tapi PC belum connect, cabut kabel LAN kantor dari PC agar Windows beralih ke USB.</div>
+            </div>
+            <div class="callout-card">
+              <div class="callout-card-title">🔄 Cek Modem Berkala</div>
+              <div class="callout-card-desc">Setelah internet modem kantor pulih normal, matikan tethering USB untuk menghemat kuota seluler HP Anda.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Live Tester -->
+        <div class="net-tester-box">
+          <div class="net-tester-info">
+            <strong style="font-size: 12px; color: var(--text-primary);">🧪 Uji Status Koneksi Real-Time</strong>
+            <div class="net-tester-result" id="net-tester-result">Klik tombol di samping untuk mengecek apakah komputer sudah terhubung ke internet.</div>
+          </div>
+          <button type="button" class="btn-test-conn" id="btn-test-connection">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Uji Koneksi Sekarang
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between; align-items: center;">
+        <span class="infographic-sop-code">SOP/CS-TECH/BACKUP-NET/01 &middot; Marketplace CS Dashboard</span>
+        <button type="button" class="btn-primary" id="btn-net-guide-done" style="padding: 7px 18px;">Tutup Panduan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
 
@@ -1335,7 +1834,9 @@
   <script src="js/quickreply.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/statusbar.js"></script>
+  <script src="js/versions-registry.js"></script>
   <script src="js/onboarding.js"></script>
+  <script src="js/network.js"></script>
   <script src="js/app.js"></script>
   <script src="js/login.js"></script>
   <script src="js/updater.js"></script>

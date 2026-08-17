@@ -40,7 +40,11 @@ function getFilteredStores() {
 
 // ── Render Sidebar ───────────────────────────────────────────────────────────
 function renderSidebar(filteredStores) {
-  if (filteredStores.length === 0) {
+  if (!sidebarContent) return;
+
+  if (!filteredStores || filteredStores.length === 0) {
+    sidebarContent.dataset.lastHtml = '';
+    sidebarContent.dataset.lastUser = window.currentUser || '';
     sidebarContent.innerHTML = `<div class="no-stores-msg">Belum ada toko.<br>Klik <strong>+ Tambah Toko</strong> untuk memulai.</div>`;
     return;
   }
@@ -94,10 +98,15 @@ function renderSidebar(filteredStores) {
     html += `</div>`;
   }
 
-  if (sidebarContent.dataset.lastHtml === html) {
-    return; // Tidak ada perubahan, jangan reset DOM agar tidak berkedip!
+  const hasStoreItems = sidebarContent.querySelector('.store-item') !== null;
+  const isSameUser = sidebarContent.dataset.lastUser === (window.currentUser || '');
+
+  if (hasStoreItems && isSameUser && sidebarContent.dataset.lastHtml === html) {
+    return; // Tidak ada perubahan dan DOM toko sudah ada, jangan reset agar tidak berkedip!
   }
+
   sidebarContent.dataset.lastHtml = html;
+  sidebarContent.dataset.lastUser = window.currentUser || '';
   sidebarContent.innerHTML = html;
 
   sidebarContent.querySelectorAll('.store-item').forEach(el => {
