@@ -1,5 +1,20 @@
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
+/**
+ * Debounce utility
+ * Limits the rate at which a function can fire.
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func.apply(context, args);
+    }, wait);
+  };
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
