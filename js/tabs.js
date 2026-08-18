@@ -82,24 +82,24 @@ function renderTabBar() {
   // Nav controls (kiri) + Mini Address Bar + tabs (tengah) + add button (kanan)
   const navHtml = `
     <div class="tab-nav-controls">
-      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)" aria-label="Kembali">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+\u2192)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+\u2192)" aria-label="Maju">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M5 12h14M12 5l7 7-7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)" aria-label="Refresh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)" aria-label="Beranda Toko">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
@@ -107,14 +107,14 @@ function renderTabBar() {
     </div>
     <div class="tab-address-bar-wrap" id="tab-address-bar-wrap" title="Ketik URL (e.g. cekresi.com, maps, atau link produk)">
       <div class="tab-address-icon" id="tab-address-icon">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
       </div>
       <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" value="${escapeHtml(activeTabUrl)}">
-      <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)" aria-label="Buka URL">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
@@ -137,7 +137,7 @@ function renderTabBar() {
       const tooltipMsg = hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...';
       syncBadgeHtml = `
         <span class="tab-sync-badge" title="${tooltipMsg}">
-          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
           </svg>${progStr}
         </span>`;
@@ -153,9 +153,9 @@ function renderTabBar() {
       <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
       ${syncBadgeHtml}
-      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab">&#x1F343;</button>` : ''}
+      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </button>
@@ -163,8 +163,8 @@ function renderTabBar() {
   }).join('');
 
   const addBtnHtml = `
-    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
         <path d="M12 5v14M5 12h14"/>
       </svg>
     </button>
