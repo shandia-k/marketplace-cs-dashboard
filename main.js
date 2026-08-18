@@ -280,9 +280,17 @@ function verifyPassword(password, storedHash, storedSalt) {
   }
 }
 
+// ── Partition Security Validator ─────────────────────────────────────────────
+function isValidPartition(partition) {
+  if (!partition || typeof partition !== 'string') return false;
+  const clean = partition.trim();
+  // Wajib diawali 'persist:', panjang 9-128 karakter, hanya alfanumerik, underscore, dan strip (Anti Path-Traversal)
+  return /^persist:[a-zA-Z0-9_-]{1,120}$/.test(clean);
+}
+
 function safeDeletePartitionDisk(part) {
   try {
-    if (!part || typeof part !== 'string') return;
+    if (!isValidPartition(part)) return;
     const rawName = part.replace(/^persist:/, '');
     const safeFolderName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
     if (!safeFolderName) return;
@@ -538,6 +546,7 @@ ipcMain.handle('delete-user', async (event, { usernameToDelete, requestingUserna
     });
 
     for (const part of partitions) {
+      if (!isValidPartition(part)) continue;
       try {
         const ses = session.fromPartition(part);
         await ses.clearCache();
@@ -620,6 +629,7 @@ ipcMain.handle('admin-clear-user-session', async (event, { requestingUsername, p
     });
 
     for (const part of partitions) {
+      if (!isValidPartition(part)) continue;
       try {
         const ses = session.fromPartition(part);
         await ses.clearCache();
@@ -845,6 +855,9 @@ ipcMain.handle('admin-clear-store-session', async (event, { requestingUsername, 
 
   try {
     const partition = `persist:user_${targetUsername}_${storeId}`;
+    if (!isValidPartition(partition)) {
+      return { success: false, error: 'Format partisi tidak valid.' };
+    }
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData();
@@ -882,10 +895,12 @@ ipcMain.handle('admin-delete-user-store', async (event, { requestingUsername, pa
     // Clear its partition both via Chromium API & Physical disk
     try {
       const partition = `persist:user_${targetUsername}_${storeId}`;
-      const ses = session.fromPartition(partition);
-      await ses.clearCache();
-      await ses.clearStorageData();
-      safeDeletePartitionDisk(partition);
+      if (isValidPartition(partition)) {
+        const ses = session.fromPartition(partition);
+        await ses.clearCache();
+        await ses.clearStorageData();
+        safeDeletePartitionDisk(partition);
+      }
     } catch (e) {}
 
     return {
@@ -1419,7 +1434,10 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 // Opsi 2: Bersihkan Cache Khusus Toko Tertentu (Per-Store Cache Clear & Reload)
 ipcMain.handle('clear-store-cache', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) {
+      console.warn(`[Security Warning] Blocked invalid partition in clear-store-cache: "${partition}"`);
+      return { success: false, error: 'Format partisi tidak sah atau berbahaya.' };
+    }
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData({
@@ -1434,7 +1452,10 @@ ipcMain.handle('clear-store-cache', async (event, { partition }) => {
 // Opsi 3: Deep Clean / Reset Toko (Termasuk Logout / Sesi Dihapus)
 ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   try {
-    if (!partition) return { success: false, error: 'Partisi tidak valid' };
+    if (!isValidPartition(partition)) {
+      console.warn(`[Security Warning] Blocked invalid partition in deep-clean-store: "${partition}"`);
+      return { success: false, error: 'Format partisi tidak sah atau berbahaya.' };
+    }
     const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
@@ -1461,6 +1482,7 @@ ipcMain.handle('deep-clean-all', async (event, username) => {
     });
 
     for (const part of partitions) {
+      if (!isValidPartition(part)) continue;
       try {
         const ses = session.fromPartition(part);
         await ses.clearCache();
@@ -1665,10 +1687,32 @@ Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem(
     `.trim();
 
     // Sanitasi data toko (hanya platform dan nama publik, tanpa token/URL internal)
-    const cleanStoresSummary = Array.isArray(data.storesConfig) ? data.storesConfig.map(s => ({
+    let cleanStoresSummary = Array.isArray(data.storesConfig) ? data.storesConfig.map(s => ({
       marketplace: s.marketplace || 'custom',
       name: (s.name || '').substring(0, 30)
     })) : [];
+
+    // Fallback: jika dari renderer kosong, baca langsung konfigurasi toko user yang sedang aktif
+    if (cleanStoresSummary.length === 0 && currentUser) {
+      try {
+        const userStores = readStores(currentUser);
+        if (Array.isArray(userStores)) {
+          cleanStoresSummary = userStores.map(s => ({
+            marketplace: s.marketplace || 'custom',
+            name: (s.name || '').substring(0, 30)
+          }));
+        }
+      } catch (e) {
+        console.warn('Fallback readStores for feedback failed:', e);
+      }
+    }
+
+    // Sanitasi data lampiran gambar (maksimal 4 gambar, pastikan format Base64 valid)
+    const cleanImages = Array.isArray(data.images) ? data.images.slice(0, 4).map((img, idx) => ({
+      name: String(img.name || `gambar_${idx + 1}.jpg`).substring(0, 50),
+      base64: typeof img.base64 === 'string' ? img.base64 : '',
+      mimeType: img.mimeType || 'image/jpeg'
+    })).filter(img => img.base64 && img.base64.length > 50) : [];
 
     // Kirim data yang telah disanitasi ke Google Apps Script Proxy
     const response = await fetch(GAS_WEB_APP_URL, {
@@ -1679,7 +1723,9 @@ Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem(
         message: String(data.message || '').substring(0, 5000),
         systemInfo: systemInfo,
         storeCount: cleanStoresSummary.length,
-        marketplaces: cleanStoresSummary.map(s => s.marketplace).join(', ')
+        marketplaces: cleanStoresSummary.map(s => s.marketplace).join(', '),
+        storesConfig: cleanStoresSummary,
+        images: cleanImages
       })
     });
 
@@ -1692,6 +1738,30 @@ Free RAM: ${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB / ${(os.totalmem(
   } catch (error) {
     console.error('Feedback Proxy Error:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// Capture Screen Native IPC Handler (One-Click Dashboard Screenshot)
+ipcMain.handle('capture-screen', async () => {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Window tidak tersedia' };
+    }
+    const nativeImage = await mainWindow.webContents.capturePage();
+    if (!nativeImage || nativeImage.isEmpty()) {
+      return { success: false, error: 'Gagal mengambil tangkapan layar' };
+    }
+    const jpegBuffer = nativeImage.toJPEG(80);
+    const dataUrl = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+    return {
+      success: true,
+      dataUrl,
+      width: nativeImage.getSize().width,
+      height: nativeImage.getSize().height
+    };
+  } catch (err) {
+    console.error('Error capturing screen:', err);
+    return { success: false, error: err.message };
   }
 });
 

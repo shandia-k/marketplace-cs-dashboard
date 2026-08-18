@@ -334,6 +334,10 @@ function selectDirectUrl(url) {
 function selectCustomUrl(item) {
   if (!item || !item.url) return;
 
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('store_custom_url_searched');
+  }
+
   fieldStoreUrl.value = item.url;
   updateUrlPreview('custom', item.url);
 
@@ -579,6 +583,9 @@ async function deleteStore(storeId) {
 
   stores = stores.filter(s => s.id !== storeId);
   await window.electronAPI.saveStores(stores, window.currentUser);
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('store_deleted');
+  }
   renderSidebar(getFilteredStores());
   renderSettingsList();
   showToast('Toko dihapus.', 'success');
@@ -909,6 +916,9 @@ async function adminClearSingleStoreSessionPrompt(targetUsername, displayName, s
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_store_session_cleared');
+      }
       showToast(res.message || `Sesi toko "${storeName}" berhasil dibersihkan.`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -943,6 +953,9 @@ async function adminDeleteSingleStorePrompt(targetUsername, displayName, storeId
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_store_deleted');
+      }
       showToast(res.message || `Toko "${storeName}" berhasil dihapus.`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -976,6 +989,9 @@ async function adminClearSessionPrompt(username, displayName) {
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_session_cleared');
+      }
       showToast(res.message || `Sesi "${displayName}" berhasil dibersihkan.`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -1022,6 +1038,9 @@ async function adminResetPinPrompt(username, displayName) {
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_pin_reset');
+      }
       showToast(res.message || `PIN "${displayName}" berhasil direset.`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -1054,6 +1073,9 @@ async function deleteUserPrompt(usernameToDelete, displayName) {
     });
 
     if (res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_user_deleted');
+      }
       showToast(`Akun "${displayName}" berhasil dihapus.`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -1095,6 +1117,9 @@ async function adminChangeRolePrompt(targetUsername, displayName, newRole) {
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_role_changed');
+      }
       showToast(res.message || `Role akun ${displayName} berhasil diubah!`, 'success');
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
     } else {
@@ -1166,6 +1191,9 @@ async function handleAdminCreateUserSubmit(e) {
     });
 
     if (res && res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('admin_user_created');
+      }
       showToast(res.message || 'Pengguna berhasil dibuat!', 'success');
       closeAdminCreateUserModal();
       if (typeof renderSuperAdminPanel === 'function') renderSuperAdminPanel();
@@ -1295,6 +1323,9 @@ async function clearStoreCacheAndReload(storeId) {
   try {
     const res = await window.electronAPI.clearStoreCache({ partition: actualPartition });
     if (res.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('store_cache_cleared');
+      }
       // Reload webviews untuk toko ini jika aktif
       const tabs = storeTabs[storeId] || [];
       tabs.forEach(tab => {
@@ -1352,6 +1383,9 @@ async function deepCleanStoreAndConfirm(storeId) {
         }
       });
       updateCacheSizeDisplay();
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('store_deep_cleaned');
+      }
       showToast(`Sesi "${store.name}" telah di-reset total. Silakan login kembali.`, 'success');
     } else {
       showToast('Gagal reset sesi: ' + (res.error || ''), 'error');
@@ -1372,6 +1406,9 @@ async function toggleWhitelist(storeId) {
   if (!store) return;
   store.hibernationWhitelisted = !store.hibernationWhitelisted;
   await window.electronAPI.saveStores(stores, window.currentUser);
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('store_whitelist_toggled');
+  }
   renderSettingsList();
   const status = store.hibernationWhitelisted ? 'dilindungi 🛡️' : 'tidak dilindungi';
   showToast(`"${store.name}" ${status} dari hibernasi.`, 'success');
@@ -1387,7 +1424,12 @@ async function exportConfig() {
   
   try {
     const ok = await window.electronAPI.exportStoresConfig(stores);
-    if (ok) showToast('Konfigurasi berhasil diekspor ✓', 'success');
+    if (ok) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('config_exported');
+      }
+      showToast('Konfigurasi berhasil diekspor ✓', 'success');
+    }
   } catch (err) {
     showToast('Gagal ekspor: ' + err.message, 'error');
   } finally {
@@ -1432,6 +1474,9 @@ async function importConfig() {
 
     stores = result;
     await window.electronAPI.saveStores(stores, window.currentUser);
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('config_imported');
+    }
     renderSidebar(getFilteredStores());
     renderSettingsList();
     updateEmptyState();

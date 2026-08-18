@@ -368,6 +368,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         securityAnswer: securityAnswer || null
       });
       if (res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_registered');
+        }
         showToast(`Akun "${displayName}" (${role === 'Super Admin' ? '👑 Super Admin' : 'CS'}) berhasil dibuat! Silakan masuk.`, 'success');
         if (regUsername) regUsername.value = '';
         if (regDisplayName) regDisplayName.value = '';
@@ -416,8 +419,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         appLayout.style.display   = 'flex';
         window.currentUser = username;
         window.currentUserProfile = res.user || { username, displayName: username, role: 'Customer Service' };
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_login_success');
+        }
         if (typeof window.initApp === 'function') window.initApp();
       } else {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_login_failed');
+        }
         showToast(res.error || 'PIN salah', 'error');
         loginPassword.value = '';
         loginPassword.focus();
@@ -477,6 +486,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await window.electronAPI.resetUserPassword({ username, securityAnswer, newPassword });
       if (res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_pin_reset_via_question');
+        }
         showToast('PIN berhasil direset! Silakan login kembali.', 'success');
         await initLoginScreen();
         if (users.find(u => u.username === username)) {

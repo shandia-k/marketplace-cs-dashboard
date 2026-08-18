@@ -2303,6 +2303,285 @@
   letter-spacing: 0.5px;
 }
 
+/* ==========================================================================
+   ENHANCED FEEDBACK MODAL & SCREENSHOT ATTACHMENT SYSTEM
+   ========================================================================== */
+.feedback-modal-container {
+  width: 540px;
+  max-width: calc(100vw - 32px);
+}
 
+.modal-min-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+}
 
+.modal-min-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
 
+.feedback-modal-body {
+  max-height: 68vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.feedback-attach-section {
+  background: var(--bg-card, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.feedback-attach-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.btn-attach-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #1a202c);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.btn-attach-action:hover {
+  background: var(--accent-primary, #df1683);
+  color: #ffffff;
+  border-color: var(--accent-primary, #df1683);
+  box-shadow: 0 0 12px rgba(223, 22, 131, 0.35);
+}
+
+.btn-attach-action:active {
+  transform: scale(0.97);
+}
+
+.feedback-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(223, 22, 131, 0.04);
+  border: 1.5px dashed rgba(223, 22, 131, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.feedback-dropzone:hover,
+.feedback-dropzone.drag-over {
+  background: rgba(223, 22, 131, 0.12);
+  border-color: var(--accent-primary, #df1683);
+  box-shadow: 0 0 14px rgba(223, 22, 131, 0.2);
+}
+
+.feedback-dropzone-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.feedback-dropzone-text {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.feedback-dropzone-text strong {
+  color: var(--accent-primary, #df1683);
+}
+
+.feedback-thumbnails-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.feedback-thumb-card {
+  position: relative;
+  background: var(--bg-secondary, #1e2535);
+  border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.feedback-thumb-card:hover {
+  border-color: var(--accent-primary, #df1683);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(223, 22, 131, 0.2);
+}
+
+.feedback-thumb-preview {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  background: #000000;
+  cursor: pointer;
+}
+
+.feedback-thumb-footer {
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.3));
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+.feedback-thumb-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-primary, #df1683);
+  font-family: monospace;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(223, 22, 131, 0.12);
+  transition: background 0.15s ease;
+}
+
+.feedback-thumb-tag:hover {
+  background: var(--accent-primary, #df1683);
+  color: #ffffff;
+}
+
+.btn-thumb-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-thumb-remove:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Floating Docked Pill (Minimized Feedback State) */
+.feedback-dock-pill {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  z-index: 9981;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary, #1a202c);
+  border: 1.5px solid var(--accent-primary, #df1683);
+  border-radius: 30px;
+  padding: 6px 12px 6px 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(223, 22, 131, 0.35);
+  animation: feedbackPillSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+@keyframes feedbackPillSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.feedback-dock-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.feedback-dock-icon {
+  font-size: 16px;
+}
+
+.feedback-dock-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.feedback-dock-text strong {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.feedback-dock-text span {
+  font-size: 10px;
+  color: var(--accent-primary, #df1683);
+  font-weight: 500;
+}
+
+.feedback-dock-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 2px;
+  transition: transform 0.15s ease;
+}
+
+.feedback-dock-content:hover .feedback-dock-arrow {
+  color: var(--accent-primary, #df1683);
+  transform: translateY(-1px);
+}
+
+.feedback-dock-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--text-muted);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+}
+
+.feedback-dock-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
+/* Modal Feedback Minimized helper classes */
+body.has-minimized-feedback #feedback-modal {
+  display: none !important;
+}

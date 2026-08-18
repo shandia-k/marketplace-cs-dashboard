@@ -858,6 +858,9 @@ function selectInlineTemplate(index) {
 
     const resolved = resolveVariables(tpl.content);
     insertTextIntoTarget(activeTargetInput, resolved, inlineQuery);
+    try {
+      ipcRenderer.sendToHost('quick-reply-used');
+    } catch (e) {}
     closeInlineSmartQuickReply();
   } finally {
     setTimeout(() => {

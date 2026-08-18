@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CS Marketplace Dashboard (v1.0.8)
+   CS Marketplace Dashboard (v1.0.9)
    Modular Onboarding Engine & Guided Tour Stylesheet
    ========================================================================== */
 
@@ -892,22 +892,23 @@
 
 /* ── 3. FLOATING / DOCKABLE CHECKLIST SETUP WIDGET ───────────────────────── */
 .onboarding-checklist-widget {
-  position: fixed;
-  bottom: 22px;
-  right: 180px;
+  position: relative;
+  bottom: auto;
+  right: auto;
   width: 350px;
-  max-width: calc(100vw - 210px);
+  max-width: calc(100vw - 220px);
   background: var(--bg-secondary);
   border: 1px solid var(--border-hover);
   border-radius: 16px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 20px rgba(223, 22, 131, 0.12);
-  z-index: 9950;
+  z-index: 9980;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, height 0.3s ease;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease, opacity 0.25s ease;
   transform: translateY(0);
   pointer-events: auto;
+  flex-shrink: 0;
 }
 
 body.has-quickreply-open .onboarding-checklist-widget,

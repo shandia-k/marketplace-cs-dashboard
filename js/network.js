@@ -89,6 +89,9 @@
 
   // ── Update Tampilan Indikator & Banner ───────────────────────────────────────
   function updateNetworkUI(online, latency = 0, manualTrigger = false) {
+    if (!online && isOnline !== false && window.AppTelemetry) {
+      window.AppTelemetry.track('network_offline_detected');
+    }
     isOnline = online;
 
     // 1. Titik Indikator di Avatar Sidebar (.sidebar-user-online-dot)
@@ -159,6 +162,9 @@
     if (modalOverlay) {
       modalOverlay.classList.add('active');
       verifyConnectivity(false);
+    }
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('network_guide_opened');
     }
     if (typeof notifyAction === 'function') {
       notifyAction('open_network_sop');
@@ -245,6 +251,9 @@
           Menguji Koneksi...
         `;
 
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('network_latency_tested');
+        }
         await verifyConnectivity(true);
 
         btnTest.disabled = false;

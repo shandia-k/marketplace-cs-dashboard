@@ -110,6 +110,10 @@ function hibernateAll() {
       : `${count} tab berhasil dihibernasi.`;
     showToast(msg, 'success');
   }
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tab_hibernate_all_triggered');
+  }
 }
 
 // Expose untuk onclick inline
@@ -243,6 +247,11 @@ function createWebview(store, tab) {
     } else if (event.channel === 'clipboard-copied') {
       if (typeof setCapturedClipboard === 'function' && event.args[0]) {
         setCapturedClipboard(event.args[0]);
+      }
+
+    } else if (event.channel === 'quick-reply-used' || event.channel === 'template-used') {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('quick_reply_used');
       }
 
     } else if (event.channel === 'inline-popup-opened') {

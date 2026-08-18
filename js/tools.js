@@ -141,6 +141,9 @@ function renderCustomerNotesList() {
         chatGreeting = `Halo kak ${cleanBuyer}! Terkait pesanan dengan metode pembayaran COD ini kami konfirmasi kembali ya kak, mohon pastikan no. HP aktif dan alamat sudah sesuai. Terima kasih! 🙏`;
       }
       insertTextToActiveChat(chatGreeting);
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('tool_cnotes_greet_used');
+      }
     });
   });
 }
@@ -252,6 +255,9 @@ async function deleteCustomerNote(id) {
     customerNotes = customerNotes.filter(n => n.id !== id);
     saveCustomerNotes();
     renderCustomerNotesList();
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tool_cnotes_deleted');
+    }
     if (typeof showToast === 'function') showToast('Catatan dihapus.', 'success');
   }
 }
@@ -403,6 +409,9 @@ function transformCase(mode) {
   }
 
   input.value = result;
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tool_caseconv_transformed');
+  }
   if (typeof showToast === 'function') showToast('Teks berhasil diformat ✓', 'success');
 }
 
@@ -437,6 +446,14 @@ function toggleToolkitMenu(forceState) {
   const isOpen = forceState !== undefined ? forceState : !container.classList.contains('open');
   container.classList.toggle('open', isOpen);
   fab?.classList.toggle('active', isOpen);
+
+  // Jika menu dibuka, kecilkan checklist onboarding agar tidak bertumpukan secara visual
+  if (isOpen && window.OnboardingManager && typeof window.OnboardingManager.getState === 'function') {
+    const state = window.OnboardingManager.getState();
+    if (!state.checklistCollapsed && !state.checklistDismissed) {
+      window.OnboardingManager.toggleChecklistCollapse();
+    }
+  }
 
   if (isOpen && window.AppTelemetry) {
     window.AppTelemetry.track('tools_menu_opened');
@@ -481,7 +498,7 @@ function bindToolsEvents() {
   // 1. Customer Notes modal trigger & events
   document.getElementById('btn-cnotes-tool')?.addEventListener('click', openCustomerNotesModal);
   document.getElementById('btn-cnotes-close')?.addEventListener('click', closeCustomerNotesModal);
-  document.getElementById('cnotes-search-input')?.addEventListener('input', renderCustomerNotesList);
+  document.getElementById('cnotes-search-input')?.addEventListener('input', typeof debounce === 'function' ? debounce(renderCustomerNotesList, 180) : renderCustomerNotesList);
   document.getElementById('btn-cnotes-add')?.addEventListener('click', openAddNoteFormModal);
   document.getElementById('btn-cnote-form-cancel')?.addEventListener('click', closeAddNoteFormModal);
   document.getElementById('modal-cnote-form-close')?.addEventListener('click', closeAddNoteFormModal);
@@ -510,6 +527,9 @@ function bindToolsEvents() {
     }
     if (typeof copyResolvedText === 'function') copyResolvedText(url);
     else navigator.clipboard.writeText(url);
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tool_walinker_link_copied');
+    }
     if (typeof showToast === 'function') showToast('Tautan WhatsApp disalin ke clipboard ✓', 'success');
   });
 
@@ -536,6 +556,9 @@ function bindToolsEvents() {
 
     if (isCurrentStoreWa || waTabInCurrent) {
       closeWaLinkerModal();
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('tool_walinker_web_opened');
+      }
       if (typeof addTab === 'function' && activeStoreId) {
         addTab(activeStoreId, waWebChatUrl, 'Chat WhatsApp');
       }
@@ -546,6 +569,9 @@ function bindToolsEvents() {
     // Skenario B: Pengguna memiliki Toko WhatsApp di toko lain di dashboard
     if (waStore) {
       closeWaLinkerModal();
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('tool_walinker_web_opened');
+      }
       if (typeof activateStore === 'function') {
         activateStore(waStore.id);
         setTimeout(() => {
@@ -606,6 +632,9 @@ function bindToolsEvents() {
     }
     if (typeof copyResolvedText === 'function') copyResolvedText(val);
     else navigator.clipboard.writeText(val);
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tool_caseconv_copied');
+    }
     if (typeof showToast === 'function') showToast('Hasil teks disalin ke clipboard ✓', 'success');
   });
   document.getElementById('btn-caseconv-insert-chat')?.addEventListener('click', () => {
@@ -614,6 +643,9 @@ function bindToolsEvents() {
     if (!val.trim()) {
       if (typeof showToast === 'function') showToast('Teks masih kosong!', 'error');
       return;
+    }
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tool_caseconv_inserted_chat');
     }
     insertTextToActiveChat(val);
     closeCaseConvModal();

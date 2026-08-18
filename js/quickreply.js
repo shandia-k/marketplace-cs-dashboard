@@ -116,6 +116,10 @@ function selectClipboardFromHistory(id) {
     window.electronAPI.writeClipboard(item.text);
   }
 
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('clipboard_history_reused');
+  }
+
   if (typeof showToast === 'function') {
     showToast(`📋 Clipboard aktif: ${item.text.length > 25 ? item.text.substring(0, 23) + '…' : item.text}`, 'success');
   }
@@ -134,6 +138,9 @@ async function clearClipboardHistory() {
   if (confirmed) {
     clipboardHistory = [];
     Storage.remove('clipboardHistory', true);
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('clipboard_history_cleared');
+    }
     if (typeof updateStatusBarClipboard === 'function') {
       updateStatusBarClipboard(true);
     }
@@ -521,6 +528,9 @@ async function deleteTemplate(id) {
     smartTemplates = smartTemplates.filter(t => t.id !== id);
     saveSmartTemplates();
     renderQuickReplyList();
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('quick_reply_deleted');
+    }
     showToast('Template dihapus.', 'success');
   }
 }
@@ -539,6 +549,9 @@ async function resetDefaultTemplates() {
     smartTemplates = [...DEFAULT_SMART_TEMPLATES];
     saveSmartTemplates();
     renderQuickReplyList();
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('quick_reply_reset_default');
+    }
     showToast('Template di-reset ke bawaan ✓', 'success');
   }
 }
@@ -580,8 +593,8 @@ function bindQuickReplyEvents() {
     }
   });
 
-  // Search input
-  document.getElementById('qr-search-input')?.addEventListener('input', renderQuickReplyList);
+  // Search input with debounce
+  document.getElementById('qr-search-input')?.addEventListener('input', typeof debounce === 'function' ? debounce(renderQuickReplyList, 180) : renderQuickReplyList);
 
   // Live Clipboard Value change manual
   document.getElementById('qr-clipboard-input')?.addEventListener('input', (e) => {

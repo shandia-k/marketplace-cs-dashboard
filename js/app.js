@@ -20,8 +20,8 @@ function bindEvents() {
   document.getElementById('btn-add-store-empty').addEventListener('click', openAddModal);
   document.getElementById('btn-settings')?.addEventListener('click', openSettings);
 
-  // Search
-  searchInput.addEventListener('input', () => renderSidebar(getFilteredStores()));
+  // Search with debounce
+  searchInput.addEventListener('input', debounce(() => renderSidebar(getFilteredStores()), 180));
 
   // Marketplace picker
   document.querySelectorAll('.mp-option').forEach(el => {
@@ -276,9 +276,15 @@ function bindEvents() {
       });
 
       if (res && res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('screen_unlocked');
+        }
         unlockScreen();
         showToast(`Selamat datang kembali, ${escapeHtml(window.currentUserProfile?.displayName || window.currentUser)}!`, 'success');
       } else {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('screen_unlock_failed');
+        }
         card?.classList.remove('shake');
         void card?.offsetWidth; // trigger reflow
         card?.classList.add('shake');
@@ -319,6 +325,9 @@ function bindEvents() {
       });
 
       if (res && res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_profile_updated');
+        }
         window.currentUserProfile = res.user;
         updateSidebarUserProfile(res.user);
         showToast('Profil CS berhasil diperbarui!', 'success');
@@ -349,6 +358,9 @@ function bindEvents() {
       });
 
       if (res && res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('autolock_duration_changed');
+        }
         if (window.currentUserProfile) window.currentUserProfile.autoLockMinutes = minutes;
         setupAutoLockTimer();
         const msg = minutes > 0 ? `Kunci otomatis diset ${minutes} menit tidak aktif.` : 'Kunci otomatis dinonaktifkan.';
@@ -393,6 +405,9 @@ function bindEvents() {
     try {
       const res = await window.electronAPI.clearSafeCache(window.currentUser);
       if (res && res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('cache_safe_cleared');
+        }
         showToast(res.message || 'Cache aman berhasil dibersihkan ✓ (Sesi Toko Aman)', 'success');
         if (typeof updateCacheSizeDisplay === 'function') updateCacheSizeDisplay();
       } else {
@@ -427,6 +442,9 @@ function bindEvents() {
     try {
       const res = await window.electronAPI.deepCleanAll(window.currentUser);
       if (res && res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('all_deep_cleaned');
+        }
         showToast('Seluruh sesi toko akun ini berhasil di-reset total.', 'success');
         // Reload all webviews
         for (const entry of Object.values(webviewMap)) {
@@ -468,6 +486,9 @@ function bindEvents() {
         newPassword: newPwd
       });
       if (res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_pin_changed');
+        }
         showToast('PIN berhasil diubah!', 'success');
         document.getElementById('acc-current-password').value = '';
         document.getElementById('acc-new-password').value = '';
@@ -503,6 +524,9 @@ function bindEvents() {
         securityAnswer: answer
       });
       if (res.success) {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('user_sec_question_updated');
+        }
         showToast('Pertanyaan keamanan berhasil disimpan!', 'success');
         document.getElementById('acc-security-answer').value = '';
         document.getElementById('acc-pin-for-security').value = '';
@@ -560,9 +584,13 @@ window.updateSidebarUserProfile = updateSidebarUserProfile;
 // ── Lock Screen Logic ───────────────────────────────────────────────────────
 let isScreenLocked = false;
 
-function lockScreen() {
+function lockScreen(isAuto = false) {
   if (!window.currentUser || isScreenLocked) return;
   isScreenLocked = true;
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track(isAuto ? 'auto_lock_triggered' : 'quick_lock_triggered');
+  }
 
   const overlay = document.getElementById('lockscreen-overlay');
   const avatarEl = document.getElementById('lockscreen-avatar');
@@ -636,7 +664,7 @@ function setupAutoLockTimer() {
     if (isScreenLocked || !window.currentUser) return;
     const elapsed = Date.now() - lastActivityTimestamp;
     if (elapsed >= timeoutMs) {
-      lockScreen();
+      lockScreen(true);
     }
   }, intervalMs);
 }
@@ -664,6 +692,7 @@ async function logoutUser(askConfirmation = true) {
   // Flush telemetri sesi sebelum logout
   if (window.AppTelemetry) {
     try {
+      window.AppTelemetry.track('user_logged_out');
       await window.AppTelemetry.flush(true);
     } catch (e) {}
   }
@@ -782,6 +811,9 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', currentTheme);
   Storage.set('theme', currentTheme, !!window.currentUser);
   updateThemeUI();
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('theme_toggled');
+  }
   if (typeof broadcastTemplatesToWebviews === 'function') {
     broadcastTemplatesToWebviews();
   }

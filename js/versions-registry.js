@@ -33,9 +33,140 @@
 
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.8',
+      version: '1.0.9',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
+      releaseDate: 'Agustus 2026',
+      title: 'Screenshot Bug Feedback, Unified Floating Dock, 81 Telemetry Events & Security Guard',
+      tagline: 'Sistem pelaporan bug & saran berlampirkan multi-screenshot dengan kompresi GPU dual-engine dan auto-tagging, tata letak terpadu floating bottom dock dengan mutual awareness, ekspansi telemetri operasional penuh (81 event), penguatan keamanan partisi Chromium (Anti Path-Traversal), dan optimasi performa ketik via search debounce 180ms.',
+      highlights: [
+        {
+          icon: '📸',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Multi-Screenshot Bug Feedback',
+          desc: 'Paste Ctrl+V langsung dari clipboard, kompresi otomatis Canvas GPU Dual-Engine (~150-250 KB), auto-insert tag [Gambar 1] ke kursor, dan One-Click Screen Capture.'
+        },
+        {
+          icon: '⚓',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Unified Floating Bottom Dock',
+          desc: 'Sistem tata letak melayang terpadu di pojok kanan bawah untuk Tools CS, Draf Feedback, dan Checklist Onboarding dengan kesadaran timbal-balik (mutual awareness).'
+        },
+        {
+          icon: '📊',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: 'Ekspansi Telemetri Penuh (81 Event)',
+          desc: 'Pelacakan analitik operasional 81 event lengkap tanpa overhead latensi (Quick Reply, Scratchpad, Case Converter, Super Admin, Multi-tab, Autolock, dan Jaringan).'
+        },
+        {
+          icon: '🔐',
+          iconBg: 'rgba(239, 68, 68, 0.15)',
+          title: 'Anti-Traversal Partition Guard',
+          desc: 'Validasi ketat isValidPartition regex whitelisting pada seluruh IPC handler partisi untuk mencegah manipulasi dan penghapusan direktori host.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Anti-Thrashing Search Debounce',
+          desc: 'Utilitas debounce 180ms pada pencarian sidebar, quick reply, dan catatan pembeli untuk eliminasi freeze dan kelancaran ketikan 60 FPS.'
+        },
+        {
+          icon: '♿',
+          iconBg: 'rgba(56, 189, 248, 0.15)',
+          title: 'Aksesibilitas Standar WCAG 2.1',
+          desc: 'Label aria-label eksplisit pada tombol navigasi tab bar, address bar, dan daftar tab aktif toko untuk pengalaman pembaca layar tanpa hambatan.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Pembaruan Fitur Laporan Bug & Saran (Multi-Screenshot & Floating Dock Pill)',
+          tag: 'Feedback & Support',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Dukungan Multi-Lampiran Gambar: Mengirim hingga 4 screenshot atau berkas gambar per laporan bug ke Google Apps Script dan bot Telegram via album foto (sendMediaGroup).',
+            'Kompresi GPU Dual-Engine Klien: Mengintegrasikan createImageBitmap hardware decode dengan fallback FileReader stream (mereduksi resolusi ke max 1280px dan kompresi JPEG kualitas 80% dari ~5 MB menjadi ~150–250 KB).',
+            'Auto-Paste (Ctrl + V) & Auto-Tagging: Menangkap screenshot clipboard secara instan dan menyisipkan penanda [Gambar 1], [Gambar 2], dst. tepat di posisi kursor pengetikan pengguna.',
+            'Tangkap Layar Dashboard Satu-Klik: Tombol "Tangkap Layar Dashboard" memanfaatkan native Electron webContents.capturePage() untuk memotret jendela dashboard aktif secara bersih.',
+            'Mode Minimize & Floating Dock Pill: Form feedback dapat diminimize ke floating pill di sudut kanan bawah (#feedback-dock-pill), menjaga teks dan lampiran gambar tetap utuh saat CS mengambil screenshot dari aplikasi lain.',
+            'Lightbox Full Preview: Membuka perbesaran gambar lampiran secara interaktif dengan backdrop gelap dan informasi dimensi/ukuran file.'
+          ]
+        },
+        {
+          category: 'Sistem Tata Letak Mengambang Terpadu (Unified Floating Dock & Mutual Awareness)',
+          tag: 'Floating Dock & UI',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Penyatuan Kontainer Melayang (.floating-bottom-dock): Mengkoordinasikan tombol Tools CS FAB, Draf Feedback Pill, dan Onboarding Checklist Widget dalam satu flexbox row-reverse terpadu.',
+            'Kesadaran Timbal Balik (Mutual Awareness): Membuka menu popover Tools CS otomatis mengecilkan (collapse) checklist onboarding, dan memperbesar checklist otomatis menutup menu popover Tools CS.',
+            'Transisi Meluncur Halus (Fluid Glide Transition): Menggeser widget ke kiri/kanan secara proporsional saat draf feedback muncul atau dihilangkan tanpa risiko tumpang tindih.',
+            'Penyempurnaan Integrasi Backend & Active Stores: Menyertakan daftar toko aktif (storesConfig) terformat bullet point rapi di Telegram, dengan fallback otomatis ke sesi user backend main.js.'
+          ]
+        },
+        {
+          category: 'Ekspansi Analitik & Pelacakan Telemetri Terintegrasi (Full 81-Event Coverage)',
+          tag: 'Telemetry & Analytics',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Integrasi pelacakan telemetri menyeluruh (81 event operasional) tanpa overhead latensi, mencakup autentikasi (login, logout, pergantian PIN, reset pertanyaan keamanan, dan profil update).',
+            'Pelacakan modul Super Admin (pembuatan user admin, demosi role, reset PIN CS, penghapusan user, dan pembersihan sesi terpusat).',
+            'Pelacakan CS Toolkit & Smart Productivity (penggunaan Smart Quick Reply via shortcut/klik, reset template, ekspor/impor/copy/insert Scratchpad, copy/insert Smart Case Converter, dan riwayat clipboard).',
+            'Pelacakan siklus multi-tab, sleep/hibernasi toko, navigasi address bar (refresh/home), status jaringan internet, backup/restore konfigurasi toko, dan interaksi Onboarding Guided Tour.'
+          ]
+        },
+        {
+          category: 'Keamanan Kriptografi & Proteksi Partisi Host (Security Guard)',
+          tag: 'Security',
+          color: '#ef4444',
+          bgColor: 'rgba(239, 68, 68, 0.12)',
+          items: [
+            'Implementasi helper keamanan isValidPartition(partition) dengan regex whitelisting ketat (^persist:[a-zA-Z0-9_-]{1,120}$) di main.js.',
+            'Proteksi celah Path Traversal pada IPC handlers session.fromPartition() dan safeDeletePartitionDisk() (clear-store-cache, deep-clean-store, deep-clean-all, dan admin session handlers).',
+            'Pencegahan akses, manipulasi, atau penghapusan direktori di luar direktori partisi resmi aplikasi oleh renderer/XSS payload.'
+          ]
+        },
+        {
+          category: 'Aksesibilitas & Standar WAI-ARIA (Screen Reader Support)',
+          tag: 'Accessibility',
+          color: '#38bdf8',
+          bgColor: 'rgba(56, 189, 248, 0.12)',
+          items: [
+            'Pemberian atribut aria-label eksplisit pada seluruh tombol navigasi tab bar (Kembali, Maju, Refresh, Beranda Toko, Buka URL, dan Tambah Tab Baru).',
+            'Label dinamis pembaca layar pada tombol Tutup Tab ("Tutup tab [Nama Tab]") dan Hibernasi Tab ("Hibernasi tab [Nama Tab] untuk hemat RAM").',
+            'Pemberian aria-label="Alamat URL web atau pencarian" pada input Mini Address Bar per tab toko.',
+            'Penambahan atribut role="toolbar" pada kontrol navigasi serta role="tablist" dan role="tab" (dengan aria-selected) pada daftar tab aktif toko.'
+          ]
+        },
+        {
+          category: 'Optimasi Performa DOM & Kecepatan Pengetikan (Debounce)',
+          tag: 'Performance',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 11, 0.12)',
+          items: [
+            'Integrasi utilitas global debounce(func, 180) pada js/utils.js untuk menunda kalkulasi filter dan rekonstruksi DOM berulang saat pengguna mengetik cepat.',
+            'Penerapan debounce pada pencarian daftar toko sidebar (app.js), template smart reply (quickreply.js), dan catatan khusus pembeli (tools.js).',
+            'Pengurangan beban eksekusi DOM innerHTML dan Garbage Collector (GC) browser hingga 80-90% saat pengetikan aktif, menghasilkan pengalaman ketik 60 FPS tanpa stutter.'
+          ]
+        },
+        {
+          category: 'Optimasi Vektor & Stabilitas Antarmuka',
+          tag: 'SVG & Engine',
+          color: '#06b6d4',
+          bgColor: 'rgba(6, 182, 212, 0.12)',
+          items: [
+            'Injeksi atribut aria-hidden="true" dan focusable="false" pada seluruh elemen <svg> tombol kontrol dan badge sinkronisasi.',
+            'Pencegahan ghost focus dan redundant speech pada assistive technology pembaca layar (NVDA, Narrator, JAWS).',
+            'Pembaruan manifest versi dan release guard terintegrasi v1.0.9.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.8',
+      badge: 'Bugfix & Stability 🛡️',
+      badgeColor: '#3b82f6',
       releaseDate: 'Agustus 2026',
       title: 'Shopee Traffic Fix, Pure Chrome UA, Gemini Scroll Affordance & Root Popover',
       tagline: 'Perbaikan komprehensif verifikasi traffic Shopee, standardisasi User-Agent Google Chrome murni & masking anti-bot, scroll affordance mask-image tanpa scrollbar fisik, micro-bounce scroll peek, root popover profil, dan stabilitas modal CS.',

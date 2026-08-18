@@ -254,16 +254,45 @@
 
 
 /* ==========================================================================
-   FLOATING CS TOOLKIT FAB & SPEED DIAL MENU
+   UNIFIED FLOATING BOTTOM-RIGHT DOCK SYSTEM
+   Coordinating Tools CS FAB, Minimized Feedback Pill & Onboarding Checklist
    ========================================================================== */
-.cs-toolkit-fab-container {
+.floating-bottom-dock {
   position: fixed;
   bottom: 22px;
   right: 22px;
   z-index: 9980;
   display: flex;
+  flex-direction: row-reverse; /* Paling kanan: Tools CS, Tengah: Feedback Pill, Kiri: Checklist */
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+  max-width: calc(100vw - 44px);
+  transition: all var(--transition-fast, 0.2s cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.floating-bottom-dock > * {
+  pointer-events: auto;
+}
+
+body.has-quickreply-open .floating-bottom-dock,
+body:has(.quickreply-drawer.active) .floating-bottom-dock,
+body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
+  opacity: 0.15;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.cs-toolkit-fab-container {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  z-index: 9982;
+  display: flex;
   flex-direction: column;
   align-items: flex-end;
+  flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .btn-cs-toolkit-fab {

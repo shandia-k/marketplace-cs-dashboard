@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
   getAppMetricsDetails: () => ipcRenderer.invoke('get-app-metrics-details'),
   submitFeedback: (data) => ipcRenderer.invoke('submit-feedback', data),
+  captureScreen: () => ipcRenderer.invoke('capture-screen'),
   sendTelemetry: (data) => ipcRenderer.invoke('send-telemetry', data),
   getUsers: () => ipcRenderer.invoke('get-users'),
   getUserProfile: (username) => ipcRenderer.invoke('get-user-profile', username),

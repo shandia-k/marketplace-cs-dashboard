@@ -731,7 +731,7 @@
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.8 🚀
+                Info Sistem & Changelog v1.0.9 🚀
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -1005,44 +1005,107 @@
 
   <!-- Feedback Modal -->
   <div class="modal-overlay" id="feedback-modal">
-    <div class="modal" role="dialog" aria-labelledby="feedback-modal-title" aria-modal="true">
+    <div class="modal feedback-modal-container" role="dialog" aria-labelledby="feedback-modal-title" aria-modal="true">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">💡</span>
           <h3 id="feedback-modal-title">Lapor Bug / Feedback</h3>
         </div>
-        <button class="modal-close" id="btn-feedback-close" aria-label="Tutup Form">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-card" style="padding: 12px 14px;">
-          <p class="settings-hint" style="margin: 0;">Sistem secara otomatis menyertakan RAM, OS, dan konfigurasi tab aktif (tanpa password) untuk membantu perbaikan.</p>
+        <div class="modal-header-actions" style="display: flex; align-items: center; gap: 4px;">
+          <button class="btn-icon modal-min-btn" id="btn-feedback-minimize" title="Minimize Draf Laporan (─)" aria-label="Minimize Form">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button class="modal-close" id="btn-feedback-close" title="Tutup" aria-label="Tutup Form">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <div class="form-group">
+      </div>
+      <div class="modal-body feedback-modal-body">
+        <div class="modal-card" style="padding: 10px 14px; margin-bottom: 12px; background: rgba(223, 22, 131, 0.06); border: 1px solid rgba(223, 22, 131, 0.18); border-radius: 8px;">
+          <p class="settings-hint" style="margin: 0; font-size: 12px; color: var(--text-secondary);">
+            💡 <strong>Tips:</strong> Anda dapat menempelkan screenshot langsung dengan <strong>Ctrl+V</strong>. Sistem otomatis menandai <code>[Gambar 1]</code>, <code>[Gambar 2]</code> untuk perbandingan tampilan bug vs tampilan seharusnya.
+          </p>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
           <label for="feedback-type">Jenis Laporan</label>
           <select id="feedback-type">
-            <option value="bug">🐛 Lapor Bug (Error / Macet)</option>
-            <option value="saran">💡 Saran Fitur</option>
-            <option value="tanya">❓ Pertanyaan Umum</option>
+            <option value="bug">🐛 Lapor Bug (Error / Tampilan Rusak / Macet)</option>
+            <option value="saran">💡 Saran Fitur Baru</option>
+            <option value="tanya">❓ Pertanyaan / Kendala Lainnya</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="feedback-message">Deskripsi</label>
-          <textarea id="feedback-message" rows="4" placeholder="Jelaskan masalah atau saran Anda di sini..."></textarea>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="feedback-message" style="margin: 0;">Deskripsi Laporan</label>
+            <span style="font-size: 11px; color: var(--text-muted);" id="feedback-char-count">0 / 5000</span>
+          </div>
+          <textarea id="feedback-message" rows="4" placeholder="Contoh:&#10;halo, ada bug bikin tampilannya seperti ini [Gambar 1], padahal seharusnya seperti ini [Gambar 2] kalau dibuka di browser lain. terima kasih"></textarea>
+        </div>
+
+        <!-- Screenshot / Image Attachment Actions & Dropzone -->
+        <div class="feedback-attach-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0;">
+              📷 Lampiran Screenshot / Gambar <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">(Maks 4 gambar)</span>
+            </label>
+            <span id="feedback-img-counter" style="font-size: 11px; color: var(--accent-primary); font-weight: 600;">0 / 4 Gambar</span>
+          </div>
+
+          <div class="feedback-attach-toolbar">
+            <button type="button" class="btn-attach-action" id="btn-feedback-capture-screen" title="Ambil screenshot tampilan dashboard saat ini">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              Tangkap Layar Dashboard
+            </button>
+            <button type="button" class="btn-attach-action" id="btn-feedback-upload-file" title="Pilih file gambar dari komputer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Upload Gambar
+            </button>
+            <input type="file" id="feedback-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display: none;">
+          </div>
+
+          <!-- Paste Dropzone Area -->
+          <div class="feedback-dropzone" id="feedback-dropzone">
+            <div class="feedback-dropzone-icon">📋</div>
+            <div class="feedback-dropzone-text">
+              Tekan <strong>Ctrl + V</strong> di mana saja untuk menempelkan screenshot clipboard atau klik di sini
+            </div>
+          </div>
+
+          <!-- Attachments Thumbnail List -->
+          <div class="feedback-thumbnails-grid" id="feedback-thumbnails-grid"></div>
         </div>
       </div>
-      <div class="modal-footer">
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
         <button class="btn-secondary" id="btn-feedback-cancel">Batal</button>
-        <button class="btn-primary" id="btn-feedback-submit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-          Kirim Feedback
-        </button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-secondary" id="btn-feedback-min-footer" title="Minimize modal agar dapat mengambil screenshot di aplikasi">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Minimize (Ambil Screenshot)
+          </button>
+          <button class="btn-primary" id="btn-feedback-submit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            Kirim Feedback
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1071,7 +1134,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.8</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.9</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -1180,112 +1243,135 @@
     </div>
   </div>
 
-  <!-- Floating CS Toolkit Button & Speed Dial Menu -->
-  <div class="cs-toolkit-fab-container" id="cs-toolkit-fab-container">
-    <!-- Backdrop to close popup on click outside -->
-    <div class="cs-toolkit-backdrop" id="cs-toolkit-backdrop"></div>
+  <!-- UNIFIED FLOATING BOTTOM-RIGHT DOCK -->
+  <div class="floating-bottom-dock" id="floating-bottom-dock">
+    <!-- 1. Floating CS Toolkit Button & Speed Dial Menu (Anchor Paling Kanan) -->
+    <div class="cs-toolkit-fab-container" id="cs-toolkit-fab-container">
+      <!-- Backdrop to close popup on click outside -->
+      <div class="cs-toolkit-backdrop" id="cs-toolkit-backdrop"></div>
 
-    <!-- Toolkit Menu Popup -->
-    <div class="cs-toolkit-menu" id="cs-toolkit-menu" role="menu" aria-label="CS Toolkit Menu">
-      <div class="cs-toolkit-menu-header">
-        <div class="cs-toolkit-menu-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-          </svg>
-          <span>CS Toolkit & Productivity</span>
+      <!-- Toolkit Menu Popup -->
+      <div class="cs-toolkit-menu" id="cs-toolkit-menu" role="menu" aria-label="CS Toolkit Menu">
+        <div class="cs-toolkit-menu-header">
+          <div class="cs-toolkit-menu-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            <span>CS Toolkit & Productivity</span>
+          </div>
+        </div>
+
+        <div class="cs-toolkit-menu-list">
+          <!-- 1. Smart Quick Reply -->
+          <div class="cs-toolkit-item" id="tool-item-quickreply" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openQuickReplyDrawer();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Smart Quick Reply</div>
+              <div class="cs-toolkit-item-desc">Template balasan otomatis & variabel order</div>
+            </div>
+            <span class="cs-toolkit-item-badge">Ctrl+Space</span>
+          </div>
+
+          <!-- 2. Scratchpad Multi-Tab -->
+          <div class="cs-toolkit-item" id="tool-item-scratchpad" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); toggleScratchpad();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Scratchpad Catatan</div>
+              <div class="cs-toolkit-item-desc">Draft teks, multi-tab & tempel data tabel</div>
+            </div>
+          </div>
+
+          <!-- 5. Customer Notes -->
+          <div class="cs-toolkit-item" id="tool-item-cnotes" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openCustomerNotesModal();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Catatan Pembeli & Warning COD</div>
+              <div class="cs-toolkit-item-desc">Database pelanggan VIP & riwayat retur</div>
+            </div>
+          </div>
+
+          <!-- 6. WhatsApp Direct Link -->
+          <div class="cs-toolkit-item" id="tool-item-walinker" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openWaLinkerModal();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(37, 211, 102, 0.15); color: #25d366;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">WhatsApp Direct Linker</div>
+              <div class="cs-toolkit-item-desc">Format nomor HP & buka chat tanpa simpan kontak</div>
+            </div>
+          </div>
+
+          <!-- 7. Smart Case Converter -->
+          <div class="cs-toolkit-item" id="tool-item-caseconv" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openCaseConvModal();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Smart Case Converter</div>
+              <div class="cs-toolkit-item-desc">Kapitalisasi alamat, format resi & rapikan spasi</div>
+            </div>
+          </div>
+
+          <!-- 8. Feedback / Bug Report -->
+          <div class="cs-toolkit-item" id="tool-item-feedback" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openFeedbackModal();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(100, 116, 139, 0.15); color: var(--text-secondary);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Feedback & Bantuan</div>
+              <div class="cs-toolkit-item-desc">Kirim saran pengembangan atau laporkan bug</div>
+            </div>
+          </div>
+
+          <!-- 7. Onboarding & Tour Guide -->
+          <div class="cs-toolkit-item" id="tool-item-onboarding" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); window.startOnboardingTour();">
+            <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <div class="cs-toolkit-item-info">
+              <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
+              <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
+            </div>
+            <span class="cs-toolkit-item-badge">v1.0.9</span>
+          </div>
         </div>
       </div>
 
-      <div class="cs-toolkit-menu-list">
-        <!-- 1. Smart Quick Reply -->
-        <div class="cs-toolkit-item" id="tool-item-quickreply" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openQuickReplyDrawer();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Smart Quick Reply</div>
-            <div class="cs-toolkit-item-desc">Template balasan otomatis & variabel order</div>
-          </div>
-          <span class="cs-toolkit-item-badge">Ctrl+Space</span>
-        </div>
-
-        <!-- 2. Scratchpad Multi-Tab -->
-        <div class="cs-toolkit-item" id="tool-item-scratchpad" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); toggleScratchpad();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Scratchpad Catatan</div>
-            <div class="cs-toolkit-item-desc">Draft teks, multi-tab & tempel data tabel</div>
-          </div>
-        </div>
-
-
-        <!-- 5. Customer Notes -->
-        <div class="cs-toolkit-item" id="tool-item-cnotes" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openCustomerNotesModal();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Catatan Pembeli & Warning COD</div>
-            <div class="cs-toolkit-item-desc">Database pelanggan VIP & riwayat retur</div>
-          </div>
-        </div>
-
-        <!-- 6. WhatsApp Direct Link -->
-        <div class="cs-toolkit-item" id="tool-item-walinker" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openWaLinkerModal();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(37, 211, 102, 0.15); color: #25d366;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">WhatsApp Direct Linker</div>
-            <div class="cs-toolkit-item-desc">Format nomor HP & buka chat tanpa simpan kontak</div>
-          </div>
-        </div>
-
-        <!-- 7. Smart Case Converter -->
-        <div class="cs-toolkit-item" id="tool-item-caseconv" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openCaseConvModal();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Smart Case Converter</div>
-            <div class="cs-toolkit-item-desc">Kapitalisasi alamat, format resi & rapikan spasi</div>
-          </div>
-        </div>
-
-        <!-- 8. Feedback / Bug Report -->
-        <div class="cs-toolkit-item" id="tool-item-feedback" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); openFeedbackModal();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(100, 116, 139, 0.15); color: var(--text-secondary);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Feedback & Bantuan</div>
-            <div class="cs-toolkit-item-desc">Kirim saran pengembangan atau laporkan bug</div>
-          </div>
-        </div>
-
-        <!-- 7. Onboarding & Tour Guide -->
-        <div class="cs-toolkit-item" id="tool-item-onboarding" role="menuitem" tabindex="0" onclick="closeToolkitMenu(); window.startOnboardingTour();">
-          <div class="cs-toolkit-item-icon" style="background: rgba(223, 22, 131, 0.15); color: #df1683;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </div>
-          <div class="cs-toolkit-item-info">
-            <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
-            <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
-          </div>
-          <span class="cs-toolkit-item-badge">v1.0.8</span>
-        </div>
-      </div>
+      <!-- Main FAB Trigger Button -->
+      <button class="btn-cs-toolkit-fab" id="btn-cs-toolkit-fab" title="Buka CS Toolkit" aria-label="CS Toolkit">
+        <svg class="icon-fab-main" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        <span class="fab-label">Tools CS</span>
+      </button>
     </div>
 
-    <!-- Main FAB Trigger Button -->
-    <button class="btn-cs-toolkit-fab" id="btn-cs-toolkit-fab" title="Buka CS Toolkit" aria-label="CS Toolkit">
-      <svg class="icon-fab-main" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-      </svg>
-      <span class="fab-label">Tools CS</span>
-    </button>
+    <!-- 2. Floating Docked Pill (Minimized Feedback State - Tengah) -->
+    <div class="feedback-dock-pill" id="feedback-dock-pill" style="display: none;">
+      <div class="feedback-dock-content" id="btn-feedback-dock-restore" title="Klik untuk membuka kembali form laporan">
+        <span class="feedback-dock-icon">📝</span>
+        <div class="feedback-dock-text">
+          <strong id="feedback-dock-title">Draf Laporan</strong>
+          <span id="feedback-dock-sub">0 Gambar dilampirkan</span>
+        </div>
+        <span class="feedback-dock-arrow">▲</span>
+      </div>
+      <button class="feedback-dock-close-btn" id="btn-feedback-dock-discard" title="Hapus draf laporan ini">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 3. Floating Checklist Setup Widget (Kiri) -->
+    <div class="onboarding-checklist-widget hidden" id="onboarding-checklist-widget" role="region" aria-label="Checklist Onboarding CS"></div>
   </div>
 
   <!-- Quick Reply Backdrop & Drawer -->

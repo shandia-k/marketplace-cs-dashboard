@@ -81,46 +81,46 @@ function renderTabBar() {
 
   // Nav controls (kiri) + Mini Address Bar + tabs (tengah) + add button (kanan)
   const navHtml = `
-    <div class="tab-nav-controls">
-      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <div class="tab-nav-controls" role="toolbar" aria-label="Kontrol Navigasi Tab">
+      <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)" aria-label="Kembali ke halaman sebelumnya">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+\u2192)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-forward" title="Maju (Alt+\u2192)" aria-label="Maju ke halaman berikutnya">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M5 12h14M12 5l7 7-7 7"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-refresh" title="Refresh (F5)" aria-label="Muat ulang halaman">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)" aria-label="Kembali ke beranda toko">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
       </button>
     </div>
     <div class="tab-address-bar-wrap" id="tab-address-bar-wrap" title="Ketik URL (e.g. cekresi.com, maps, atau link produk)">
-      <div class="tab-address-icon" id="tab-address-icon">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="tab-address-icon" id="tab-address-icon" aria-hidden="true">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
       </div>
-      <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" value="${escapeHtml(activeTabUrl)}">
-      <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" value="${escapeHtml(activeTabUrl)}" aria-label="Alamat URL web atau pencarian">
+      <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)" aria-label="Buka alamat URL">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
     </div>
-    <div class="tab-nav-separator"></div>
-    <div class="tab-items-container">`;
+    <div class="tab-nav-separator" aria-hidden="true"></div>
+    <div class="tab-items-container" role="tablist" aria-label="Daftar tab toko ${escapeHtml(store.name)}">`;
 
   const leafIcon = '&#x1F343;';
   const tabsHtml = tabs.map(tab => {
@@ -136,8 +136,8 @@ function renderTabBar() {
       const progStr = hasPercent ? ` ${syncProgress}%` : '';
       const tooltipMsg = hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...';
       syncBadgeHtml = `
-        <span class="tab-sync-badge" title="${tooltipMsg}">
-          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <span class="tab-sync-badge" title="${tooltipMsg}" aria-label="${tooltipMsg}">
+          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
           </svg>${progStr}
         </span>`;
@@ -149,13 +149,13 @@ function renderTabBar() {
       : (isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title));
 
     return `
-    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}">
-      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle}>${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
+    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}" role="tab" aria-selected="${isCurTab ? 'true' : 'false'}" aria-label="${tabTooltip}">
+      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
       ${syncBadgeHtml}
-      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
+      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
           <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </button>
@@ -163,8 +163,8 @@ function renderTabBar() {
   }).join('');
 
   const addBtnHtml = `
-    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru untuk ${escapeHtml(store.name)}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
         <path d="M12 5v14M5 12h14"/>
       </svg>
     </button>
@@ -189,9 +189,15 @@ function renderTabBar() {
     if (wv?.canGoForward()) wv.goForward();
   });
   document.getElementById('btn-nav-refresh')?.addEventListener('click', () => {
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tab_nav_refresh_clicked');
+    }
     getActiveWebview()?.reload();
   });
   document.getElementById('btn-nav-home')?.addEventListener('click', () => {
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tab_nav_home_clicked');
+    }
     const store = stores.find(s => s.id === activeStoreId);
     const cfg = store ? ((typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom) : null;
     const tabEntry = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
@@ -248,7 +254,12 @@ function renderTabBar() {
       const storeId = Object.keys(storeTabs).find(sid =>
         storeTabs[sid].some(t => t.id === el.dataset.tabId)
       );
-      if (storeId) hibernateTab(storeId, el.dataset.tabId);
+      if (storeId) {
+        hibernateTab(storeId, el.dataset.tabId);
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('tab_hibernated_manual');
+        }
+      }
     });
   });
 
@@ -294,6 +305,9 @@ function navigateFromAddressBar() {
 
   const wv = getActiveWebview();
   if (wv) {
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tab_address_bar_navigated');
+    }
     try {
       wv.loadURL(targetUrl);
     } catch (e) {
@@ -342,6 +356,9 @@ function addTab(storeId, url, title) {
   });
 
   switchTab(storeId, tabId);
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tab_created');
+  }
   if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
     window.OnboardingManager.notifyAction('open_tab');
   }
@@ -383,6 +400,9 @@ function closeTab(storeId, tabId) {
   }
 
   renderTabBar();
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tab_closed');
+  }
 }
 
 function switchTab(storeId, tabId) {
@@ -453,6 +473,9 @@ function retryTab(storeId, tabId) {
   const store = stores.find(s => s.id === storeId);
   const tab   = storeTabs[storeId]?.find(t => t.id === tabId);
   if (!store || !tab || !webviewMap[tabId]) return;
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('tab_error_reloaded');
+  }
   webviewMap[tabId].webview.setAttribute('src', tab.url);
   if (webviewMap[tabId].loading) {
     webviewMap[tabId].loading.innerHTML = `<div class="spinner"></div><p>Memuat ulang...</p>`;

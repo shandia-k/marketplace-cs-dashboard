@@ -1,9 +1,9 @@
 /**
  * js/onboarding.js
- * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.8)
+ * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.9)
  * 
  * Features:
- * 1. Welcome Modal with v1.0.8 Production Readiness Changelog & System Overview
+ * 1. Welcome Modal with v1.0.9 Production Readiness Changelog & System Overview
  * 2. Step-by-Step Interactive Guided Tour (Spotlight Highlight)
  * 3. Interactive Checklist Setup Tasks with Real-Time Action Triggers
  * 4. Extensible Versioned Architecture for Seamless Future Feature Onboarding
@@ -15,9 +15,9 @@ const ONBOARDING_CONFIG = {
   get version() {
     if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function') {
       const latest = window.VERSIONS_REGISTRY.getLatestVersion();
-      return latest ? latest.version : '1.0.8';
+      return latest ? latest.version : '1.0.9';
     }
-    return '1.0.8';
+    return '1.0.9';
   },
   welcomeTitle: 'Selamat Datang di CS Marketplace Dashboard',
   welcomeSubtitle: 'Pusat komando Customer Service Multi-Marketplace dalam 1 jendela kerja terpadu.',
@@ -1814,7 +1814,7 @@ const OnboardingManager = {
             <div class="onboarding-carousel-top-bar">
               <span class="onboarding-carousel-title-label">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.8)
+                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.9)
               </span>
               <span class="onboarding-carousel-hint">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -1939,7 +1939,12 @@ const OnboardingManager = {
       checklistWidget.className = 'onboarding-checklist-widget';
       checklistWidget.setAttribute('role', 'region');
       checklistWidget.setAttribute('aria-label', 'Checklist Onboarding CS');
-      document.body.appendChild(checklistWidget);
+      const dock = document.getElementById('floating-bottom-dock');
+      if (dock) {
+        dock.appendChild(checklistWidget);
+      } else {
+        document.body.appendChild(checklistWidget);
+      }
     }
   },
 
@@ -2154,6 +2159,9 @@ const OnboardingManager = {
     if (modal) {
       modal.classList.add('active');
     }
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('changelog_modal_opened');
+    }
   },
 
   closeWelcomeModal() {
@@ -2181,6 +2189,10 @@ const OnboardingManager = {
     this.injectElements();
     this.currentTourStepIndex = startStepIndex;
     this.isTourActive = true;
+
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('tour_started');
+    }
 
     const overlay = document.getElementById('onboarding-tour-overlay');
     if (overlay) {
@@ -2955,6 +2967,11 @@ const OnboardingManager = {
     state.checklistCollapsed = !state.checklistCollapsed;
     this.saveState(state);
     this.renderChecklistWidget();
+
+    // Jika checklist diperluas (expanded), tutup menu speed dial Tools CS agar tidak tumpang tindih
+    if (!state.checklistCollapsed && typeof closeToolkitMenu === 'function') {
+      closeToolkitMenu();
+    }
   },
 
   dismissChecklist() {
@@ -2994,6 +3011,10 @@ const OnboardingManager = {
       state.completedTasks.push(matchedTask.id);
       this.saveState(state);
       this.renderChecklistWidget();
+
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('checklist_task_completed');
+      }
 
       // Dismiss task guide if this was the guide running
       if (this.isTourActive && this.currentTourType === 'task_guide') {

@@ -12,6 +12,16 @@ function generateId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
+// ── Debounce Utility ─────────────────────────────────────────────────────────
+function debounce(func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+window.debounce = debounce;
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg, type = '') {
   const toast   = document.getElementById('toast');

@@ -7,7 +7,7 @@
   let isManualCheck = false;
   let autoCloseTimer = null;
   let countdownInterval = null;
-  let currentAppVersion = '1.0.8';
+  let currentAppVersion = '1.0.9';
 
   const SVGS = {
     spinner: `
@@ -82,6 +82,9 @@
 
   window.checkAppUpdates = async function (manual = false) {
     isManualCheck = manual;
+    if (manual && window.AppTelemetry) {
+      window.AppTelemetry.track('updater_manual_checked');
+    }
     if (autoCloseTimer) {
       clearTimeout(autoCloseTimer);
       autoCloseTimer = null;
@@ -137,6 +140,9 @@
       els.autoCheckToggle.checked = savedAutoCheck !== 'false';
       els.autoCheckToggle.addEventListener('change', (e) => {
         localStorage.setItem('auto_check_updates', e.target.checked ? 'true' : 'false');
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('updater_autocheck_toggled');
+        }
       });
     }
 
@@ -257,6 +263,9 @@
       els.btnAction.textContent = 'Restart & Pasang Sekarang';
       els.btnAction.className = 'btn-primary btn-update-install';
       els.btnAction.onclick = () => {
+        if (window.AppTelemetry) {
+          window.AppTelemetry.track('updater_restart_install_clicked');
+        }
         if (window.electronAPI && typeof window.electronAPI.restartToUpdate === 'function') {
           window.electronAPI.restartToUpdate();
         }

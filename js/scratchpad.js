@@ -137,6 +137,9 @@ function addScratchpadTab(name, content) {
   });
   switchScratchpadTab(newId);
   saveScratchpadState();
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('scratchpad_tab_created');
+  }
   // Scroll to rightmost
   setTimeout(() => {
     scratchpadTabsContainer.scrollLeft = scratchpadTabsContainer.scrollWidth;
@@ -156,6 +159,9 @@ function closeScratchpadTab(tabId) {
   } else {
     saveScratchpadState();
     renderScratchpadTabs();
+  }
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('scratchpad_tab_closed');
   }
 }
 
@@ -273,6 +279,9 @@ btnSpLoad.addEventListener('click', async () => {
     if (res && res.content !== null && res.content !== undefined) {
       const fileName = res.fileName || ('File ' + (scratchpadTabs.length + 1));
       addScratchpadTab(fileName, res.content);
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('scratchpad_file_imported');
+      }
       showToast('Data berhasil dimuat di tab baru', 'success');
     }
   } catch (err) {
@@ -296,6 +305,9 @@ btnSpSave.addEventListener('click', async () => {
         saveScratchpadState();
         renderScratchpadTabs();
       }
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('scratchpad_file_exported');
+      }
       showToast('Data berhasil disimpan', 'success');
     }
   } catch (err) {
@@ -316,6 +328,9 @@ document.getElementById('btn-sp-copy')?.addEventListener('click', () => {
     } else {
       navigator.clipboard.writeText(content);
     }
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('scratchpad_copied');
+    }
     showToast('Seluruh catatan berhasil disalin ke clipboard ✓', 'success');
   } catch (e) {
     showToast('Gagal menyalin catatan: ' + e.message, 'error');
@@ -330,6 +345,9 @@ document.getElementById('btn-sp-insert-chat')?.addEventListener('click', () => {
     return;
   }
   if (typeof insertTextToActiveChat === 'function') {
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('scratchpad_inserted_chat');
+    }
     insertTextToActiveChat(content);
   } else {
     showToast('Ketik ke chat tidak tersedia', 'error');
