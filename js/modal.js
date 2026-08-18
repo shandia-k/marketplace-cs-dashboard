@@ -1187,6 +1187,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-admin-create-close')?.addEventListener('click', closeAdminCreateUserModal);
   document.getElementById('btn-admin-create-cancel')?.addEventListener('click', closeAdminCreateUserModal);
   document.getElementById('admin-create-user-form')?.addEventListener('submit', handleAdminCreateUserSubmit);
+  document.getElementById('modal-admin-create-user-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-admin-create-user-overlay') closeAdminCreateUserModal();
+  });
 });
 
 async function updateCacheSizeDisplay() {

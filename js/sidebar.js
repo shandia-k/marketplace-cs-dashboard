@@ -2,6 +2,9 @@
 function toggleSidebar() {
   sidebarCollapsed = !sidebarCollapsed;
   sidebarEl.classList.toggle('collapsed', sidebarCollapsed);
+  if (typeof updateSidebarScrollAffordance === 'function') {
+    setTimeout(updateSidebarScrollAffordance, 250);
+  }
 }
 
 // ── Store Ordering ─────────────────────────────────────────────────────────────
@@ -113,6 +116,13 @@ function renderSidebar(filteredStores) {
     el.addEventListener('click', () => activateStore(el.dataset.id));
     bindDragEvents(el);
   });
+
+  if (typeof updateSidebarScrollAffordance === 'function') {
+    setTimeout(updateSidebarScrollAffordance, 50);
+  }
+  if (typeof triggerSidebarScrollNudge === 'function') {
+    setTimeout(triggerSidebarScrollNudge, 100);
+  }
 }
 
 // ── Drag & Drop ───────────────────────────────────────────────────────────────
@@ -253,3 +263,82 @@ if (btnFeedbackSubmit) {
     }
   });
 }
+
+// ── Smart Sidebar Scroll Affordance (Theme-Agnostic CSS Masking) ────────────
+function updateSidebarScrollAffordance() {
+  if (!sidebarContent) return;
+
+  const scrollTop = sidebarContent.scrollTop;
+  const scrollHeight = sidebarContent.scrollHeight;
+  const clientHeight = sidebarContent.clientHeight;
+  const canScroll = scrollHeight > clientHeight + 4;
+
+  if (!canScroll) {
+    sidebarContent.classList.remove('mask-top', 'mask-bottom', 'mask-both');
+    return;
+  }
+
+  const hasTop = scrollTop > 8;
+  const hasBottom = scrollTop + clientHeight < scrollHeight - 8;
+
+  sidebarContent.classList.toggle('mask-top', hasTop && !hasBottom);
+  sidebarContent.classList.toggle('mask-bottom', hasBottom && !hasTop);
+  sidebarContent.classList.toggle('mask-both', hasTop && hasBottom);
+}
+
+let isSidebarScrollAffordanceBound = false;
+function initSidebarScrollAffordance() {
+  if (isSidebarScrollAffordanceBound) return;
+  if (!sidebarContent) return;
+  isSidebarScrollAffordanceBound = true;
+
+  sidebarContent.addEventListener('scroll', updateSidebarScrollAffordance, { passive: true });
+  window.addEventListener('resize', updateSidebarScrollAffordance, { passive: true });
+
+  // Meneruskan scroll mouse wheel dari header/footer ke sidebar-content (terutama saat collapsed)
+  sidebarEl?.addEventListener('wheel', (e) => {
+    if (!sidebarContent) return;
+    if (!e.target.closest('#sidebar-content') && !e.target.closest('#sidebar-user-card')) {
+      sidebarContent.scrollTop += e.deltaY;
+    }
+  }, { passive: true });
+
+  updateSidebarScrollAffordance();
+  triggerSidebarScrollNudge();
+}
+
+let hasPlayedSidebarScrollNudge = false;
+
+function triggerSidebarScrollNudge() {
+  if (!sidebarContent || hasPlayedSidebarScrollNudge) return;
+
+  const canScroll = sidebarContent.scrollHeight > sidebarContent.clientHeight + 10;
+  if (!canScroll) return;
+
+  hasPlayedSidebarScrollNudge = true;
+
+  // Beri jeda 400ms setelah render agar user melihat posisi awal, lalu lakukan micro-peek bounce
+  setTimeout(() => {
+    if (!sidebarContent) return;
+    if (sidebarContent.scrollTop > 5) return; // Batalkan jika user sudah scroll sendiri
+
+    sidebarContent.classList.add('scroll-peek-nudge');
+
+    setTimeout(() => {
+      sidebarContent?.classList.remove('scroll-peek-nudge');
+      updateSidebarScrollAffordance();
+    }, 950);
+  }, 400);
+}
+
+window.updateSidebarScrollAffordance = updateSidebarScrollAffordance;
+window.triggerSidebarScrollNudge     = triggerSidebarScrollNudge;
+window.initSidebarScrollAffordance   = initSidebarScrollAffordance;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSidebarScrollAffordance);
+} else {
+  initSidebarScrollAffordance();
+}
+
+

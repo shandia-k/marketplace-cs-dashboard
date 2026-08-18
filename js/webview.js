@@ -125,7 +125,7 @@ function isValidTopNavigationUrl(url) {
   // Harus diawali dengan protokol http atau https
   if (!/^https?:\/\//i.test(clean)) return false;
 
-  // Filter universal untuk sub-widget, iframe popup, auth frames, captcha, dan RPC endpoints
+  // Filter universal untuk sub-widget, iframe popup, auth frames, captcha, traffic error, dan RPC endpoints
   const invalidSubFrameSignatures = [
     '/widget/hovercard',
     'contacts.google.com/widget',
@@ -134,6 +134,8 @@ function isValidTopNavigationUrl(url) {
     'hangouts.google.com/webchat/frame',
     '/embed/',
     'security.shopee.co.id/captcha',
+    'verify/traffic/error',
+    'shopee.co.id/verify',
     'captcha.tiktok.com'
   ];
 
@@ -152,14 +154,14 @@ function createWebview(store, tab) {
   const preloadPath = appPath.replace(/\\/g, '/');
   const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
 
-  // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah
+  // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah dan bukan URL traffic error
   const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
-  const defaultFallbackUrl = tab.initialUrl || store.url || cfg.url || 'https://www.google.com';
+  const defaultFallbackUrl = store.url || cfg.url || 'https://seller.shopee.co.id/portal/chat';
 
-  if (!isValidTopNavigationUrl(tab.url)) {
+  if (!isValidTopNavigationUrl(tab.url) || (store.marketplace === 'shopee' && (tab.url === 'https://shopee.co.id' || tab.url === 'https://shopee.co.id/'))) {
     tab.url = defaultFallbackUrl;
   }
-  if (!tab.initialUrl) {
+  if (!tab.initialUrl || !isValidTopNavigationUrl(tab.initialUrl) || (store.marketplace === 'shopee' && (tab.initialUrl === 'https://shopee.co.id' || tab.initialUrl === 'https://shopee.co.id/'))) {
     tab.initialUrl = defaultFallbackUrl;
   }
 
@@ -431,7 +433,7 @@ function createWebview(store, tab) {
         </svg>
         <p style="color:#fca5a5">Gagal memuat halaman.<br>
         <small style="color:#64748b">${escapeHtml(e.errorDescription || 'Periksa koneksi internet.')}</small></p>
-        <button onclick="document.querySelector('webview[partition=\\'${actualPartition}\\']').reload()" 
+        <button onclick="if(typeof retryTab===\\'function\\'){retryTab(\\'${escapeHtml(store.id)}\\', \\'${escapeHtml(tab.id)}\\');}else{this.closest(\\'webview\\')?.reload();}" 
           style="margin-top:8px;padding:8px 16px;background:var(--accent-primary, #DF1683);border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;font-family:'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:500;">
           Muat Ulang
         </button>`;

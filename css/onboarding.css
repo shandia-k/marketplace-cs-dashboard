@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CS Marketplace Dashboard (v1.0.7)
+   CS Marketplace Dashboard (v1.0.8)
    Modular Onboarding Engine & Guided Tour Stylesheet
    ========================================================================== */
 
@@ -114,23 +114,24 @@
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
+  z-index: 20;
 }
 
 .onboarding-welcome-close-top:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  border-color: var(--border-color);
+  border-color: var(--border-hover);
 }
 
 .onboarding-welcome-body {

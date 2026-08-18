@@ -214,7 +214,17 @@ function bindEvents() {
 
   userCard?.addEventListener('click', (e) => {
     e.stopPropagation();
-    userPopover?.classList.toggle('active');
+    if (!userPopover) return;
+    const isActive = userPopover.classList.contains('active');
+    if (!isActive) {
+      const rect = userCard.getBoundingClientRect();
+      userPopover.style.position = 'fixed';
+      userPopover.style.bottom = `${Math.max(12, window.innerHeight - rect.top + 8)}px`;
+      userPopover.style.left = `${Math.max(8, rect.left)}px`;
+      userPopover.classList.add('active');
+    } else {
+      userPopover.classList.remove('active');
+    }
   });
 
   document.addEventListener('click', (e) => {
@@ -362,7 +372,6 @@ function bindEvents() {
   };
 
   document.getElementById('btn-superadmin-add-user')?.addEventListener('click', handleAddUserFromAdmin);
-  document.getElementById('btn-add-user-from-settings')?.addEventListener('click', handleAddUserFromAdmin);
 
   // Refresh Super Admin Audit
   document.getElementById('btn-superadmin-refresh')?.addEventListener('click', () => {

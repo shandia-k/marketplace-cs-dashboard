@@ -208,6 +208,7 @@ function broadcastTemplatesToWebviews() {
         const storeId = Object.keys(storeTabs).find(sid =>
           storeTabs[sid].some(t => t.id === tabId)
         );
+        const store = (typeof stores !== 'undefined' && Array.isArray(stores)) ? stores.find(s => s.id === storeId) : null;
         const csName = window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS';
         entry.webview.send('sync-smart-templates', {
           templates: smartTemplates,
@@ -570,6 +571,14 @@ function bindQuickReplyEvents() {
   document.getElementById('btn-quick-reply-float')?.addEventListener('click', toggleQuickReplyDrawer);
   document.getElementById('qr-drawer-close')?.addEventListener('click', closeQuickReplyDrawer);
   document.getElementById('quickreply-backdrop')?.addEventListener('click', closeQuickReplyDrawer);
+
+  // Status bar clipboard click handler (delegated to support dynamic status bar rendering)
+  document.addEventListener('click', (e) => {
+    const clipGroup = e.target.closest('#sb-clipboard-group');
+    if (clipGroup && !e.target.closest('.clipboard-history-tooltip') && !e.target.closest('.btn-clear-clip-history')) {
+      toggleQuickReplyDrawer();
+    }
+  });
 
   // Search input
   document.getElementById('qr-search-input')?.addEventListener('input', renderQuickReplyList);

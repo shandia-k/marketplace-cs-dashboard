@@ -33,9 +33,90 @@
 
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.7',
+      version: '1.0.8',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
+      releaseDate: 'Agustus 2026',
+      title: 'Shopee Traffic Fix, Pure Chrome UA, Gemini Scroll Affordance & Root Popover',
+      tagline: 'Perbaikan komprehensif verifikasi traffic Shopee, standardisasi User-Agent Google Chrome murni & masking anti-bot, scroll affordance mask-image tanpa scrollbar fisik, micro-bounce scroll peek, root popover profil, dan stabilitas modal CS.',
+      highlights: [
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Fix Verifikasi Traffic Shopee',
+          desc: 'Standarisasi Chrome User-Agent murni, masking navigator.webdriver, dan auto-healing portal chat Shopee dari error traffic.'
+        },
+        {
+          icon: '✨',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Scroll Affordance & Micro-Bounce',
+          desc: 'CSS mask-image transparan alami menggantikan scrollbar fisik pada sidebar collapsed, plus animasi halus scroll peek & full wheel passthrough.'
+        },
+        {
+          icon: '👤',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Popover Profil Bebas Terpotong',
+          desc: 'Menu profil user dipindahkan ke root layout dengan koordinat fixed dinamis dan dismissal backdrop pada seluruh modal CS.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Stabilitas Webview, Tabs & Sync',
+          desc: 'Fix sinkronisasi live template/tema, fix tombol muat ulang retryTab spesifik, dan fix stacking z-index tombol tutup modal.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Ketahanan Webview & Bypass Verifikasi Traffic Shopee',
+          tag: 'Webview & Security',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Fix Shopee Traffic Verification Error (/verify/traffic/error & shopee.co.id/verify): Menghapus User-Agent Firefox dan menerapkan User-Agent Google Chrome resmi murni yang sinkron dengan Chromium engine.',
+            'Anti-Automation & Bot Detection Masking: Menyuntikkan masking navigator.webdriver pada webview-preload untuk mencegah pemblokiran WAF Shopee, Tokopedia, dan WA Web.',
+            'Auto-Healing Portal Chat Shopee: Menambahkan filter keamanan otomatis yang mengembalikan tab Shopee dari halaman error atau katalog belanja umum langsung ke portal resmi Shopee Seller Chat.'
+          ]
+        },
+        {
+          category: 'Penyempurnaan Navigasi Sidebar & Scroll Affordance',
+          tag: 'Sidebar & UI',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Scroll Affordance Sidebar Tanpa Scrollbar Fisik: Menghilangkan scrollbar fisik yang memotong layout 56px collapsed sidebar, digantikan oleh CSS mask-image transparan alami yang bekerja sempurna di Dark & Light theme.',
+            'Fitur Micro-Bounce Scroll Peek / Nudge: Animasi geser naik halus ~28px otomatis memamerkan daftar toko yang tersembunyi saat aplikasi baru dibuka atau toko bertambah banyak.',
+            'Full Wheel Passthrough: Memutar roda mouse di area header maupun footer sidebar otomatis meneruskan scroll ke daftar toko.'
+          ]
+        },
+        {
+          category: 'Tata Letak Antarmuka & CS Toolkit Modals',
+          tag: 'UI & Modals',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Fix Pemotongan Popover Profil Pengguna: Memindahkan elemen #user-popover-menu ke layout root dan menerapkan koordinat fixed dinamis, menghilangkan kendala menu terpotong oleh overflow layout saat sidebar collapsed.',
+            'Backdrop Dismissal pada Seluruh Modal Tools CS: Pengguna kini dapat menutup modal Catatan Pelanggan, Form Catatan, WhatsApp Direct Linker, Case Converter, dan Tambah User Super Admin dengan mengklik area gelap di luar modal.',
+            'Fix Scratchpad Tab Dragging Conflict: Mengatasi benturan event mousedown tombol [+] pada header Scratchpad agar tidak memicu dragging jendela.'
+          ]
+        },
+        {
+          category: 'Stabilitas Sistem, Multi-Tab & Sinkronisasi',
+          tag: 'Stability & Engine',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Fix Sinkronisasi Template & Tema Webview: Mengatasi ReferenceError pada broadcastTemplatesToWebviews() sehingga template, tema, dan clipboard langsung tersinkronisasi live ke semua webview aktif.',
+            'Fix Tombol Close Modal Changelog / Info Sistem: Menyelesaikan isu stacking z-index pada tombol silang [X] dan menambahkan inline fallback handler yang aman.',
+            'Fix Tombol Muat Ulang Webview Error: Memastikan tombol reload pada error overlay menargetkan tab spesifik pada toko yang memiliki banyak tab (retryTab).',
+            'Pembaruan manifest versi dan release guard terintegrasi v1.0.8.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.7',
+      badge: 'Gemini & Smart CS 🚀',
+      badgeColor: '#10b981',
       releaseDate: 'Agustus 2026',
       title: 'Gemini Sidebar, Smart Customer Detection, Dynamic CS Profiles & Zero-Duplicate Engine',
       tagline: 'Desain sidebar ultra-mulus zero-jitter gaya Google Gemini, deteksi cerdas nama pembeli ({customer}), variabel personal CS ({cs}), registrasi berbasis nama lengkap, dan eliminasi duplikasi teks chat.',

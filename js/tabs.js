@@ -459,3 +459,5 @@ function retryTab(storeId, tabId) {
     webviewMap[tabId].loading.classList.remove('hidden');
   }
 }
+window.retryTab = retryTab;
+

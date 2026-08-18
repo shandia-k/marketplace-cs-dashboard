@@ -1,9 +1,9 @@
 /**
  * js/onboarding.js
- * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.7)
+ * Modular Onboarding Engine for CS Marketplace Dashboard (v1.0.8)
  * 
  * Features:
- * 1. Welcome Modal with v1.0.7 Production Readiness Changelog & System Overview
+ * 1. Welcome Modal with v1.0.8 Production Readiness Changelog & System Overview
  * 2. Step-by-Step Interactive Guided Tour (Spotlight Highlight)
  * 3. Interactive Checklist Setup Tasks with Real-Time Action Triggers
  * 4. Extensible Versioned Architecture for Seamless Future Feature Onboarding
@@ -15,9 +15,9 @@ const ONBOARDING_CONFIG = {
   get version() {
     if (typeof window !== 'undefined' && window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function') {
       const latest = window.VERSIONS_REGISTRY.getLatestVersion();
-      return latest ? latest.version : '1.0.7';
+      return latest ? latest.version : '1.0.8';
     }
-    return '1.0.7';
+    return '1.0.8';
   },
   welcomeTitle: 'Selamat Datang di CS Marketplace Dashboard',
   welcomeSubtitle: 'Pusat komando Customer Service Multi-Marketplace dalam 1 jendela kerja terpadu.',
@@ -1791,7 +1791,7 @@ const OnboardingManager = {
       welcomeOverlay.className = 'modal-overlay';
       welcomeOverlay.innerHTML = `
         <div class="onboarding-welcome-modal" role="dialog" aria-labelledby="onboarding-welcome-title" aria-modal="true">
-          <button class="onboarding-welcome-close-top" id="btn-onboarding-welcome-x" title="Tutup Modal (Esc)" aria-label="Tutup">
+          <button class="onboarding-welcome-close-top" id="btn-onboarding-welcome-x" onclick="if (window.OnboardingManager) { window.OnboardingManager.closeWelcomeModal(); } else { document.getElementById('onboarding-welcome-modal-overlay')?.classList.remove('active'); }" title="Tutup Modal (Esc)" aria-label="Tutup">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
 
@@ -1814,7 +1814,7 @@ const OnboardingManager = {
             <div class="onboarding-carousel-top-bar">
               <span class="onboarding-carousel-title-label">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.7)
+                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.8)
               </span>
               <span class="onboarding-carousel-hint">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -1844,7 +1844,7 @@ const OnboardingManager = {
               <span>💡 Panduan & Riwayat Changelog bisa dibuka kapan saja dari menu Pengaturan.</span>
             </div>
             <div class="onboarding-welcome-footer-right">
-              <button class="btn-secondary" id="btn-onboarding-welcome-close">Tutup & Eksplorasi</button>
+              <button class="btn-secondary" id="btn-onboarding-welcome-close" onclick="if (window.OnboardingManager) { window.OnboardingManager.closeWelcomeModal(); } else { document.getElementById('onboarding-welcome-modal-overlay')?.classList.remove('active'); }">Tutup & Eksplorasi</button>
               <button class="btn-primary" id="btn-onboarding-start-tour">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Mulai Tur Panduan 🎯
@@ -2161,9 +2161,16 @@ const OnboardingManager = {
     if (modal) {
       modal.classList.remove('active');
     }
-    const state = this.getState();
-    state.seenVersion = ONBOARDING_CONFIG.version;
-    this.saveState(state);
+    try {
+      const mgr = (typeof OnboardingManager !== 'undefined') ? OnboardingManager : this;
+      if (mgr && typeof mgr.getState === 'function') {
+        const state = mgr.getState();
+        state.seenVersion = ONBOARDING_CONFIG.version;
+        mgr.saveState(state);
+      }
+    } catch (err) {
+      console.warn('Could not save seenVersion:', err);
+    }
   },
 
   // ── Step-by-Step Guided Tour & Task Action Guides ───────────────────────────

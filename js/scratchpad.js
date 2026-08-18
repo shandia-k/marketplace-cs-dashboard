@@ -222,7 +222,8 @@ scratchpadWindow.addEventListener('mousedown', () => {
 scratchpadHeader.addEventListener('mousedown', (e) => {
   // Prevent dragging if clicked on interactive elements
   if (e.target.closest('#btn-scratchpad-close') || 
-      e.target.closest('#btn-add-tab') || 
+      e.target.closest('#btn-sp-add-tab') || 
+      e.target.closest('.btn-add-tab') || 
       e.target.closest('.scratchpad-tab')) return;
   
   isScratchpadDragging = true;

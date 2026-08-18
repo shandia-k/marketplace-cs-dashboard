@@ -12,6 +12,14 @@
  */
 const { ipcRenderer } = require('electron');
 
+// ── ANTI-AUTOMATION & BOT DETECTION MASKING ──────────────────────────────────
+try {
+  Object.defineProperty(navigator, 'webdriver', {
+    get: () => undefined,
+    configurable: true
+  });
+} catch (e) {}
+
 // ── STATE & TEMPLATES (Synced from host dashboard) ───────────────────────────
 let smartTemplates = [];
 let currentStoreName = '';

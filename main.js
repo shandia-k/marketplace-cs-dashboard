@@ -1873,9 +1873,17 @@ function setupAutoUpdater(window) {
   });
 }
 
+// Standar User-Agent Chrome resmi tanpa token 'Electron' atau 'marketplace-cs-dashboard'
+// Menghilangkan deteksi WAF traffic Shopee/Tokopedia/WhatsApp sekaligus mengizinkan login Google dengan aman
+const chromeVersion = process.versions.chrome || '124.0.0.0';
+const cleanUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+app.userAgentFallback = cleanUserAgent;
+
 // Setup webview permissions & navigation security guard untuk semua partisi
 app.on('web-contents-created', (event, contents) => {
   if (contents.getType() === 'webview') {
+    contents.setUserAgent(cleanUserAgent);
+
     const allowedPermissions = [
       'notifications',
       'media',
@@ -1926,9 +1934,6 @@ app.on('web-contents-created', (event, contents) => {
     });
   }
 });
-
-// Memaksa User-Agent standar Firefox agar login Google/Gmail tidak memicu pengecekan Chromium security
-app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0';
 
 app.whenReady().then(() => {
   createWindow();

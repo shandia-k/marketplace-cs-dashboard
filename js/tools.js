@@ -618,6 +618,20 @@ function bindToolsEvents() {
     insertTextToActiveChat(val);
     closeCaseConvModal();
   });
+
+  // 4. Modal Backdrop (outside click) Dismissal
+  document.getElementById('modal-cnotes-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-cnotes-overlay') closeCustomerNotesModal();
+  });
+  document.getElementById('modal-cnote-form-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-cnote-form-overlay') closeAddNoteFormModal();
+  });
+  document.getElementById('modal-walinker-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-walinker-overlay') closeWaLinkerModal();
+  });
+  document.getElementById('modal-caseconv-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-caseconv-overlay') closeCaseConvModal();
+  });
 }
 
 // Expose globals
