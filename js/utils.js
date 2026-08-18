@@ -367,3 +367,16 @@ function showPromptDialog(options = {}) {
 }
 
 window.showPromptDialog = showPromptDialog;
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const context = this;
+    const later = () => {
+      func.apply(context, args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+window.debounce = debounce;
