@@ -84,6 +84,13 @@ function atomicWriteJsonSync(filePath, data) {
   }
 }
 
+function isValidPartition(partition) {
+  if (!partition || typeof partition !== 'string') return false;
+  const raw = partition.startsWith('persist:') ? partition.substring(8) : partition;
+  if (!raw || raw.includes('/') || raw.includes('\\') || raw.includes('..')) return false;
+  return true;
+}
+
 function getStoresFilePath(username) {
   const safeUsername = username ? String(username).trim().replace(/[/\\?%*:|"<>]/g, '_') : '';
   const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
@@ -539,6 +546,7 @@ ipcMain.handle('delete-user', async (event, { usernameToDelete, requestingUserna
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData();
@@ -621,6 +629,7 @@ ipcMain.handle('admin-clear-user-session', async (event, { requestingUsername, p
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData();
@@ -845,7 +854,8 @@ ipcMain.handle('admin-clear-store-session', async (event, { requestingUsername, 
 
   try {
     const partition = `persist:user_${targetUsername}_${storeId}`;
-    const ses = session.fromPartition(partition);
+    if (!isValidPartition(partition)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
+        const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData();
     safeDeletePartitionDisk(partition);
@@ -882,7 +892,8 @@ ipcMain.handle('admin-delete-user-store', async (event, { requestingUsername, pa
     // Clear its partition both via Chromium API & Physical disk
     try {
       const partition = `persist:user_${targetUsername}_${storeId}`;
-      const ses = session.fromPartition(partition);
+      if (!isValidPartition(partition)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
+        const ses = session.fromPartition(partition);
       await ses.clearCache();
       await ses.clearStorageData();
       safeDeletePartitionDisk(partition);
@@ -1401,6 +1412,7 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData({
@@ -1420,7 +1432,8 @@ ipcMain.handle('clear-safe-cache', async (event, username) => {
 ipcMain.handle('clear-store-cache', async (event, { partition }) => {
   try {
     if (!partition) return { success: false, error: 'Partisi tidak valid' };
-    const ses = session.fromPartition(partition);
+    if (!isValidPartition(partition)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
+        const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData({
       storages: ['shadercache', 'serviceworkers', 'cachestorage']
@@ -1435,7 +1448,8 @@ ipcMain.handle('clear-store-cache', async (event, { partition }) => {
 ipcMain.handle('deep-clean-store', async (event, { partition }) => {
   try {
     if (!partition) return { success: false, error: 'Partisi tidak valid' };
-    const ses = session.fromPartition(partition);
+    if (!isValidPartition(partition)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
+        const ses = session.fromPartition(partition);
     await ses.clearCache();
     await ses.clearStorageData(); // Bersihkan semuanya (termasuk cookies & localstorage)
     safeDeletePartitionDisk(partition);
@@ -1462,6 +1476,7 @@ ipcMain.handle('deep-clean-all', async (event, username) => {
 
     for (const part of partitions) {
       try {
+        if (!isValidPartition(part)) throw new Error('Partisi tidak valid: path traversal terdeteksi');
         const ses = session.fromPartition(part);
         await ses.clearCache();
         await ses.clearStorageData();
