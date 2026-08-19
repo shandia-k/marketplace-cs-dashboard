@@ -188,8 +188,8 @@ function createWebview(store, tab) {
 
   // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
   const actualPartition = getStorePartition(store);
-  const isGoogleStore = store.marketplace === 'gmail' || (tab.url && (tab.url.includes('google.com') || tab.url.includes('gmail.com')));
-  const cleanUa = isGoogleStore
+  const isGoogleAuthUrl = tab.url && (tab.url.includes('accounts.google.com') || tab.url.includes('mail.google.com') || tab.url.includes('google.com/accounts'));
+  const cleanUa = isGoogleAuthUrl
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
   const wv = document.createElement('webview');
@@ -356,7 +356,32 @@ function createWebview(store, tab) {
 
   // ── new-window: target=_blank / window.open() → buka sebagai tab baru di dalam dashboard toko ────
   wv.addEventListener('new-window', (e) => {
-    // Selalu cegah Electron membuka jendela popup OS liar
+    const rawUrl = e.url || '';
+    const lowerUrl = rawUrl.toLowerCase();
+    const isOAuth = lowerUrl.includes('accounts.google.com') ||
+                    lowerUrl.includes('accounts.youtube.com') ||
+                    lowerUrl.includes('appleid.apple.com') ||
+                    lowerUrl.includes('login.live.com') ||
+                    lowerUrl.includes('login.microsoftonline.com') ||
+                    lowerUrl.includes('facebook.com/dialog/oauth') ||
+                    lowerUrl.includes('facebook.com/login') ||
+                    lowerUrl.includes('github.com/login') ||
+                    lowerUrl.includes('github.com/sessions') ||
+                    lowerUrl.includes('gitlab.com/oauth') ||
+                    lowerUrl.includes('oauth') ||
+                    lowerUrl.includes('/auth/') ||
+                    lowerUrl.includes('/authorize') ||
+                    lowerUrl.includes('/sso/') ||
+                    lowerUrl.includes('response_type=code') ||
+                    lowerUrl.includes('client_id=');
+
+    // Jika ini adalah dialog popup autentikasi OAuth / SSO, jangan hijack menjadi tab baru
+    // Biarkan setWindowOpenHandler di main process membukanya dengan window.opener & partisi yang sama
+    if (isOAuth) {
+      return;
+    }
+
+    // Selalu cegah Electron membuka jendela popup OS liar untuk link biasa
     if (typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
@@ -364,8 +389,8 @@ function createWebview(store, tab) {
     if (e.isUserGesture === false && e.disposition !== 'new-window' && e.disposition !== 'foreground-tab' && e.disposition !== 'background-tab') {
       return;
     }
-    if (e.url && e.url !== 'about:blank' && isValidTopNavigationUrl(e.url)) {
-      openUrlInNewTab(store, e.url);
+    if (url && url !== 'about:blank' && isValidTopNavigationUrl(url)) {
+      openUrlInNewTab(store, url);
     }
   });
 
@@ -636,8 +661,8 @@ function runNextBackgroundPing() {
   pingWv.setAttribute('src', tab.url);
   pingWv.setAttribute('partition', actualPartition);
   pingWv.setAttribute('preload', preloadUrl);
-  const isGoogleStore = store.marketplace === 'gmail' || (tab.url && (tab.url.includes('google.com') || tab.url.includes('gmail.com')));
-  const pingUa = isGoogleStore
+  const isGoogleAuthUrl = tab.url && (tab.url.includes('accounts.google.com') || tab.url.includes('mail.google.com') || tab.url.includes('google.com/accounts'));
+  const pingUa = isGoogleAuthUrl
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
   pingWv.setAttribute('useragent', pingUa);

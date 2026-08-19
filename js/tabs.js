@@ -40,34 +40,67 @@ function activateStore(storeId) {
 
 function saveStoreTabsState() {
   try {
-    const serializedTabs = {};
+    const existingSaved = Storage.get('persistentStoreTabs', {}, true) || {};
+    const existingActiveMap = Storage.get('persistentActiveTabMap', {}, true) || {};
+    const serializedTabs = (typeof existingSaved === 'object' && existingSaved !== null) ? { ...existingSaved } : {};
+    const mergedActiveMap = (typeof existingActiveMap === 'object' && existingActiveMap !== null) ? { ...existingActiveMap } : {};
+
     Object.entries(storeTabs).forEach(([storeId, tabs]) => {
       if (Array.isArray(tabs) && tabs.length > 0) {
-        serializedTabs[storeId] = tabs.map(t => ({
-          id: t.id,
-          title: t.title || 'Chat',
-          url: t.url,
-          initialUrl: t.initialUrl || t.url,
-          zoom: typeof t.zoom === 'number' ? t.zoom : 1.0
-        }));
+        serializedTabs[storeId] = tabs.map(t => {
+          let liveUrl = t.url;
+          const wvEntry = webviewMap[t.id];
+          if (wvEntry && wvEntry.webview && typeof wvEntry.webview.getURL === 'function') {
+            try {
+              const cur = wvEntry.webview.getURL();
+              if (cur && cur !== 'about:blank' && !cur.startsWith('data:') && !cur.startsWith('chrome-error://')) {
+                liveUrl = cur;
+                t.url = cur;
+              }
+            } catch (e) {}
+          }
+          return {
+            id: t.id,
+            title: t.title || 'Chat',
+            url: liveUrl,
+            initialUrl: t.initialUrl || liveUrl,
+            zoom: typeof t.zoom === 'number' ? t.zoom : 1.0
+          };
+        });
       }
     });
+
+    Object.entries(activeTabMap).forEach(([storeId, tabId]) => {
+      if (tabId) {
+        mergedActiveMap[storeId] = tabId;
+      }
+    });
+
     Storage.set('persistentStoreTabs', serializedTabs, true);
-    Storage.set('persistentActiveTabMap', activeTabMap, true);
+    Storage.set('persistentActiveTabMap', mergedActiveMap, true);
+    if (activeStoreId) {
+      Storage.set('lastActiveStoreId', activeStoreId, true);
+    }
   } catch (e) {
     console.error('Error saving persistent tabs:', e);
   }
 }
 
 const debouncedSaveStoreTabsState = typeof debounce === 'function' 
-  ? debounce(saveStoreTabsState, 400) 
+  ? debounce(saveStoreTabsState, 300) 
   : saveStoreTabsState;
 
 window.saveStoreTabsState = saveStoreTabsState;
 window.debouncedSaveStoreTabsState = debouncedSaveStoreTabsState;
 
+// Auto-save tabs state saat window dashboard sebelum ditutup atau dimuat ulang
+window.addEventListener('beforeunload', () => {
+  saveStoreTabsState();
+});
+
 function ensureStoreTabs(store) {
-  if (!storeTabs[store.id]) {
+  if (!store || !store.id) return;
+  if (!storeTabs[store.id] || !Array.isArray(storeTabs[store.id]) || storeTabs[store.id].length === 0) {
     const savedTabsData = Storage.get('persistentStoreTabs', {}, true) || {};
     const savedActiveMap = Storage.get('persistentActiveTabMap', {}, true) || {};
     const savedTabsForStore = savedTabsData[store.id];

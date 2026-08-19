@@ -2008,11 +2008,25 @@ const cleanChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 const cleanFirefoxUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0`;
 app.userAgentFallback = cleanChromeUserAgent;
 
-const configuredStealthSessions = new WeakSet();
+const activeStealthSessions = new Set();
+
+function flushAllSessions() {
+  try {
+    session.defaultSession.flushStorageData();
+    activeStealthSessions.forEach((s) => {
+      try {
+        s.flushStorageData();
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
+// Flush data cookies & storage secara berkala ke disk (mencegah hilangnya cookie login)
+setInterval(flushAllSessions, 30000);
 
 function setupSessionStealthGuard(sess) {
-  if (!sess || configuredStealthSessions.has(sess)) return;
-  configuredStealthSessions.add(sess);
+  if (!sess || activeStealthSessions.has(sess)) return;
+  activeStealthSessions.add(sess);
 
   try {
     sess.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -2071,15 +2085,10 @@ app.on('web-contents-created', (event, contents) => {
       } catch (e) {}
     };
 
-    // Dengarkan navigasi dan redirect agar DOM navigator.userAgent dan HTTP Header selalu sinkron 100%
+    // Dengarkan inisialisasi navigasi dokumen utama agar DOM navigator.userAgent dan HTTP Header selalu sinkron
+    // Catatan: Jangan panggil setUserAgent pada event 'will-redirect' karena akan membatalkan alur 302 HTTP OAuth callback
     contents.on('did-start-navigation', (evt, url, isInPlace, isMainFrame) => {
-      if (isMainFrame !== false) {
-        syncUserAgentForUrl(url);
-      }
-    });
-
-    contents.on('will-redirect', (evt, url, isInPlace, isMainFrame) => {
-      if (isMainFrame !== false) {
+      if (isMainFrame !== false && !isInPlace) {
         syncUserAgentForUrl(url);
       }
     });
@@ -2118,7 +2127,7 @@ app.on('web-contents-created', (event, contents) => {
     });
 
     // Intersep link target="_blank" / window.open agar TIDAK membuka jendela popup OS liar
-    contents.setWindowOpenHandler(({ url, disposition }) => {
+    contents.setWindowOpenHandler(({ url, disposition, features }) => {
       try {
         const parsed = new URL(url);
         if (!['http:', 'https:'].includes(parsed.protocol)) {
@@ -2129,9 +2138,40 @@ app.on('web-contents-created', (event, contents) => {
           return { action: 'deny' };
         }
 
-        // Izinkan popup dialog otentikasi akun Google / OAuth agar alur token berjalan normal
-        if (url.includes('accounts.google.com') || url.includes('accounts.youtube.com')) {
-          return { action: 'allow' };
+        const lowerUrl = url.toLowerCase();
+        const isOAuth = lowerUrl.includes('accounts.google.com') ||
+                        lowerUrl.includes('accounts.youtube.com') ||
+                        lowerUrl.includes('appleid.apple.com') ||
+                        lowerUrl.includes('login.live.com') ||
+                        lowerUrl.includes('login.microsoftonline.com') ||
+                        lowerUrl.includes('facebook.com/dialog/oauth') ||
+                        lowerUrl.includes('facebook.com/login') ||
+                        lowerUrl.includes('github.com/login') ||
+                        lowerUrl.includes('github.com/sessions') ||
+                        lowerUrl.includes('gitlab.com/oauth') ||
+                        lowerUrl.includes('oauth') ||
+                        lowerUrl.includes('/auth/') ||
+                        lowerUrl.includes('/authorize') ||
+                        lowerUrl.includes('/sso/') ||
+                        lowerUrl.includes('response_type=code') ||
+                        lowerUrl.includes('client_id=');
+
+        // Izinkan popup dialog otentikasi akun Google / OAuth dengan partisi sesi yang sama secara native
+        if (isOAuth) {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+              parent: mainWindow,
+              modal: false,
+              width: 520,
+              height: 680,
+              autoHideMenuBar: true,
+              webPreferences: {
+                sandbox: false,
+                contextIsolation: false
+              }
+            }
+          };
         }
 
         // Untuk link lainnya, buka sebagai Tab baru di dalam dashboard toko
@@ -2180,7 +2220,12 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  flushAllSessions();
+});
+
 app.on('window-all-closed', () => {
+  flushAllSessions();
   if (process.platform !== 'darwin') {
     app.quit();
   }

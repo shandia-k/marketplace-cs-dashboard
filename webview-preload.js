@@ -1527,5 +1527,419 @@ function checkSyncStatus() {
 setInterval(checkSyncStatus, 2500);
 window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
 
+// ── SMART FORM HISTORY & LOGIN CREDENTIALS AUTOFILL ENGINE ──────────────────
+(function initSmartFormAutofill() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
+  const HOST = (window.location && window.location.hostname) ? window.location.hostname : 'global';
+  const STORAGE_KEY = `__cs_form_history_${HOST}`;
+  const REMEMBER_KEY = `__cs_remember_user_${HOST}`;
 
+  function escapeLocalHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Obfuskasi lokal untuk penyimpanan partisi sesi toko
+  function obfuscatePass(raw) {
+    if (!raw) return '';
+    try {
+      return btoa(encodeURIComponent(raw));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function deobfuscatePass(enc) {
+    if (!enc) return '';
+    try {
+      return decodeURIComponent(atob(enc));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  // Helper membaca riwayat form dari localStorage
+  function getStoredEntries() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Helper menyimpan username / email & password ke riwayat
+  function saveEntry(value, fieldType = 'text', password = '') {
+    if (!value || typeof value !== 'string') return;
+    const clean = value.trim();
+    if (clean.length < 3 || clean.length > 100) return;
+    
+    try {
+      let entries = getStoredEntries();
+      const existing = entries.find(e => e && e.value && e.value.toLowerCase() === clean.toLowerCase());
+      const encPass = password ? obfuscatePass(password) : (existing?.pass || '');
+
+      entries = entries.filter(e => e && e.value && e.value.toLowerCase() !== clean.toLowerCase());
+      entries.unshift({
+        value: clean,
+        pass: encPass,
+        fieldType,
+        time: Date.now()
+      });
+      if (entries.length > 10) entries = entries.slice(0, 10);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ user: clean, pass: encPass }));
+    } catch (e) {}
+  }
+
+  function deleteEntry(valueToDelete) {
+    try {
+      let entries = getStoredEntries();
+      entries = entries.filter(e => e && e.value !== valueToDelete);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      
+      const rawRem = localStorage.getItem(REMEMBER_KEY);
+      if (rawRem && rawRem.includes(valueToDelete)) {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
+    } catch (e) {}
+  }
+
+  // Deteksi apakah input merupakan field username/email/login
+  function isLoginOrEmailInput(el) {
+    if (!el || el.tagName !== 'INPUT') return false;
+    const type = (el.getAttribute('type') || 'text').toLowerCase();
+    if (['password', 'hidden', 'checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'image', 'color', 'range', 'date', 'time'].includes(type)) {
+      return false;
+    }
+    const name = (el.getAttribute('name') || '').toLowerCase();
+    const id = (el.getAttribute('id') || '').toLowerCase();
+    const placeholder = (el.getAttribute('placeholder') || '').toLowerCase();
+    const autocomplete = (el.getAttribute('autocomplete') || '').toLowerCase();
+
+    if (type === 'email' || autocomplete === 'username' || autocomplete === 'email') return true;
+
+    const keywords = ['user', 'email', 'login', 'account', 'akun', 'id', 'username', 'identifier', 'phone', 'telepon', 'mail'];
+    return keywords.some(k => name.includes(k) || id.includes(k) || placeholder.includes(k) || autocomplete.includes(k));
+  }
+
+  let autofillDropdown = null;
+  let activeInput = null;
+  let activeIndex = -1;
+
+  function removeDropdown() {
+    if (autofillDropdown && autofillDropdown.parentNode) {
+      autofillDropdown.parentNode.removeChild(autofillDropdown);
+    }
+    autofillDropdown = null;
+    activeIndex = -1;
+  }
+
+  function showDropdown(inputEl) {
+    if (!inputEl) return;
+    const entries = getStoredEntries();
+    if (!entries || entries.length === 0) return;
+
+    const currentValue = (inputEl.value || '').trim().toLowerCase();
+    const filtered = currentValue
+      ? entries.filter(e => e.value.toLowerCase().includes(currentValue))
+      : entries;
+
+    if (filtered.length === 0) {
+      removeDropdown();
+      return;
+    }
+
+    activeInput = inputEl;
+    removeDropdown();
+
+    const rect = inputEl.getBoundingClientRect();
+    const top = rect.bottom + window.scrollY + 5;
+    const left = rect.left + window.scrollX;
+    const width = Math.max(rect.width, 280);
+    const isLight = currentTheme === 'light';
+
+    const container = document.createElement('div');
+    container.className = '__cs_autofill_popup';
+    container.setAttribute('data-theme', currentTheme);
+    container.style.cssText = `
+      --af-bg: ${isLight ? '#ffffff' : '#131826'};
+      --af-header-bg: ${isLight ? '#f8fafc' : '#182032'};
+      --af-footer-bg: ${isLight ? '#f1f5f9' : '#111522'};
+      --af-border: #df1683;
+      --af-divider: ${isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.07)'};
+      --af-text: ${isLight ? '#0f172a' : '#f8fafc'};
+      --af-muted: ${isLight ? '#64748b' : '#94a3b8'};
+      --af-hover: ${isLight ? 'rgba(223, 22, 131, 0.08)' : 'rgba(223, 22, 131, 0.16)'};
+      --af-active: ${isLight ? 'rgba(223, 22, 131, 0.14)' : 'rgba(223, 22, 131, 0.24)'};
+      --af-shadow: ${isLight ? '0 16px 36px rgba(0, 0, 0, 0.14), 0 0 20px rgba(223, 22, 131, 0.18)' : '0 16px 40px rgba(0, 0, 0, 0.75), 0 0 24px rgba(223, 22, 131, 0.28)'};
+      --af-avatar-bg: ${isLight ? 'rgba(223, 22, 131, 0.1)' : 'rgba(223, 22, 131, 0.2)'};
+
+      position: absolute;
+      top: ${top}px;
+      left: ${left}px;
+      width: ${width}px;
+      max-width: 420px;
+      background: var(--af-bg) !important;
+      color: var(--af-text) !important;
+      border: 1.5px solid var(--af-border) !important;
+      border-radius: 12px !important;
+      box-shadow: var(--af-shadow) !important;
+      z-index: 2147483647;
+      font-family: 'Outfit', 'Nexa', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 13px !important;
+      line-height: 1.4 !important;
+      overflow: hidden;
+      box-sizing: border-box;
+      animation: csAutofillPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    `;
+
+    let html = `
+      <style>
+        @keyframes csAutofillPopIn {
+          from { opacity: 0; transform: translateY(4px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .__cs_autofill_popup * { box-sizing: border-box; }
+        .__cs_autofill_item { user-select: none; }
+        .__cs_autofill_del:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.15) !important; }
+      </style>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--af-header-bg); border-bottom:1px solid var(--af-divider); gap:8px;">
+        <span style="display:flex; align-items:center; gap:6px; font-weight:700; font-size:12px; color:#df1683; letter-spacing:0.3px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#df1683" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          AKUN & PASSWORD TERSIMPAN
+        </span>
+        <span style="font-size:10px; font-weight:600; padding:2px 7px; background:rgba(223, 22, 131, 0.15); color:#df1683; border-radius:10px; letter-spacing:0.2px;">CS Dashboard</span>
+      </div>
+      <div class="__cs_autofill_list" style="max-height:220px; overflow-y:auto; padding:4px 0;">
+    `;
+
+    filtered.forEach((item, idx) => {
+      const hasPass = !!item.pass;
+      html += `
+        <div class="__cs_autofill_item" data-index="${idx}" data-val="${escapeLocalHtml(item.value)}" data-pass="${escapeLocalHtml(item.pass || '')}" style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px; cursor:pointer; transition:background 0.12s, border-color 0.12s; border-bottom:1px solid var(--af-divider);">
+          <div style="display:flex; align-items:center; gap:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+            <div style="width:30px; height:30px; border-radius:8px; background:var(--af-avatar-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(223, 22, 131, 0.25);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#df1683" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div style="display:flex; flex-direction:column; overflow:hidden; gap:1px;">
+              <span style="color:var(--af-text); font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis;">${escapeLocalHtml(item.value)}</span>
+              ${hasPass 
+                ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#10b981; font-size:10.5px; font-weight:500;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>•••••••• Password Tersimpan</span>' 
+                : '<span style="color:var(--af-muted); font-size:10.5px;">Username Saja</span>'}
+            </div>
+          </div>
+          <button type="button" class="__cs_autofill_del" data-del="${escapeLocalHtml(item.value)}" title="Hapus dari riwayat akun tersimpan" style="background:transparent; border:none; color:var(--af-muted); font-size:14px; padding:4px 8px; cursor:pointer; border-radius:6px; margin-left:8px; line-height:1; transition:all 0.15s;">✕</button>
+        </div>
+      `;
+    });
+
+    html += `
+      </div>
+      <div style="padding:6px 12px; background:var(--af-footer-bg); border-top:1px solid var(--af-divider); display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--af-muted);">
+        <span>Gunakan <kbd style="background:rgba(255,255,255,0.08); border:1px solid var(--af-divider); padding:1px 4px; border-radius:3px; font-size:10px; font-family:inherit;">↑↓</kbd> lalu <kbd style="background:rgba(255,255,255,0.08); border:1px solid var(--af-divider); padding:1px 4px; border-radius:3px; font-size:10px; font-family:inherit;">Enter</kbd></span>
+        <span style="font-size:10px;">✕ Hapus</span>
+      </div>
+    `;
+    container.innerHTML = html;
+
+    // Hover styling & klik
+    const items = container.querySelectorAll('.__cs_autofill_item');
+    items.forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        items.forEach(i => i.style.background = 'transparent');
+        el.style.background = isLight ? 'rgba(223, 22, 131, 0.08)' : 'rgba(223, 22, 131, 0.18)';
+        activeIndex = parseInt(el.getAttribute('data-index') || '-1', 10);
+      });
+      el.addEventListener('mousedown', (e) => {
+        if (e.target && e.target.classList.contains('__cs_autofill_del')) {
+          e.stopPropagation();
+          e.preventDefault();
+          const val = e.target.getAttribute('data-del');
+          deleteEntry(val);
+          showDropdown(activeInput);
+          return;
+        }
+        e.preventDefault();
+        const val = el.getAttribute('data-val');
+        const pass = el.getAttribute('data-pass');
+        applyValueToInput(activeInput, val, pass);
+        removeDropdown();
+      });
+    });
+
+    document.body.appendChild(container);
+    autofillDropdown = container;
+  }
+
+  function applyValueToInput(inputEl, val, encPass = '') {
+    if (!inputEl || !val) return;
+    inputEl.value = val;
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Jika ada password tersimpan, otomatis isi ke input password
+    try {
+      const form = inputEl.form || inputEl.closest('form') || document;
+      const passInput = form.querySelector('input[type="password"]');
+      if (passInput && encPass) {
+        const rawPass = deobfuscatePass(encPass);
+        if (rawPass) {
+          passInput.value = rawPass;
+          passInput.dispatchEvent(new Event('input', { bubbles: true }));
+          passInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      if (passInput) {
+        passInput.focus();
+        return;
+      }
+    } catch (e) {}
+    inputEl.focus();
+  }
+
+  // Event listener fokus & ketik
+  document.addEventListener('focusin', (e) => {
+    if (isLoginOrEmailInput(e.target)) {
+      showDropdown(e.target);
+    } else {
+      removeDropdown();
+    }
+  }, true);
+
+  document.addEventListener('input', (e) => {
+    if (isLoginOrEmailInput(e.target)) {
+      showDropdown(e.target);
+    }
+  }, true);
+
+  document.addEventListener('click', (e) => {
+    if (autofillDropdown && !autofillDropdown.contains(e.target) && e.target !== activeInput) {
+      removeDropdown();
+    }
+  }, true);
+
+  // Keyboard navigation untuk dropdown
+  document.addEventListener('keydown', (e) => {
+    if (!autofillDropdown || !activeInput) return;
+
+    const items = autofillDropdown.querySelectorAll('.__cs_autofill_item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      items.forEach((it, idx) => {
+        it.style.background = idx === activeIndex ? '#2a2b42' : 'transparent';
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      items.forEach((it, idx) => {
+        it.style.background = idx === activeIndex ? '#2a2b42' : 'transparent';
+      });
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (activeIndex >= 0 && items[activeIndex]) {
+        e.preventDefault();
+        const val = items[activeIndex].getAttribute('data-val');
+        const pass = items[activeIndex].getAttribute('data-pass');
+        applyValueToInput(activeInput, val, pass);
+        removeDropdown();
+      }
+    } else if (e.key === 'Escape') {
+      removeDropdown();
+    }
+  }, true);
+
+  // Tangkap pengiriman formulir untuk menyimpan riwayat otomatis
+  function captureFormValues(targetForm) {
+    if (!targetForm) return;
+    try {
+      const inputs = targetForm.querySelectorAll('input');
+      let foundUser = '';
+      let foundType = 'text';
+      let foundPass = '';
+
+      inputs.forEach(inp => {
+        const type = (inp.getAttribute('type') || '').toLowerCase();
+        if (type === 'password' && inp.value) {
+          foundPass = inp.value;
+        } else if (isLoginOrEmailInput(inp) && inp.value) {
+          foundUser = inp.value;
+          foundType = type || 'text';
+        }
+      });
+
+      if (foundUser) {
+        saveEntry(foundUser, foundType, foundPass);
+      }
+    } catch (e) {}
+  }
+
+  document.addEventListener('submit', (e) => {
+    captureFormValues(e.target);
+  }, true);
+
+  // Tangkap juga klik tombol submit / login
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button, input[type="submit"], [role="button"], a');
+    if (btn) {
+      const text = (btn.innerText || btn.value || '').toLowerCase();
+      const isLoginBtn = text.includes('login') || text.includes('masuk') || text.includes('sign in') || text.includes('daftar') || text.includes('register') || text.includes('continue');
+      if (isLoginBtn) {
+        const form = btn.closest('form') || document;
+        captureFormValues(form);
+      }
+    }
+  }, true);
+
+  // Auto-populate Remembered User saat halaman dimuat
+  function autoPopulateRememberedUser() {
+    try {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      if (!raw) return;
+      let rememberedUser = '';
+      let rememberedPass = '';
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === 'object' && parsed !== null) {
+          rememberedUser = parsed.user || '';
+          rememberedPass = parsed.pass || '';
+        } else if (typeof parsed === 'string') {
+          rememberedUser = parsed;
+        }
+      } catch (e) {
+        rememberedUser = raw;
+      }
+
+      if (!rememberedUser) return;
+
+      const inputs = document.querySelectorAll('input');
+      for (const inp of inputs) {
+        if (isLoginOrEmailInput(inp) && (!inp.value || inp.value.trim() === '')) {
+          applyValueToInput(inp, rememberedUser, rememberedPass);
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(autoPopulateRememberedUser, 600);
+    });
+  } else {
+    setTimeout(autoPopulateRememberedUser, 600);
+  }
+})();

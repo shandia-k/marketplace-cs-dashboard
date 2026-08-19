@@ -870,6 +870,13 @@ window.initApp = async function() {
     initPasswordToggles();
   }
   
+  // Auto-restore last active store & multi-tab state
+  const savedLastStoreId = Storage.get('lastActiveStoreId', null, true);
+  const targetStore = (savedLastStoreId && stores.find(s => s.id === savedLastStoreId)) || (stores.length > 0 ? stores[0] : null);
+  if (targetStore && typeof activateStore === 'function') {
+    activateStore(targetStore.id);
+  }
+
   // Reload scratchpad for current user
   if (typeof loadScratchpadState === 'function') {
     loadScratchpadState();
@@ -928,55 +935,39 @@ function setupFocusAndCrashRecoveryLifecycle() {
 
   const checkActiveTabHealth = () => {
     if (!activeStoreId) return;
-    const curTabId = activeTabMap[activeStoreId];
-    if (!curTabId) return;
+    const store = stores.find(s => s.id === activeStoreId);
+    const tabId = activeTabMap[activeStoreId];
+    if (!store || !tabId) return;
 
-    const entry = webviewMap[curTabId];
-    if (!entry || entry.hibernated) return;
-
-    const isDead = entry.isCrashed || !entry.webview || !entry.webview.isConnected || (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed());
-
-    if (isDead) {
-      console.warn(`[Focus Recovery] Active tab ${curTabId} was dead/crashed when returning to window. Auto-recovering...`);
-      const store = stores.find(s => s.id === activeStoreId);
-      const tab = storeTabs[activeStoreId]?.find(t => t.id === curTabId);
-      if (store && tab && typeof forceRecreateActiveTab === 'function') {
-        forceRecreateActiveTab();
-      }
-    } else {
-      // Nudge webview focus & compositor repaint so Windows paging brings back visual buffer
-      try {
-        if (typeof entry.webview.focus === 'function') {
+    const entry = webviewMap[tabId];
+    if (entry && entry.webview) {
+      if (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed()) {
+        console.warn(`[Focus Recovery] Active tab ${tabId} was dead. Reconstructing...`);
+        showTab(activeStoreId, tabId);
+      } else if (!entry.hibernated && entry.webview.classList.contains('visible')) {
+        try {
           entry.webview.focus();
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
   };
 
   window.addEventListener('focus', () => {
-    checkActiveTabHealth();
+    setTimeout(checkActiveTabHealth, 50);
   });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      checkActiveTabHealth();
+      setTimeout(checkActiveTabHealth, 50);
     }
   });
 
-  // Global IPC listener dari Main Process jika ada webContents ID yang gone
-  if (window.electronAPI && typeof window.electronAPI.onWebviewRenderProcessGone === 'function') {
-    window.electronAPI.onWebviewRenderProcessGone((data) => {
-      console.warn('[IPC Crash Guard] Webview render process gone received:', data);
-      checkActiveTabHealth();
-    });
-  }
-
-  // Global IPC listener dari Main Process jika ada webview yang membuka link target="_blank"
-  if (window.electronAPI && typeof window.electronAPI.onWebviewOpenNewTab === 'function') {
-    window.electronAPI.onWebviewOpenNewTab((data) => {
+  // Listener IPC dari host main.js jika ada perintah buka tab baru
+  if (window.electronAPI && typeof window.electronAPI.onOpenNewTab === 'function') {
+    window.electronAPI.onOpenNewTab((data) => {
       if (!data || !data.url) return;
       let targetStore = null;
-      if (data.wcId && typeof webviewMap !== 'undefined') {
+      if (data.wcId) {
         const entry = Object.values(webviewMap).find(e => e.wcId === data.wcId);
         if (entry && entry.storeId) {
           targetStore = stores.find(s => s.id === entry.storeId);
@@ -991,12 +982,24 @@ function setupFocusAndCrashRecoveryLifecycle() {
     });
   }
 
-  // Keyboard shortcut Ctrl+Shift+R atau Ctrl+F5 untuk memulihkan tab aktif secara instan
+  // Keyboard shortcut Ctrl+Shift+R atau Ctrl+F5 untuk memulihkan (hard recreate) tab aktif
+  // Keyboard shortcut Ctrl+R atau F5 untuk memuat ulang (soft reload) tab aktif
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey && e.shiftKey && (e.key === 'R' || e.key === 'r')) || (e.ctrlKey && e.key === 'F5')) {
       e.preventDefault();
       if (typeof forceRecreateActiveTab === 'function') {
         forceRecreateActiveTab();
+      }
+    } else if ((e.ctrlKey && (e.key === 'R' || e.key === 'r')) || e.key === 'F5') {
+      const activeWv = typeof getActiveWebview === 'function' ? getActiveWebview() : null;
+      if (activeWv && activeStoreId) {
+        e.preventDefault();
+        try {
+          activeWv.reload();
+          if (typeof showToast === 'function') showToast('Memuat ulang tab...', '');
+        } catch (err) {
+          activeWv.src = activeWv.src;
+        }
       }
     }
   });

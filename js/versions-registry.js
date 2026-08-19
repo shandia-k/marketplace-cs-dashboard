@@ -31,13 +31,86 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
+      version: '1.0.11',
+      badge: 'Versi Terbaru 🚀',
+      badgeColor: '#df1683',
+      pillTag: 'v1.0.11 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Universal OAuth SSO Engine, Smart Password Autofill & reCAPTCHA Compatibility',
+      tagline: 'Pembaruan stabilitas: Integrasi otentikasi login Google SSO & Universal OAuth (GitHub, Chatwoot, Biteship, OMS, Microsoft, Apple) dengan partisi native, sistem perekaman & pengisian otomatis akun/password (Smart Autofill Dual-Theme), perbaikan kompatibilitas Google reCAPTCHA di tab web, serta sinkronisasi storage flush berkala.',
+      highlights: [
+        {
+          icon: '🌐',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Universal OAuth SSO & Shared Partition',
+          desc: 'Pewarisan partisi sesi native pada dialog OAuth popup (GitHub, Chatwoot, Biteship, Microsoft, Apple ID) dengan eliminasi bug pembatalan 302 redirect.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Smart Form History & Password Autofill',
+          desc: 'Perekaman & pengisian otomatis username/email dan password di formulir login dengan floating dropdown interaktif berdesain native CS Dashboard (Dark & Light).'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Google reCAPTCHA Frame Consistency Guard',
+          desc: 'Penyelarasan inisialisasi User-Agent webview memastikan frame induk dan sub-iframe reCAPTCHA v2/v3/Enterprise 100% konsisten, menyelesaikan error validasi captcha.'
+        },
+        {
+          icon: '💾',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: 'Persistent Storage & SQLite Flush Guard',
+          desc: 'Auto-flush data cookies, localStorage, dan tanda centang "Remember Me" secara berkala ke disk fisik setiap 30s dan saat aplikasi ditutup.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Universal OAuth SSO & Domain-Aware Network Identity',
+          tag: 'SSO & Auth',
+          color: '#ea4335',
+          bgColor: 'rgba(234, 67, 53, 0.12)',
+          items: [
+            'Sinkronisasi WebContents User-Agent Dinamis: Event listener did-start-navigation menyinkronkan User-Agent pada level WebContents (HTTP Header + DOM navigator.userAgent) secara simultan tanpa menginterupsi in-flight 302 redirect.',
+            'Pencegahan Pembatalan Redirect 302: Menghapus listener setUserAgent pada event will-redirect sehingga alur consent OAuth (GitHub, Chatwoot, Biteship, Google) tidak dibatalkan oleh engine Chromium.',
+            'Pewarisan Partisi Sesi Nativ pada Popup: Jendela popup otentikasi OAuth (Google, Microsoft, Apple, GitHub, GitLab, OAuth2) otomatis mewarisi session partition toko pembuka secara utuh tanpa terisolasi ke defaultSession.',
+            'Deteksi Universal Parameter OAuth: Pencocokan pola menyeluruh untuk client_id=, response_type=code, /oauth/, /authorize, /sso/, login.microsoftonline.com, appleid.apple.com, dan facebook.com.',
+            'Isolasi Otentikasi Google: Domain accounts.google.com dilayani dengan profil Firefox 128.0 murni dan penghapusan seluruh Client Hints (Sec-CH-UA) sehingga terbebas dari deteksi Botguard Chromium.'
+          ]
+        },
+        {
+          category: 'Smart Form History & Password Autofill Engine',
+          tag: 'Password Manager',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Perekaman Otomatis Kredensial Login: Menangkap pasangan username/email dan password saat formulir login disubmit, tersimpan terobfuskasi di partisi lokal toko.',
+            'Dual-Field Auto-Fill: Memilih akun dari dropdown otomatis mengisi kolom username/email sekaligus kolom password (••••••••) dan memicu event input/change untuk framework modern (React/Vue).',
+            'Floating Dropdown Bertema Dashboard: Tampilan melayang elegan beraksen CS Magenta (#df1683), avatar akun melingkar, indikator status password hijau, dan tombol hapus individual (✕).',
+            'Dukungan Penuh Dark & Light Mode: Gaya dropdown otomatis menyesuaikan tema aktif dashboard CS (gelap #131826 atau terang #ffffff).',
+            'Auto-Populate Remembered User: Otomatis mengisi data login yang terakhir diingat saat membuka kembali halaman login website.'
+          ]
+        },
+        {
+          category: 'Kompatibilitas Google reCAPTCHA & Ketahanan Penyimpanan (Storage Flush)',
+          tag: 'Security & Storage',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Konsistensi Fingerprint reCAPTCHA: Mengoreksi inisialisasi tag webview agar hanya menggunakan User-Agent Firefox pada halaman Google Auth, sehingga website eksternal (Speedtest, portal CS) menjalankan frame induk dan iframe reCAPTCHA v2/v3/Enterprise dalam mode Chrome Desktop 100% konsisten.',
+            'Persistent Storage Flush Guard: Fungsi flushAllSessions() memanggil sess.flushStorageData() secara berkala setiap 30 detik serta pada event before-quit dan window-all-closed, memastikan cookies login dan centang "Remember Me" tersimpan permanen di disk fisik.'
+          ]
+        }
+      ]
+    },
+    {
       version: '1.0.10',
       badge: 'Hotfix v1.0.10 🔥',
       badgeColor: '#ef4444',
       pillTag: 'Hotfix 🔥',
       releaseDate: 'Agustus 2026',
-      title: 'Anti-Crash Resilience, Google SSO Authentication Fix, Shopee Webchat Integration & Editable Store URLs',
-      tagline: 'Pembaruan stabilitas besar: Memperbaiki otentikasi login Google (Domain-Aware Identity), integrasi klik Webchat Shopee langsung sebagai tab berdampingan, pembaruan tautan default Shopee Seller Centre ke URL resmi (Bebas 404), serta fleksibilitas pengeditan URL target toko.',
+      title: 'Anti-Crash Resilience, Shopee Webchat Integration & Editable Store URLs',
+      tagline: 'Hotfix besar: Pencegahan layar blank (Zero-Blank Self-Healing Crash Guard & Chromium Anti-Discarding), integrasi klik Webchat Shopee langsung sebagai tab berdampingan, pembaruan URL resmi Shopee (Bebas 404), serta input URL target toko yang fleksibel.',
       highlights: [
         {
           icon: '🛡️',
@@ -50,12 +123,6 @@
           iconBg: 'rgba(16, 185, 129, 0.15)',
           title: 'Chromium Anti-Discarding & Throttling Guard',
           desc: 'Switch CLI AutomaticTabDiscarding off, disable-backgrounding-occluded-windows, dan webPreferences backgroundThrottling: false.'
-        },
-        {
-          icon: '🔑',
-          iconBg: 'rgba(234, 67, 53, 0.15)',
-          title: 'Google Login SSO & Domain-Aware Identity',
-          desc: 'Sinkronisasi utuh Network Header + DOM WebContents untuk Google Auth (Firefox/No-Hints) & Marketplace (Chrome murni), menghilangkan blokir "Browser may not be secure".'
         },
         {
           icon: '💬',
@@ -86,22 +153,15 @@
           iconBg: 'rgba(245, 158, 11, 0.15)',
           title: 'Emergency Hard Recreate (Ctrl+Shift+R)',
           desc: 'Shortcut keyboard dan tombol refresh cerdas untuk merekonstruksi tab aktif secara total tanpa perlu force-restart aplikasi.'
+        },
+        {
+          icon: '🔄',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: 'Window Focus & Visibility Lifecycle',
+          desc: 'Verifikasi kesehatan webview dan auto-nudge render surface begitu CS beralih fokus kembali dari Google Chrome.'
         }
       ],
       categories: [
-        {
-          category: 'Otentikasi Google SSO & Domain-Aware Network Identity (PENTING)',
-          tag: 'Auth & Security',
-          color: '#ea4335',
-          bgColor: 'rgba(234, 67, 53, 0.12)',
-          items: [
-            'Sinkronisasi WebContents User-Agent Dinamis: Event listener did-start-navigation dan will-redirect menyinkronkan User-Agent pada level WebContents (HTTP Header + DOM navigator.userAgent) secara simultan.',
-            'Isolasi Otentikasi Google: Domain accounts.google.com dilayani dengan profil Firefox 128.0 murni dan penghapusan seluruh Client Hints (Sec-CH-UA) sehingga terbebas dari deteksi Botguard Chromium.',
-            'Proteksi Marketplace WAF: Domain marketplace (Shopee, Tokopedia, Lazada, WA, TikTok) tetap menggunakan Chrome Desktop resmi murni sehingga Shopee tidak memicu error /verify/traffic/error.',
-            'Pembersihan DOM Tampering: Menghapus mock buatan (window.chrome.runtime palsu, mockPlugins array, Object.defineProperty webdriver) pada preload script agar verifikasi Google Botguard tidak mendeteksi manipulasi.',
-            'Google OAuth Popup Handshake: setWindowOpenHandler mengizinkan (action: allow) dialog popup otentikasi Google agar handshake token berjalan sempurna.'
-          ]
-        },
         {
           category: 'Integrasi Webchat & Manajemen Tab Berdampingan',
           tag: 'Webchat & Tabs',
@@ -137,15 +197,25 @@
           ]
         },
         {
-          category: 'Self-Healing Webview Crash Guard & Multi-Tab Persistence',
+          category: 'Self-Healing Webview Crash Guard & Auto-Recovery',
           tag: 'Crash Guard & Webview',
           color: '#10b981',
           bgColor: 'rgba(16, 185, 129, 0.12)',
           items: [
             'Event Listener render-process-gone & crashed: Memonitor seluruh event penghentian renderer anak (killed, oom, crashed, gpu-process-crashed) pada setiap tag webview toko.',
             'Rekonstruksi Webview Instan: Otomatis membersihkan elemen mati dan membangun ulang webview baru dengan partisi login dan URL tujuan yang utuh dalam < 250ms.',
-            'Multi-Tab Persistence Auto-Save: Seluruh tab, URL, judul, dan tingkat zoom tersimpan otomatis per user & per toko ke storage lokal.',
+            'Smart Wake-up Deadlock Prevention: Fungsi showTab() memeriksa kesehatan webview (isCrashed) sebelum soft-wake, mencegah tampilan kanvas putih.',
             'Emergency Hard Recreate Utility: Tombol Nav Refresh (Shift/Ctrl+Click) dan shortcut Ctrl+Shift+R / Ctrl+F5 untuk memicu rekonstruksi instan tanpa restart.'
+          ]
+        },
+        {
+          category: 'Sistem Tab Persisten & Manajemen Sesi Toko',
+          tag: 'Persistent Tabs & Stores',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'State Multi-Tab Tersimpan Permanen: Seluruh tab yang dibuka CS di dalam 1 toko otomatis tersimpan ke storage dan langsung direstore persis saat aplikasi dibuka kembali.',
+            'Sinkronisasi URL & Judul Real-time: Perubahan navigasi URL, zoom factor, dan pergantian tab aktif langsung tercatat otomatis dengan proteksi debounce.'
           ]
         }
       ]

@@ -7,7 +7,7 @@
   let isManualCheck = false;
   let autoCloseTimer = null;
   let countdownInterval = null;
-  let currentAppVersion = '1.0.10';
+  let currentAppVersion = '1.0.11';
 
   const SVGS = {
     spinner: `
