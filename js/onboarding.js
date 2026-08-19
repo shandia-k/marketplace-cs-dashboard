@@ -1814,7 +1814,7 @@ const OnboardingManager = {
             <div class="onboarding-carousel-top-bar">
               <span class="onboarding-carousel-title-label">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Pilih Riwayat Versi Aplikasi (v1.0.0 — v1.0.9)
+                Pilih Riwayat Versi Aplikasi (v1.0.0 — v${ONBOARDING_CONFIG.version})
               </span>
               <span class="onboarding-carousel-hint">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -2006,8 +2006,7 @@ const OnboardingManager = {
       const pill = document.createElement('button');
       pill.type = 'button';
       pill.className = `onboarding-version-pill ${idx === this.activeVersionIndex ? 'active' : ''}`;
-      pill.id = `onboarding-ver-pill-${ver.version.replace(/\./g, '_')}`;
-      const tagText = idx === 0 ? 'Terbaru' : (ver.badge.split(' ')[0] || `v${ver.version}`);
+      const tagText = ver.pillTag || (idx === 0 ? 'Hotfix 🔥' : (ver.badge ? ver.badge.split(' ')[0] : `v${ver.version}`));
       pill.innerHTML = `
         <span>v${ver.version}</span>
         <span class="onboarding-version-pill-tag">${tagText}</span>

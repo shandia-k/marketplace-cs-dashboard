@@ -36,21 +36,81 @@ function activateStore(storeId) {
   }
 }
 
-// ── Tab System ────────────────────────────────────────────────────────────────
+// ── Tab System & Persistence ──────────────────────────────────────────────────
+
+function saveStoreTabsState() {
+  try {
+    const serializedTabs = {};
+    Object.entries(storeTabs).forEach(([storeId, tabs]) => {
+      if (Array.isArray(tabs) && tabs.length > 0) {
+        serializedTabs[storeId] = tabs.map(t => ({
+          id: t.id,
+          title: t.title || 'Chat',
+          url: t.url,
+          initialUrl: t.initialUrl || t.url,
+          zoom: typeof t.zoom === 'number' ? t.zoom : 1.0
+        }));
+      }
+    });
+    Storage.set('persistentStoreTabs', serializedTabs, true);
+    Storage.set('persistentActiveTabMap', activeTabMap, true);
+  } catch (e) {
+    console.error('Error saving persistent tabs:', e);
+  }
+}
+
+const debouncedSaveStoreTabsState = typeof debounce === 'function' 
+  ? debounce(saveStoreTabsState, 400) 
+  : saveStoreTabsState;
+
+window.saveStoreTabsState = saveStoreTabsState;
+window.debouncedSaveStoreTabsState = debouncedSaveStoreTabsState;
 
 function ensureStoreTabs(store) {
   if (!storeTabs[store.id]) {
-    const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
-    const tabId = `tab-${generateId()}`;
-    const initialUrl = store.url || cfg.url || 'https://www.google.com';
-    storeTabs[store.id] = [{
-      id: tabId,
-      title: 'Chat',
-      url: initialUrl,
-      initialUrl: initialUrl,
-      zoom: 1.0
-    }];
-    activeTabMap[store.id] = tabId;
+    const savedTabsData = Storage.get('persistentStoreTabs', {}, true) || {};
+    const savedActiveMap = Storage.get('persistentActiveTabMap', {}, true) || {};
+    const savedTabsForStore = savedTabsData[store.id];
+
+    if (Array.isArray(savedTabsForStore) && savedTabsForStore.length > 0) {
+      // Pulihkan tab-tab yang sebelumnya dibuka oleh CS dari sesi lalu
+      storeTabs[store.id] = savedTabsForStore.map(t => {
+        let tUrl = t.url || store.url || 'https://www.google.com';
+        let tInitUrl = t.initialUrl || t.url || store.url || 'https://www.google.com';
+        if (store.marketplace === 'shopee') {
+          if (tUrl === 'https://seller.shopee.co.id/portal/chat' || tUrl === 'https://seller.shopee.co.id/portal/chat/') {
+            tUrl = 'https://seller.shopee.co.id/';
+          }
+          if (tInitUrl === 'https://seller.shopee.co.id/portal/chat' || tInitUrl === 'https://seller.shopee.co.id/portal/chat/') {
+            tInitUrl = 'https://seller.shopee.co.id/';
+          }
+        }
+        return {
+          id: t.id || `tab-${generateId()}`,
+          title: t.title || 'Chat',
+          url: tUrl,
+          initialUrl: tInitUrl,
+          zoom: typeof t.zoom === 'number' ? t.zoom : 1.0
+        };
+      });
+
+      const savedActiveTabId = savedActiveMap[store.id];
+      const hasActive = storeTabs[store.id].some(t => t.id === savedActiveTabId);
+      activeTabMap[store.id] = hasActive ? savedActiveTabId : storeTabs[store.id][0].id;
+    } else {
+      const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
+      const tabId = `tab-${generateId()}`;
+      const initialUrl = store.url || cfg.url || 'https://www.google.com';
+      storeTabs[store.id] = [{
+        id: tabId,
+        title: 'Chat',
+        url: initialUrl,
+        initialUrl: initialUrl,
+        zoom: 1.0
+      }];
+      activeTabMap[store.id] = tabId;
+      saveStoreTabsState();
+    }
   }
 }
 
@@ -188,11 +248,23 @@ function renderTabBar() {
     const wv = getActiveWebview();
     if (wv?.canGoForward()) wv.goForward();
   });
-  document.getElementById('btn-nav-refresh')?.addEventListener('click', () => {
+  document.getElementById('btn-nav-refresh')?.addEventListener('click', (e) => {
     if (window.AppTelemetry) {
       window.AppTelemetry.track('tab_nav_refresh_clicked');
     }
-    getActiveWebview()?.reload();
+    const wv = getActiveWebview();
+    const isCrashed = !wv || !wv.isConnected || (typeof wv.isCrashed === 'function' && wv.isCrashed());
+    if (e.shiftKey || e.ctrlKey || isCrashed) {
+      if (typeof forceRecreateActiveTab === 'function') {
+        forceRecreateActiveTab();
+      }
+    } else {
+      try {
+        wv.reload();
+      } catch (err) {
+        if (typeof forceRecreateActiveTab === 'function') forceRecreateActiveTab();
+      }
+    }
   });
   document.getElementById('btn-nav-home')?.addEventListener('click', () => {
     if (window.AppTelemetry) {
@@ -347,14 +419,24 @@ function addTab(storeId, url, title) {
   const tabId = `tab-${generateId()}`;
   const targetUrl = url || store.url || cfg.url || 'https://www.google.com';
 
-  storeTabs[storeId].push({
+  const newTab = {
     id: tabId,
     title: title || 'Tab Baru',
     url: targetUrl,
     initialUrl: targetUrl,
     zoom: 1.0
-  });
+  };
 
+  const currentTabId = activeTabMap[storeId];
+  const curIdx = storeTabs[storeId].findIndex(t => t.id === currentTabId);
+  if (curIdx !== -1) {
+    // Sisipkan tab tepat di sebelah tab yang sedang aktif
+    storeTabs[storeId].splice(curIdx + 1, 0, newTab);
+  } else {
+    storeTabs[storeId].push(newTab);
+  }
+
+  saveStoreTabsState();
   switchTab(storeId, tabId);
   if (window.AppTelemetry) {
     window.AppTelemetry.track('tab_created');
@@ -390,6 +472,7 @@ function closeTab(storeId, tabId) {
   delete lastAccessed[tabId];
 
   storeTabs[storeId] = tabs.filter(t => t.id !== tabId);
+  saveStoreTabsState();
 
   // Switch to adjacent tab if closing the active one
   if (activeTabMap[storeId] === tabId) {
@@ -415,6 +498,7 @@ function switchTab(storeId, tabId) {
 
   activeTabMap[storeId] = tabId;
   lastAccessed[tabId]   = Date.now();
+  saveStoreTabsState();
   showTab(storeId, tabId);
   renderTabBar();
 }
@@ -431,10 +515,14 @@ function showTab(storeId, tabId) {
 
   lastAccessed[tabId] = Date.now();
 
-  if (webviewMap[tabId]?.hibernated) {
-    const entry = webviewMap[tabId];
-    if (entry.webview) {
-      // Soft wake: webview is still in DOM, just hidden
+  const entry = webviewMap[tabId];
+
+  // Cek apakah webview sudah mati/crashed saat di background
+  const isCrashedOrDead = !entry || entry.isCrashed || !entry.webview || !entry.webview.isConnected || (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed());
+
+  if (entry?.hibernated) {
+    if (entry.webview && !isCrashedOrDead) {
+      // Soft wake: webview is still in DOM and healthy, unhide it
       entry.webview.style.display = '';
       entry.webview.classList.add('visible');
       if (entry.loading) entry.loading.style.display = '';
@@ -443,9 +531,12 @@ function showTab(storeId, tabId) {
       renderSidebar(getFilteredStores());
       return;
     } else {
-      // Hard wake: webview was destroyed to save RAM, reconstruct it
-      webviewMap[tabId].hibernated = false;
-      delete webviewMap[tabId]; // Clean up stub
+      // Hard wake or dead webview recovery: reconstruct it cleanly
+      if (entry) {
+        try { entry.webview?.remove(); } catch (e) {}
+        try { entry.loading?.remove(); } catch (e) {}
+        delete webviewMap[tabId];
+      }
       createWebview(store, tab);
       renderTabBar();
       renderSidebar(getFilteredStores());
@@ -453,16 +544,23 @@ function showTab(storeId, tabId) {
     }
   }
 
-  if (!webviewMap[tabId]) {
+  if (isCrashedOrDead) {
+    console.warn(`[Self-Healing] Tab ${tab.id} webview was dead/absent in background. Re-instantiating...`);
+    if (entry) {
+      try { entry.webview?.remove(); } catch (e) {}
+      try { entry.loading?.remove(); } catch (e) {}
+      delete webviewMap[tabId];
+    }
     createWebview(store, tab);
   } else {
-    webviewMap[tabId].webview?.classList.add('visible');
-    if (webviewMap[tabId].loading) {
-      webviewMap[tabId].loading.style.display = '';
+    entry.webview.style.display = '';
+    entry.webview.classList.add('visible');
+    if (entry.loading) {
+      entry.loading.style.display = '';
     }
     if (tab.zoom && tab.zoom !== 1.0) {
       try {
-        webviewMap[tabId].webview?.setZoomFactor(tab.zoom);
+        entry.webview.setZoomFactor(tab.zoom);
       } catch (e) {}
     }
   }

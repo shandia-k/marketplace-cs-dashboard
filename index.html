@@ -529,8 +529,13 @@
         </div>
 
         <div class="form-group">
-          <label>URL yang akan dibuka</label>
-          <div class="url-preview" id="url-preview">https://seller.shopee.co.id/portal/chat</div>
+          <label for="url-preview">URL yang akan dibuka <span class="required-indicator" aria-hidden="true" style="color: #ef4444;">*</span></label>
+          <div class="url-input-container" style="position: relative;">
+            <input type="text" id="url-preview" class="url-preview-input" placeholder="https://seller.shopee.co.id/" value="https://seller.shopee.co.id/" required aria-required="true" spellcheck="false" autocomplete="off">
+          </div>
+          <small style="color: var(--text-muted, #94a3b8); font-size: 11px; margin-top: 5px; display: block; line-height: 1.4;">
+            💡 URL terisi otomatis sesuai marketplace yang dipilih dan <strong>dapat Anda edit bebas</strong> jika toko menggunakan subdomain, cabang, atau URL khusus.
+          </small>
         </div>
       </div>
       <div class="modal-footer">
@@ -731,7 +736,7 @@
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.9 🚀
+                Info Sistem & Changelog v1.0.10 (Hotfix) 🔥
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -1134,7 +1139,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.9</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.10</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -1338,7 +1343,7 @@
               <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
               <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
             </div>
-            <span class="cs-toolkit-item-badge">v1.0.9</span>
+            <span class="cs-toolkit-item-badge">v1.0.10</span>
           </div>
         </div>
       </div>

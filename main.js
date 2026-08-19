@@ -26,12 +26,14 @@ try {
   });
 }
 
-// ── Chromium Memory & Performance Switches ──────────────────────────────────
+// ── Chromium Memory & Anti-Throttling Performance Switches ───────────────────
 // Berikan headroom V8 heap hingga 1024 MB agar sinkronisasi chat besar (WA/Shopee) tidak memicu GC thrashing
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024');
 app.commandLine.appendSwitch('disable-gpu-memory-buffer-video-frames');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,AutomaticTabDiscarding,IntensiveWakeUpThrottling');
 
 // Path untuk menyimpan data toko dan user
 const userDataPath = app.getPath('userData');
@@ -43,7 +45,7 @@ const defaultStores = [
     id: 'shopee-1',
     name: 'Shopee Toko 1',
     marketplace: 'shopee',
-    url: 'https://seller.shopee.co.id/portal/chat',
+    url: 'https://seller.shopee.co.id/',
     partition: 'persist:shopee-1'
   },
   {
@@ -94,29 +96,48 @@ function getStoresFilePath(username) {
 function readStores(username) {
   const filePath = getStoresFilePath(username);
   const bakPath = `${filePath}.bak`;
+  let loaded = null;
   try {
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(data);
+      loaded = JSON.parse(data);
     }
   } catch (err) {
     console.error('Error reading stores, trying backup:', err);
     try {
       if (fs.existsSync(bakPath)) {
         const bakData = fs.readFileSync(bakPath, 'utf8');
-        return JSON.parse(bakData);
+        loaded = JSON.parse(bakData);
       }
     } catch (bakErr) {
       console.error('Error reading stores backup:', bakErr);
     }
   }
-  // Buat file default jika belum ada (aman dengan atomic write)
-  try {
-    atomicWriteJsonSync(filePath, defaultStores);
-  } catch (err) {
-    console.error('Error creating default stores file:', err);
+
+  if (!Array.isArray(loaded)) {
+    loaded = defaultStores;
+    try {
+      atomicWriteJsonSync(filePath, defaultStores);
+    } catch (err) {
+      console.error('Error creating default stores file:', err);
+    }
   }
-  return defaultStores;
+
+  // Migrasi URL 404 lama (/portal/chat) ke URL resmi Shopee Seller Centre
+  if (Array.isArray(loaded)) {
+    let updated = false;
+    loaded.forEach(s => {
+      if (s.marketplace === 'shopee' && (s.url === 'https://seller.shopee.co.id/portal/chat' || s.url === 'https://seller.shopee.co.id/portal/chat/')) {
+        s.url = 'https://seller.shopee.co.id/';
+        updated = true;
+      }
+    });
+    if (updated) {
+      saveStores(loaded, username);
+    }
+  }
+
+  return loaded;
 }
 
 // Simpan stores ke file JSON dengan atomic write
@@ -325,11 +346,26 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: true,       // Aktifkan <webview> untuk load marketplace
-      sandbox: false
+      sandbox: false,
+      backgroundThrottling: false // Cegah pembekuan JS dan visual saat CS beralih ke Chrome
     }
   });
 
   mainWindow.loadFile('index.html');
+
+  // Crash guard untuk jendela utama (Host Renderer)
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[Host Window Crash Guard] Main window render process gone:', details);
+    if (details.reason === 'crashed' || details.reason === 'oom' || details.reason === 'killed') {
+      try {
+        if (!mainWindow.isDestroyed()) mainWindow.reload();
+      } catch (e) {}
+    }
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('[Host Window Watchdog] Main window is temporarily unresponsive.');
+  });
 
   // Content-Security-Policy yang aman dan ketat untuk aplikasi desktop (tanpa unsafe-eval)
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
@@ -343,8 +379,31 @@ function createWindow() {
 
   mainWindow.on('focus', () => {
     if (typeof checkClipboardNow === 'function') checkClipboardNow();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.invalidate();
+      }
+    } catch (e) {}
+  });
+
+  mainWindow.on('restore', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.invalidate();
+      }
+    } catch (e) {}
   });
 }
+
+// Global Process Watchdog (GPU & Child Processes)
+app.on('child-process-gone', (event, details) => {
+  console.warn(`[Process Guard] Child process ${details.type} gone. Reason: ${details.reason}, ExitCode: ${details.exitCode}`);
+  if (details.type === 'GPU' && mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      mainWindow.webContents.invalidate();
+    } catch (e) {}
+  }
+});
 
 // ── Sesi Aktif & Rate-Limiting Keamanan ──────────────────────────────────────
 let currentActiveSession = null;
@@ -1043,7 +1102,7 @@ const POPULAR_MARKETPLACE_PRESETS = [
   { keywords: ['tiktok', 'tiktok shop', 'tiktok seller'], title: 'TikTok Shop Seller Center', url: 'https://seller-id.tokopedia.com/account/login', domain: 'seller-id.tokopedia.com', snippet: 'TikTok Shop / Tokopedia Seller Center' },
   { keywords: ['blibli', 'blibli seller'], title: 'Blibli Seller Center', url: 'https://seller.blibli.com/backend/chat', domain: 'seller.blibli.com', snippet: 'Blibli Seller Chat Portal' },
   { keywords: ['bukalapak', 'bukalapak seller'], title: 'Bukalapak Seller Center', url: 'https://seller.bukalapak.com/message', domain: 'seller.bukalapak.com', snippet: 'Bukalapak Seller Message' },
-  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Center', url: 'https://seller.shopee.co.id/portal/chat', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Chat Portal' },
+  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Centre', url: 'https://seller.shopee.co.id/', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Centre' },
   { keywords: ['tokopedia', 'tokopedia seller'], title: 'Tokopedia Seller Center', url: 'https://seller.tokopedia.com/chat', domain: 'seller.tokopedia.com', snippet: 'Tokopedia Seller Chat Portal' }
 ];
 
@@ -1943,16 +2002,87 @@ function setupAutoUpdater(window) {
   });
 }
 
-// Standar User-Agent Chrome resmi tanpa token 'Electron' atau 'marketplace-cs-dashboard'
-// Menghilangkan deteksi WAF traffic Shopee/Tokopedia/WhatsApp sekaligus mengizinkan login Google dengan aman
-const chromeVersion = process.versions.chrome || '124.0.0.0';
-const cleanUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
-app.userAgentFallback = cleanUserAgent;
+// Standar User-Agent resmi tanpa token 'Electron' atau 'marketplace-cs-dashboard'
+const chromeVersion = process.versions.chrome || '126.0.0.0';
+const cleanChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+const cleanFirefoxUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0`;
+app.userAgentFallback = cleanChromeUserAgent;
+
+const configuredStealthSessions = new WeakSet();
+
+function setupSessionStealthGuard(sess) {
+  if (!sess || configuredStealthSessions.has(sess)) return;
+  configuredStealthSessions.add(sess);
+
+  try {
+    sess.webRequest.onBeforeSendHeaders((details, callback) => {
+      const requestHeaders = details.requestHeaders || {};
+      const url = details.url || '';
+      const isGoogleAuth = url.includes('accounts.google.com') || url.includes('accounts.youtube.com') || url.includes('mail.google.com') || url.includes('google.com/accounts');
+
+      if (isGoogleAuth) {
+        // Gunakan profil Firefox murni untuk alur Google Login/SSO
+        requestHeaders['User-Agent'] = cleanFirefoxUserAgent;
+        // Hapus seluruh Client Hints agar server Google melayani login standar Firefox tanpa memicu Botguard Chromium
+        delete requestHeaders['Sec-CH-UA'];
+        delete requestHeaders['Sec-CH-UA-Mobile'];
+        delete requestHeaders['Sec-CH-UA-Platform'];
+        delete requestHeaders['Sec-CH-UA-Platform-Version'];
+        delete requestHeaders['Sec-CH-UA-Full-Version-List'];
+        delete requestHeaders['sec-ch-ua'];
+        delete requestHeaders['sec-ch-ua-mobile'];
+        delete requestHeaders['sec-ch-ua-platform'];
+        delete requestHeaders['sec-ch-ua-platform-version'];
+        delete requestHeaders['sec-ch-ua-full-version-list'];
+      } else {
+        // Untuk marketplace dan aplikasi lainnya, gunakan Chrome Desktop resmi
+        requestHeaders['User-Agent'] = cleanChromeUserAgent;
+      }
+
+      // Hapus header internal Electron / CEF yang memicu deteksi WAF
+      delete requestHeaders['X-Requested-With'];
+      delete requestHeaders['x-requested-with'];
+
+      callback({ requestHeaders });
+    });
+  } catch (e) {
+    console.error('[Stealth Guard] Failed to attach onBeforeSendHeaders:', e);
+  }
+}
 
 // Setup webview permissions & navigation security guard untuk semua partisi
 app.on('web-contents-created', (event, contents) => {
-  if (contents.getType() === 'webview') {
-    contents.setUserAgent(cleanUserAgent);
+  const type = contents.getType();
+  if (type === 'webview' || type === 'window') {
+    setupSessionStealthGuard(contents.session);
+
+    // Fungsi pembantu untuk sinkronisasi User-Agent secara utuh (Network Header + DOM navigator.userAgent)
+    const syncUserAgentForUrl = (targetUrl) => {
+      if (!targetUrl || typeof targetUrl !== 'string') return;
+      const isGoogle = targetUrl.includes('accounts.google.com') ||
+                       targetUrl.includes('accounts.youtube.com') ||
+                       targetUrl.includes('mail.google.com') ||
+                       targetUrl.includes('google.com/accounts');
+      const targetUa = isGoogle ? cleanFirefoxUserAgent : cleanChromeUserAgent;
+      try {
+        if (!contents.isDestroyed() && contents.getUserAgent() !== targetUa) {
+          contents.setUserAgent(targetUa);
+        }
+      } catch (e) {}
+    };
+
+    // Dengarkan navigasi dan redirect agar DOM navigator.userAgent dan HTTP Header selalu sinkron 100%
+    contents.on('did-start-navigation', (evt, url, isInPlace, isMainFrame) => {
+      if (isMainFrame !== false) {
+        syncUserAgentForUrl(url);
+      }
+    });
+
+    contents.on('will-redirect', (evt, url, isInPlace, isMainFrame) => {
+      if (isMainFrame !== false) {
+        syncUserAgentForUrl(url);
+      }
+    });
 
     const allowedPermissions = [
       'notifications',
@@ -1987,7 +2117,7 @@ app.on('web-contents-created', (event, contents) => {
       }
     });
 
-    // Cegah popup arbitrary, skema tidak valid, atau sub-widget iframe yang mencoba membuka window liar
+    // Intersep link target="_blank" / window.open agar TIDAK membuka jendela popup OS liar
     contents.setWindowOpenHandler(({ url, disposition }) => {
       try {
         const parsed = new URL(url);
@@ -1998,14 +2128,45 @@ app.on('web-contents-created', (event, contents) => {
         if (url.includes('/widget/hovercard') || url.includes('contacts.google.com/widget')) {
           return { action: 'deny' };
         }
-        return { action: 'allow' };
+
+        // Izinkan popup dialog otentikasi akun Google / OAuth agar alur token berjalan normal
+        if (url.includes('accounts.google.com') || url.includes('accounts.youtube.com')) {
+          return { action: 'allow' };
+        }
+
+        // Untuk link lainnya, buka sebagai Tab baru di dalam dashboard toko
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('webview-open-new-tab', {
+            wcId: contents.id,
+            url: url
+          });
+        }
       } catch (e) {}
       return { action: 'deny' };
+    });
+
+    // Webview Level Crash Guard & Watchdog
+    contents.on('render-process-gone', (event, details) => {
+      console.warn(`[Webview Crash Guard] Webview WebContents ID ${contents.id} gone. Reason: ${details?.reason}, ExitCode: ${details?.exitCode}`);
+      // Beritahu renderer dashboard agar auto-heal jika tab aktif
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        try {
+          mainWindow.webContents.send('webview-render-process-gone', {
+            wcId: contents.id,
+            reason: details?.reason || 'unknown'
+          });
+        } catch (e) {}
+      }
+    });
+
+    contents.on('unresponsive', () => {
+      console.warn(`[Webview Watchdog] Webview WebContents ID ${contents.id} is unresponsive.`);
     });
   }
 });
 
 app.whenReady().then(() => {
+  setupSessionStealthGuard(session.defaultSession);
   createWindow();
 
   // Setup auto updater setelah window dibuat

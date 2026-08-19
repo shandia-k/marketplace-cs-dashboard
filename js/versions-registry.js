@@ -29,13 +29,131 @@
     root.VERSIONS_REGISTRY = factory();
   }
 }(typeof self !== 'undefined' ? self : this, function () {
-  'use strict';
-
   const VERSIONS_REGISTRY = [
     {
+      version: '1.0.10',
+      badge: 'Hotfix v1.0.10 🔥',
+      badgeColor: '#ef4444',
+      pillTag: 'Hotfix 🔥',
+      releaseDate: 'Agustus 2026',
+      title: 'Anti-Crash Resilience, Google SSO Authentication Fix, Shopee Webchat Integration & Editable Store URLs',
+      tagline: 'Pembaruan stabilitas besar: Memperbaiki otentikasi login Google (Domain-Aware Identity), integrasi klik Webchat Shopee langsung sebagai tab berdampingan, pembaruan tautan default Shopee Seller Centre ke URL resmi (Bebas 404), serta fleksibilitas pengeditan URL target toko.',
+      highlights: [
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Zero-Blank Self-Healing Crash Guard',
+          desc: 'Deteksi otomatis render-process-gone, killed, oom, dan crashed pada tag webview dengan rekonstruksi instan tanpa kehilangan sesi login toko.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Chromium Anti-Discarding & Throttling Guard',
+          desc: 'Switch CLI AutomaticTabDiscarding off, disable-backgrounding-occluded-windows, dan webPreferences backgroundThrottling: false.'
+        },
+        {
+          icon: '🔑',
+          iconBg: 'rgba(234, 67, 53, 0.15)',
+          title: 'Google Login SSO & Domain-Aware Identity',
+          desc: 'Sinkronisasi utuh Network Header + DOM WebContents untuk Google Auth (Firefox/No-Hints) & Marketplace (Chrome murni), menghilangkan blokir "Browser may not be secure".'
+        },
+        {
+          icon: '💬',
+          iconBg: 'rgba(249, 115, 22, 0.15)',
+          title: 'Shopee Webchat Tab Berdampingan',
+          desc: 'Klik Webchat di Shopee Seller Centre otomatis membuka tab baru tepat di sebelah tab aktif di dalam dashboard tanpa jendela popup OS liar.'
+        },
+        {
+          icon: '🛍️',
+          iconBg: 'rgba(239, 68, 68, 0.15)',
+          title: 'Pembaruan URL Resmi Shopee (Bebas 404)',
+          desc: 'Pembaruan URL default Shopee ke https://seller.shopee.co.id/ dengan auto-migrasi otomatis untuk data toko & riwayat tab lama.'
+        },
+        {
+          icon: '✏️',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Input URL Target Toko Fleksibel',
+          desc: 'Kolom "URL yang akan dibuka" di modal Tambah/Edit Toko kini dapat diedit bebas untuk mendukung link cabang, subdomain, atau portal khusus.'
+        },
+        {
+          icon: '📑',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Multi-Tab Persistence Auto-Save',
+          desc: 'Daftar tab, URL terakhir, judul, dan tingkat zoom tersimpan otomatis per user & per toko, tidak akan hilang saat aplikasi ditutup.'
+        },
+        {
+          icon: '⌨️',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Emergency Hard Recreate (Ctrl+Shift+R)',
+          desc: 'Shortcut keyboard dan tombol refresh cerdas untuk merekonstruksi tab aktif secara total tanpa perlu force-restart aplikasi.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Otentikasi Google SSO & Domain-Aware Network Identity (PENTING)',
+          tag: 'Auth & Security',
+          color: '#ea4335',
+          bgColor: 'rgba(234, 67, 53, 0.12)',
+          items: [
+            'Sinkronisasi WebContents User-Agent Dinamis: Event listener did-start-navigation dan will-redirect menyinkronkan User-Agent pada level WebContents (HTTP Header + DOM navigator.userAgent) secara simultan.',
+            'Isolasi Otentikasi Google: Domain accounts.google.com dilayani dengan profil Firefox 128.0 murni dan penghapusan seluruh Client Hints (Sec-CH-UA) sehingga terbebas dari deteksi Botguard Chromium.',
+            'Proteksi Marketplace WAF: Domain marketplace (Shopee, Tokopedia, Lazada, WA, TikTok) tetap menggunakan Chrome Desktop resmi murni sehingga Shopee tidak memicu error /verify/traffic/error.',
+            'Pembersihan DOM Tampering: Menghapus mock buatan (window.chrome.runtime palsu, mockPlugins array, Object.defineProperty webdriver) pada preload script agar verifikasi Google Botguard tidak mendeteksi manipulasi.',
+            'Google OAuth Popup Handshake: setWindowOpenHandler mengizinkan (action: allow) dialog popup otentikasi Google agar handshake token berjalan sempurna.'
+          ]
+        },
+        {
+          category: 'Integrasi Webchat & Manajemen Tab Berdampingan',
+          tag: 'Webchat & Tabs',
+          color: '#f97316',
+          bgColor: 'rgba(249, 115, 22, 0.12)',
+          items: [
+            'Pencegahan Popup Window OS Liar: Pemanggilan e.preventDefault() pada event listener new-window webview mencegah Electron membuka jendela OS mengambang ber-menu bar bawaan.',
+            'Penyisipan Tab Berdampingan (Adjacent Placement): Tab baru yang dipicu oleh klik Webchat atau link target=_blank otomatis disisipkan tepat di sebelah kanan tab yang sedang aktif (menggunakan splice) dan langsung difokuskan.',
+            'Store ID Webview Association: Penambahan storeId dan tabId pada seluruh entri webviewMap untuk routing akurat saat IPC webview-open-new-tab diterima.'
+          ]
+        },
+        {
+          category: 'Pembaruan URL Marketplace & Fleksibilitas Pengaturan Toko',
+          tag: 'Stores & Config',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Pembaruan URL Default Shopee: Mengubah link bawaan Shopee menjadi https://seller.shopee.co.id/ menggantikan URL lama /portal/chat yang sudah tidak aktif (404).',
+            'Auto-Migration Sesi & Tab Lama: Fungsi readStores dan pemulihan persistentStoreTabs otomatis memigrasikan URL toko/tab lama yang mengarah ke /portal/chat ke URL resmi.',
+            'Kolom URL Target Toko Dapat Diedit: Konversi elemen URL preview pada modal Tambah & Edit Toko menjadi input teks interaktif yang terisi otomatis namun bebas diubah pengguna.'
+          ]
+        },
+        {
+          category: 'Ketahanan Memori & Anti-Discarding Engine (Chromium & Windows OS)',
+          tag: 'Performance & Memory',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Chromium AutomaticTabDiscarding Disabled: Menonaktifkan fitur internal Chromium yang mematikan webview di background saat alokasi RAM dipangkas Windows (Working Set Trimming).',
+            'Window Background Anti-Throttling: Mengatur backgroundThrottling: false pada BrowserWindow webPreferences untuk mencegah pembekuan JS loop dan render surface saat tertutup jendela Chrome.',
+            'Anti-Occlusion & Background Timer Switch: Penambahan switch disable-backgrounding-occluded-windows dan disable-background-timer-throttling.',
+            'Host Window Renderer Crash Guard: Handler render-process-gone otomatis pada jendela utama dashboard untuk mencegah freeze total aplikasi.'
+          ]
+        },
+        {
+          category: 'Self-Healing Webview Crash Guard & Multi-Tab Persistence',
+          tag: 'Crash Guard & Webview',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Event Listener render-process-gone & crashed: Memonitor seluruh event penghentian renderer anak (killed, oom, crashed, gpu-process-crashed) pada setiap tag webview toko.',
+            'Rekonstruksi Webview Instan: Otomatis membersihkan elemen mati dan membangun ulang webview baru dengan partisi login dan URL tujuan yang utuh dalam < 250ms.',
+            'Multi-Tab Persistence Auto-Save: Seluruh tab, URL, judul, dan tingkat zoom tersimpan otomatis per user & per toko ke storage lokal.',
+            'Emergency Hard Recreate Utility: Tombol Nav Refresh (Shift/Ctrl+Click) dan shortcut Ctrl+Shift+R / Ctrl+F5 untuk memicu rekonstruksi instan tanpa restart.'
+          ]
+        }
+      ]
+    },
+    {
       version: '1.0.9',
-      badge: 'Versi Terbaru 🚀',
-      badgeColor: '#df1683',
+      badge: 'Stabil ✨',
+      badgeColor: '#10b981',
       releaseDate: 'Agustus 2026',
       title: 'Screenshot Bug Feedback, Unified Floating Dock, 81 Telemetry Events & Security Guard',
       tagline: 'Sistem pelaporan bug & saran berlampirkan multi-screenshot dengan kompresi GPU dual-engine dan auto-tagging, tata letak terpadu floating bottom dock dengan mutual awareness, ekspansi telemetri operasional penuh (81 event), penguatan keamanan partisi Chromium (Anti Path-Traversal), dan optimasi performa ketik via search debounce 180ms.',

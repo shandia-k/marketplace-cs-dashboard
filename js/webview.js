@@ -158,14 +158,23 @@ function createWebview(store, tab) {
   const preloadPath = appPath.replace(/\\/g, '/');
   const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
 
-  // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah dan bukan URL traffic error
+  // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah dan bukan URL traffic error / 404
   const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
-  const defaultFallbackUrl = store.url || cfg.url || 'https://seller.shopee.co.id/portal/chat';
+  const defaultFallbackUrl = store.url || cfg.url || 'https://seller.shopee.co.id/';
 
-  if (!isValidTopNavigationUrl(tab.url) || (store.marketplace === 'shopee' && (tab.url === 'https://shopee.co.id' || tab.url === 'https://shopee.co.id/'))) {
+  if (store.marketplace === 'shopee') {
+    if (tab.url === 'https://seller.shopee.co.id/portal/chat' || tab.url === 'https://seller.shopee.co.id/portal/chat/' || tab.url === 'https://shopee.co.id' || tab.url === 'https://shopee.co.id/') {
+      tab.url = defaultFallbackUrl;
+    }
+    if (tab.initialUrl === 'https://seller.shopee.co.id/portal/chat' || tab.initialUrl === 'https://seller.shopee.co.id/portal/chat/' || tab.initialUrl === 'https://shopee.co.id' || tab.initialUrl === 'https://shopee.co.id/') {
+      tab.initialUrl = defaultFallbackUrl;
+    }
+  }
+
+  if (!isValidTopNavigationUrl(tab.url)) {
     tab.url = defaultFallbackUrl;
   }
-  if (!tab.initialUrl || !isValidTopNavigationUrl(tab.initialUrl) || (store.marketplace === 'shopee' && (tab.initialUrl === 'https://shopee.co.id' || tab.initialUrl === 'https://shopee.co.id/'))) {
+  if (!tab.initialUrl || !isValidTopNavigationUrl(tab.initialUrl)) {
     tab.initialUrl = defaultFallbackUrl;
   }
 
@@ -179,11 +188,16 @@ function createWebview(store, tab) {
 
   // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
   const actualPartition = getStorePartition(store);
+  const isGoogleStore = store.marketplace === 'gmail' || (tab.url && (tab.url.includes('google.com') || tab.url.includes('gmail.com')));
+  const cleanUa = isGoogleStore
+    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
+    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
   const wv = document.createElement('webview');
   wv.className = 'store-webview visible';
   wv.setAttribute('src', tab.url);
   wv.setAttribute('partition', actualPartition);
   wv.setAttribute('preload', preloadUrl);
+  wv.setAttribute('useragent', cleanUa);
   wv.setAttribute('allowpopups', '');
 
   // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
@@ -199,12 +213,14 @@ function createWebview(store, tab) {
       tabEntry.zoom = Math.max(0.25, Math.min(4.0, parseFloat(tabEntry.zoom.toFixed(2))));
       wv.setZoomFactor(tabEntry.zoom);
       showZoomIndicator(Math.round(tabEntry.zoom * 100));
+      if (typeof debouncedSaveStoreTabsState === 'function') debouncedSaveStoreTabsState();
 
     } else if (event.channel === 'zoom-reset') {
       if (!tabEntry) return;
       tabEntry.zoom = 1.0;
       wv.setZoomFactor(1.0);
       showZoomIndicator(100);
+      if (typeof debouncedSaveStoreTabsState === 'function') debouncedSaveStoreTabsState();
 
     } else if (event.channel === 'nav-back') {
       if (wv.canGoBack()) wv.goBack();
@@ -338,8 +354,12 @@ function createWebview(store, tab) {
     }
   }
 
-  // ── new-window: target=_blank / window.open() → buka sebagai tab baru jika dipicu User Gesture yang sah ────
+  // ── new-window: target=_blank / window.open() → buka sebagai tab baru di dalam dashboard toko ────
   wv.addEventListener('new-window', (e) => {
+    // Selalu cegah Electron membuka jendela popup OS liar
+    if (typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     // Abaikan pembukaan window liar dari skrip background/hovercard tanpa klik nyata pengguna
     if (e.isUserGesture === false && e.disposition !== 'new-window' && e.disposition !== 'foreground-tab' && e.disposition !== 'background-tab') {
       return;
@@ -355,6 +375,7 @@ function createWebview(store, tab) {
     if (tabEntry && e.title) {
       tabEntry.title = e.title.length > 30 ? e.title.substring(0, 28) + '…' : e.title;
       if (activeStoreId === store.id) renderTabBar();
+      if (typeof debouncedSaveStoreTabsState === 'function') debouncedSaveStoreTabsState();
 
       // Jika judul memuat format angka (misal: "(1) WhatsApp", "Inbox (2)"), sinkronkan unread
       const countFromTitle = parseUnreadFromTitle(e.title);
@@ -369,6 +390,8 @@ function createWebview(store, tab) {
     try {
       if (webviewMap[tab.id] && typeof wv.getWebContentsId === 'function') {
         webviewMap[tab.id].wcId = wv.getWebContentsId();
+        webviewMap[tab.id].storeId = store.id;
+        webviewMap[tab.id].tabId = tab.id;
       }
     } catch (e) {}
   };
@@ -428,6 +451,9 @@ function createWebview(store, tab) {
           updateAddressBarUrl(currentUrl);
         }
       }
+      if (typeof debouncedSaveStoreTabsState === 'function') {
+        debouncedSaveStoreTabsState();
+      }
     }
   };
 
@@ -449,9 +475,106 @@ function createWebview(store, tab) {
     }
   });
 
+  // ── Webview Self-Healing & Crash Guard ──────────────────────────────────────
+  let isRebuilding = false;
+  const triggerSelfHealing = (reason) => {
+    if (isRebuilding) return;
+    isRebuilding = true;
+
+    console.warn(`[Webview Crash Guard] Triggering self-healing for "${store.name}" (${tab.id}). Reason: ${reason}`);
+    if (webviewMap[tab.id]) {
+      webviewMap[tab.id].isCrashed = true;
+    }
+
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('webview_crashed_recovered');
+    }
+
+    // Tampilkan visual pemulihan
+    loadingEl.innerHTML = `
+      <div class="spinner"></div>
+      <p style="color:var(--text-primary); font-weight:600;">⚡ Memulihkan sesi ${escapeHtml(store.name)}...</p>
+      <small style="color:var(--text-muted); font-size:11px;">Alokasi memori disegarkan dari background</small>
+    `;
+    loadingEl.classList.remove('hidden');
+    loadingEl.style.display = '';
+
+    setTimeout(() => {
+      try {
+        if (wv.parentNode) wv.parentNode.removeChild(wv);
+      } catch (e) {}
+      try {
+        if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+      } catch (e) {}
+
+      delete webviewMap[tab.id];
+
+      // Rekonstruksi bersih
+      createWebview(store, tab);
+
+      // Jika tab ini adalah tab yang aktif, pastikan visible & update tampilan
+      if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
+        if (webviewMap[tab.id]?.webview) {
+          webviewMap[tab.id].webview.classList.add('visible');
+          webviewMap[tab.id].webview.style.display = '';
+        }
+        showToast(`⚡ Sesi ${store.name} berhasil dipulihkan otomatis!`, 'success');
+        if (typeof renderTabBar === 'function') renderTabBar();
+      }
+    }, 200);
+  };
+
+  wv.addEventListener('render-process-gone', (e) => {
+    console.warn(`[Webview Crash Event] render-process-gone on tab ${tab.id}:`, e.details);
+    triggerSelfHealing(e.details?.reason || 'render-process-gone');
+  });
+
+  wv.addEventListener('crashed', () => {
+    console.warn(`[Webview Crash Event] crashed on tab ${tab.id}`);
+    triggerSelfHealing('crashed');
+  });
+
+  wv.addEventListener('gpu-process-crashed', () => {
+    console.warn(`[Webview Crash Event] gpu-process-crashed on tab ${tab.id}`);
+    triggerSelfHealing('gpu-process-crashed');
+  });
+
+  wv.addEventListener('plugin-crashed', (e) => {
+    console.warn(`[Webview Crash Event] plugin-crashed on tab ${tab.id}:`, e.name);
+  });
+
+  wv.addEventListener('unresponsive', () => {
+    console.warn(`[Webview Watchdog] Webview for ${store.name} is temporarily unresponsive.`);
+  });
+
   webviewCont.appendChild(wv);
-  webviewMap[tab.id] = { webview: wv, loading: loadingEl };
+  webviewMap[tab.id] = { webview: wv, loading: loadingEl, isCrashed: false, storeId: store.id, tabId: tab.id };
 }
+
+// ── Hard Recreate Active Tab Webview (Emergency Heal Utility) ────────────────
+function forceRecreateActiveTab() {
+  if (!activeStoreId) return;
+  const curTabId = activeTabMap[activeStoreId];
+  const store = stores.find(s => s.id === activeStoreId);
+  const tab = storeTabs[activeStoreId]?.find(t => t.id === curTabId);
+  if (!store || !tab) return;
+
+  const entry = webviewMap[curTabId];
+  if (entry) {
+    try { entry.webview?.remove(); } catch (e) {}
+    try { entry.loading?.remove(); } catch (e) {}
+    delete webviewMap[curTabId];
+  }
+
+  createWebview(store, tab);
+  if (webviewMap[curTabId]?.webview) {
+    webviewMap[curTabId].webview.classList.add('visible');
+    webviewMap[curTabId].webview.style.display = '';
+  }
+  showToast(`⚡ Halaman ${store.name} disegarkan & dipulihkan total!`, 'success');
+  if (typeof renderTabBar === 'function') renderTabBar();
+}
+window.forceRecreateActiveTab = forceRecreateActiveTab;
 
 // ── Smart Title Parser ────────────────────────────────────────────────────────
 function parseUnreadFromTitle(title) {
@@ -513,6 +636,11 @@ function runNextBackgroundPing() {
   pingWv.setAttribute('src', tab.url);
   pingWv.setAttribute('partition', actualPartition);
   pingWv.setAttribute('preload', preloadUrl);
+  const isGoogleStore = store.marketplace === 'gmail' || (tab.url && (tab.url.includes('google.com') || tab.url.includes('gmail.com')));
+  const pingUa = isGoogleStore
+    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
+    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+  pingWv.setAttribute('useragent', pingUa);
 
   let unreadDetected = 0;
   let hasCleanedUp = false;

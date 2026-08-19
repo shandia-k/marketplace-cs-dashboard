@@ -915,7 +915,92 @@ window.initApp = async function() {
   if (window.OnboardingManager && typeof window.OnboardingManager.init === 'function') {
     window.OnboardingManager.init();
   }
+
+  // Setup Lifecycle Pemulihan Fokus, Visibilitas, & Anti-Blank Crash Guard (v1.0.10)
+  setupFocusAndCrashRecoveryLifecycle();
 };
+
+// ── Focus, Visibility & Crash Recovery Lifecycle (Anti-Blank Guard) ─────────
+let isRecoveryLifecycleBound = false;
+function setupFocusAndCrashRecoveryLifecycle() {
+  if (isRecoveryLifecycleBound) return;
+  isRecoveryLifecycleBound = true;
+
+  const checkActiveTabHealth = () => {
+    if (!activeStoreId) return;
+    const curTabId = activeTabMap[activeStoreId];
+    if (!curTabId) return;
+
+    const entry = webviewMap[curTabId];
+    if (!entry || entry.hibernated) return;
+
+    const isDead = entry.isCrashed || !entry.webview || !entry.webview.isConnected || (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed());
+
+    if (isDead) {
+      console.warn(`[Focus Recovery] Active tab ${curTabId} was dead/crashed when returning to window. Auto-recovering...`);
+      const store = stores.find(s => s.id === activeStoreId);
+      const tab = storeTabs[activeStoreId]?.find(t => t.id === curTabId);
+      if (store && tab && typeof forceRecreateActiveTab === 'function') {
+        forceRecreateActiveTab();
+      }
+    } else {
+      // Nudge webview focus & compositor repaint so Windows paging brings back visual buffer
+      try {
+        if (typeof entry.webview.focus === 'function') {
+          entry.webview.focus();
+        }
+      } catch (e) {}
+    }
+  };
+
+  window.addEventListener('focus', () => {
+    checkActiveTabHealth();
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkActiveTabHealth();
+    }
+  });
+
+  // Global IPC listener dari Main Process jika ada webContents ID yang gone
+  if (window.electronAPI && typeof window.electronAPI.onWebviewRenderProcessGone === 'function') {
+    window.electronAPI.onWebviewRenderProcessGone((data) => {
+      console.warn('[IPC Crash Guard] Webview render process gone received:', data);
+      checkActiveTabHealth();
+    });
+  }
+
+  // Global IPC listener dari Main Process jika ada webview yang membuka link target="_blank"
+  if (window.electronAPI && typeof window.electronAPI.onWebviewOpenNewTab === 'function') {
+    window.electronAPI.onWebviewOpenNewTab((data) => {
+      if (!data || !data.url) return;
+      let targetStore = null;
+      if (data.wcId && typeof webviewMap !== 'undefined') {
+        const entry = Object.values(webviewMap).find(e => e.wcId === data.wcId);
+        if (entry && entry.storeId) {
+          targetStore = stores.find(s => s.id === entry.storeId);
+        }
+      }
+      if (!targetStore && activeStoreId) {
+        targetStore = stores.find(s => s.id === activeStoreId);
+      }
+      if (targetStore && typeof openUrlInNewTab === 'function') {
+        openUrlInNewTab(targetStore, data.url);
+      }
+    });
+  }
+
+  // Keyboard shortcut Ctrl+Shift+R atau Ctrl+F5 untuk memulihkan tab aktif secara instan
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey && e.shiftKey && (e.key === 'R' || e.key === 'r')) || (e.ctrlKey && e.key === 'F5')) {
+      e.preventDefault();
+      if (typeof forceRecreateActiveTab === 'function') {
+        forceRecreateActiveTab();
+      }
+    }
+  });
+}
 
 // Inisialisasi awal icon tema
 updateThemeUI();

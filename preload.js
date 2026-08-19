@@ -61,6 +61,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartToUpdate: () => ipcRenderer.send('restart-to-update'),
   onUpdaterMessage: (callback) => ipcRenderer.on('updater-message', (_event, value) => callback(value)),
-  onUpdaterProgress: (callback) => ipcRenderer.on('updater-progress', (_event, value) => callback(value))
+  onUpdaterProgress: (callback) => ipcRenderer.on('updater-progress', (_event, value) => callback(value)),
+
+  // Crash Guard Lifecycle & Tab Manager
+  onWebviewRenderProcessGone: (callback) => ipcRenderer.on('webview-render-process-gone', (_event, value) => callback(value)),
+  onWebviewOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value))
 });
 

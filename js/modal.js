@@ -27,7 +27,7 @@ const POPULAR_MARKETPLACE_PRESETS_FRONTEND = [
   { keywords: ['tiktok', 'tiktok shop', 'tiktok seller'], title: 'TikTok Shop Seller Center', url: 'https://seller-id.tokopedia.com/account/login', domain: 'seller-id.tokopedia.com', snippet: 'TikTok Shop / Tokopedia Seller Center' },
   { keywords: ['blibli', 'blibli seller'], title: 'Blibli Seller Center', url: 'https://seller.blibli.com/backend/chat', domain: 'seller.blibli.com', snippet: 'Blibli Seller Chat Portal' },
   { keywords: ['bukalapak', 'bukalapak seller'], title: 'Bukalapak Seller Center', url: 'https://seller.bukalapak.com/message', domain: 'seller.bukalapak.com', snippet: 'Bukalapak Seller Message' },
-  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Center', url: 'https://seller.shopee.co.id/portal/chat', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Chat Portal' },
+  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Centre', url: 'https://seller.shopee.co.id/', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Centre' },
   { keywords: ['tokopedia', 'tokopedia seller'], title: 'Tokopedia Seller Center', url: 'https://seller.tokopedia.com/chat', domain: 'seller.tokopedia.com', snippet: 'Tokopedia Seller Chat Portal' }
 ];
 
@@ -387,6 +387,7 @@ function openAddModal() {
   setSelectedColor('');
   customUrlGroup.style.display = 'none';
   clearCustomUrlSearch();
+  if (urlPreview) urlPreview.value = 'https://seller.shopee.co.id/';
   modalOverlay.classList.add('active');
   setTimeout(() => fieldStoreName.focus(), 200);
 }
@@ -407,13 +408,15 @@ function openEditModal(storeId) {
   clearCustomUrlSearch();
 
   if (store.marketplace === 'custom') {
-    fieldStoreUrl.value = store.url;
+    fieldStoreUrl.value = store.url || '';
     customUrlGroup.style.display = 'flex';
     if (btnClearUrl) btnClearUrl.style.display = store.url ? 'flex' : 'none';
   } else {
     customUrlGroup.style.display = 'none';
   }
-  updateUrlPreview(store.marketplace, store.url);
+  if (urlPreview) {
+    urlPreview.value = store.url || '';
+  }
 
   settingsOverlay.classList.remove('active');
   modalOverlay.classList.add('active');
@@ -433,7 +436,7 @@ function setSelectedMarketplace(value) {
     el.classList.toggle('selected', isSelected);
     el.setAttribute('aria-checked', isSelected ? 'true' : 'false');
   });
-  updateUrlPreview(value, fieldStoreUrl.value);
+  updateUrlPreview(value);
 }
 
 function setSelectedColor(colorHex) {
@@ -461,19 +464,21 @@ function updateUrlPreview(marketplace, customUrl) {
   const cfg = MARKETPLACE_CONFIG[marketplace] || MARKETPLACE_CONFIG.custom;
   let displayUrl = '';
   if (marketplace === 'custom') {
-    let u = (customUrl || '').trim();
+    let u = (customUrl || (fieldStoreUrl ? fieldStoreUrl.value : '') || '').trim();
     if (u) {
       if (!/^https?:\/\//i.test(u)) {
         u = 'https://' + u;
       }
       displayUrl = u;
     } else {
-      displayUrl = '(masukkan URL di atas)';
+      displayUrl = (urlPreview && urlPreview.value) ? urlPreview.value : 'https://';
     }
   } else {
-    displayUrl = cfg.url;
+    displayUrl = (customUrl && typeof customUrl === 'string' && customUrl.trim()) ? customUrl.trim() : (cfg.url || '');
   }
-  urlPreview.textContent = displayUrl;
+  if (urlPreview) {
+    urlPreview.value = displayUrl;
+  }
 }
 
 async function saveStore() {
@@ -489,19 +494,16 @@ async function saveStore() {
   }
 
   const cfg = MARKETPLACE_CONFIG[marketplace] || MARKETPLACE_CONFIG.custom;
-  let url   = marketplace === 'custom' ? fieldStoreUrl.value.trim() : cfg.url;
+  let url = (urlPreview ? urlPreview.value : (fieldStoreUrl ? fieldStoreUrl.value : '')).trim();
 
-  if (marketplace === 'custom') {
-    if (!url) {
-      fieldStoreUrl.focus();
-      showToast('Masukkan URL untuk marketplace custom!', 'error');
-      return;
-    }
-    // Auto-prefix https:// if protocol is missing
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-      fieldStoreUrl.value = url;
-    }
+  if (!url) {
+    url = cfg.url || 'https://';
+  }
+
+  // Auto-prefix https:// jika protokol belum ada
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url;
+    if (urlPreview) urlPreview.value = url;
   }
 
   if (editingStoreId) {
@@ -573,6 +575,7 @@ async function deleteStore(storeId) {
   delete storeTabs[storeId];
   delete activeTabMap[storeId];
   delete unreadMap[storeId];
+  if (typeof saveStoreTabsState === 'function') saveStoreTabsState();
 
   if (activeStoreId === storeId) {
     activeStoreId = null;

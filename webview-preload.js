@@ -12,13 +12,29 @@
  */
 const { ipcRenderer } = require('electron');
 
-// ── ANTI-AUTOMATION & BOT DETECTION MASKING ──────────────────────────────────
+// ── ANTI-AUTOMATION & STEALTH BROWSER MASKING ──────────────────────────────────
+// Biarkan DOM prototype native murni agar verifikasi Google Botguard & WAF tidak mendeteksi tampering
 try {
-  Object.defineProperty(navigator, 'webdriver', {
-    get: () => undefined,
-    configurable: true
-  });
+  if (typeof navigator !== 'undefined' && 'webdriver' in navigator) {
+    try {
+      delete Object.getPrototypeOf(navigator).webdriver;
+    } catch (e) {}
+  }
 } catch (e) {}
+
+// Jika berada di halaman autentikasi Google / OAuth, jangan inject listener inline marketplace
+// agar halaman login Google berjalan 100% native tanpa interferensi skrip
+if (typeof window !== 'undefined' && window.location && (window.location.hostname === 'accounts.google.com' || window.location.hostname.endsWith('.google.com'))) {
+  // Hanya pasang handler navigasi & zoom keyboard standar
+  window.addEventListener('keydown', (e) => {
+    if (e.altKey && e.key === 'ArrowLeft') {
+      ipcRenderer.sendToHost('nav-back');
+    } else if (e.altKey && e.key === 'ArrowRight') {
+      ipcRenderer.sendToHost('nav-forward');
+    }
+  }, true);
+  return;
+}
 
 // ── STATE & TEMPLATES (Synced from host dashboard) ───────────────────────────
 let smartTemplates = [];

@@ -2,7 +2,7 @@
 const MARKETPLACE_CONFIG = {
   shopee: {
     label: 'Shopee',
-    url: 'https://seller.shopee.co.id/portal/chat',
+    url: 'https://seller.shopee.co.id/',
     emoji: '🛍️',
     faviconClass: 'favicon-shopee',
     groupColor: '#f5521d'
