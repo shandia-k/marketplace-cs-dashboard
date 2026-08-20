@@ -357,6 +357,8 @@ function createWebview(store, tab) {
   // ── new-window: target=_blank / window.open() → buka sebagai tab baru di dalam dashboard toko ────
   wv.addEventListener('new-window', (e) => {
     const rawUrl = e.url || '';
+    if (!rawUrl || rawUrl === 'about:blank') return;
+
     const lowerUrl = rawUrl.toLowerCase();
     const isOAuth = lowerUrl.includes('accounts.google.com') ||
                     lowerUrl.includes('accounts.youtube.com') ||
@@ -385,12 +387,10 @@ function createWebview(store, tab) {
     if (typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
-    // Abaikan pembukaan window liar dari skrip background/hovercard tanpa klik nyata pengguna
-    if (e.isUserGesture === false && e.disposition !== 'new-window' && e.disposition !== 'foreground-tab' && e.disposition !== 'background-tab') {
-      return;
-    }
-    if (url && url !== 'about:blank' && isValidTopNavigationUrl(url)) {
-      openUrlInNewTab(store, url);
+
+    // Pastikan URL valid dan buka sebagai tab baru di toko ini
+    if (isValidTopNavigationUrl(rawUrl)) {
+      openUrlInNewTab(store, rawUrl);
     }
   });
 

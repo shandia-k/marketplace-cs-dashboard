@@ -147,33 +147,14 @@ function ensureStoreTabs(store) {
   }
 }
 
-function renderTabBar() {
-  if (!activeStoreId || !storeTabs[activeStoreId]) {
-    tabBar.style.display = 'none';
+// ── Tab Bar Shell & Rendering ──────────────────────────────────────────────────
+
+function ensureTabBarShell() {
+  if (tabBar.querySelector('.tab-nav-controls') && tabBar.querySelector('.tab-address-bar-wrap') && tabBar.querySelector('.tab-items-container')) {
     return;
   }
 
-  const store = stores.find(s => s.id === activeStoreId);
-  if (!store) return;
-
-  const cfg      = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
-  const tabs     = storeTabs[activeStoreId];
-  const curTabId = activeTabMap[activeStoreId];
-  const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
-  const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
-
-  const activeTabObj = tabs.find(t => t.id === curTabId);
-  let activeTabUrl = activeTabObj?.url || store.url || cfg.url || '';
-  const activeWv = getActiveWebview();
-  if (activeWv && typeof activeWv.getURL === 'function') {
-    try {
-      const curUrl = activeWv.getURL();
-      if (curUrl && curUrl !== 'about:blank') activeTabUrl = curUrl;
-    } catch (e) {}
-  }
-
-  // Nav controls (kiri) + Mini Address Bar + tabs (tengah) + add button (kanan)
-  const navHtml = `
+  tabBar.innerHTML = `
     <div class="tab-nav-controls" role="toolbar" aria-label="Kontrol Navigasi Tab">
       <button class="tab-nav-btn" id="btn-nav-back" title="Kembali (Alt+\u2190)" aria-label="Kembali ke halaman sebelumnya">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -205,7 +186,7 @@ function renderTabBar() {
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
       </div>
-      <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" value="${escapeHtml(activeTabUrl)}" aria-label="Alamat URL web atau pencarian">
+      <input type="text" class="tab-address-input" id="tab-address-input" placeholder="Ketik URL / cari web..." autocomplete="off" spellcheck="false" aria-label="Alamat URL web atau pencarian">
       <button class="tab-address-btn-go" id="btn-tab-address-go" title="Buka URL (Enter)" aria-label="Buka alamat URL">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <polyline points="9 18 15 12 9 6"></polyline>
@@ -213,66 +194,10 @@ function renderTabBar() {
       </button>
     </div>
     <div class="tab-nav-separator" aria-hidden="true"></div>
-    <div class="tab-items-container" role="tablist" aria-label="Daftar tab toko ${escapeHtml(store.name)}">`;
+    <div class="tab-items-container" id="tab-items-container" role="tablist"></div>
+  `;
 
-  const leafIcon = '&#x1F343;';
-  const tabsHtml = tabs.map(tab => {
-    const entry = webviewMap[tab.id];
-    const isHibernated = entry?.hibernated;
-    const isSyncing = entry?.isSyncing;
-    const syncProgress = entry?.syncProgress;
-    const isCurTab = tab.id === curTabId;
-
-    let syncBadgeHtml = '';
-    if (isSyncing) {
-      const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
-      const progStr = hasPercent ? ` ${syncProgress}%` : '';
-      const tooltipMsg = hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...';
-      syncBadgeHtml = `
-        <span class="tab-sync-badge" title="${tooltipMsg}" aria-label="${tooltipMsg}">
-          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-          </svg>${progStr}
-        </span>`;
-    }
-
-    const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
-    const tabTooltip = isSyncing 
-      ? (hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...') 
-      : (isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title));
-
-    return `
-    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}" role="tab" aria-selected="${isCurTab ? 'true' : 'false'}" aria-label="${tabTooltip}">
-      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
-      <span class="tab-title">${escapeHtml(tab.title)}</span>
-      ${syncBadgeHtml}
-      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
-          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>`;
-  }).join('');
-
-  const addBtnHtml = `
-    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru untuk ${escapeHtml(store.name)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>
-    </button>
-  </div>`;
-
-  const fullHtml = navHtml + tabsHtml + addBtnHtml;
-  if (tabBar.dataset.lastHtml === fullHtml && tabBar.style.display === 'flex') {
-    updateNavButtonStates();
-    return;
-  }
-  tabBar.dataset.lastHtml = fullHtml;
-  tabBar.innerHTML = fullHtml;
-  tabBar.style.display = 'flex';
-
-  // Bind nav buttons
+  // Bind navigation buttons
   document.getElementById('btn-nav-back')?.addEventListener('click', () => {
     const wv = getActiveWebview();
     if (wv?.canGoBack()) wv.goBack();
@@ -327,14 +252,140 @@ function renderTabBar() {
     if (e.key === 'Enter') {
       e.preventDefault();
       navigateFromAddressBar();
+    } else if (e.key === 'Escape') {
+      // Batal edit, kembalikan ke URL halaman aktif saat ini
+      const wv = getActiveWebview();
+      if (wv && typeof wv.getURL === 'function') {
+        try {
+          const curUrl = wv.getURL();
+          if (curUrl && curUrl !== 'about:blank') addrInput.value = curUrl;
+        } catch (err) {}
+      }
+      addrInput.blur();
+    }
+  });
+
+  // Seleksi teks mulus saat pertama kali fokus tanpa timer berbenturan
+  let isMouseDownOnAddr = false;
+  addrInput?.addEventListener('mousedown', () => {
+    if (document.activeElement !== addrInput) {
+      isMouseDownOnAddr = true;
     }
   });
   addrInput?.addEventListener('focus', () => {
-    setTimeout(() => addrInput.select(), 50);
+    if (isMouseDownOnAddr) {
+      setTimeout(() => {
+        addrInput.select();
+        isMouseDownOnAddr = false;
+      }, 0);
+    } else {
+      addrInput.select();
+    }
   });
+  addrInput?.addEventListener('mouseup', (e) => {
+    if (isMouseDownOnAddr) {
+      e.preventDefault();
+      isMouseDownOnAddr = false;
+    }
+  });
+}
+
+function renderTabBar() {
+  if (!activeStoreId || !storeTabs[activeStoreId]) {
+    tabBar.style.display = 'none';
+    return;
+  }
+
+  const store = stores.find(s => s.id === activeStoreId);
+  if (!store) return;
+
+  ensureTabBarShell();
+  tabBar.style.display = 'flex';
+
+  const cfg      = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
+  const tabs     = storeTabs[activeStoreId];
+  const curTabId = activeTabMap[activeStoreId];
+  const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
+  const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
+
+  const activeTabObj = tabs.find(t => t.id === curTabId);
+  let activeTabUrl = activeTabObj?.url || store.url || cfg.url || '';
+  const activeWv = getActiveWebview();
+  if (activeWv && typeof activeWv.getURL === 'function') {
+    try {
+      const curUrl = activeWv.getURL();
+      if (curUrl && curUrl !== 'about:blank') activeTabUrl = curUrl;
+    } catch (e) {}
+  }
+
+  // Update address bar value hanya jika pengguna TIDAK sedang fokus/mengetik
+  const addrInput = document.getElementById('tab-address-input');
+  if (addrInput && document.activeElement !== addrInput) {
+    addrInput.value = activeTabUrl;
+  }
+
+  const tabItemsContainer = document.getElementById('tab-items-container');
+  if (!tabItemsContainer) return;
+
+  tabItemsContainer.setAttribute('aria-label', `Daftar tab toko ${escapeHtml(store.name)}`);
+
+  const leafIcon = '&#x1F343;';
+  const tabsHtml = tabs.map(tab => {
+    const entry = webviewMap[tab.id];
+    const isHibernated = entry?.hibernated;
+    const isSyncing = entry?.isSyncing;
+    const syncProgress = entry?.syncProgress;
+    const isCurTab = tab.id === curTabId;
+
+    let syncBadgeHtml = '';
+    if (isSyncing) {
+      const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
+      const progStr = hasPercent ? ` ${syncProgress}%` : '';
+      const tooltipMsg = hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...';
+      syncBadgeHtml = `
+        <span class="tab-sync-badge" title="${tooltipMsg}" aria-label="${tooltipMsg}">
+          <svg class="sync-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>${progStr}
+        </span>`;
+    }
+
+    const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
+    const tabTooltip = isSyncing 
+      ? (hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...') 
+      : (isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title));
+
+    return `
+    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}" role="tab" aria-selected="${isCurTab ? 'true' : 'false'}" aria-label="${tabTooltip}">
+      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
+      <span class="tab-title">${escapeHtml(tab.title)}</span>
+      ${syncBadgeHtml}
+      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
+      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
+          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  const addBtnHtml = `
+    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru untuk ${escapeHtml(store.name)}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>`;
+
+  const fullTabsHtml = tabsHtml + addBtnHtml;
+  if (tabItemsContainer.dataset.lastHtml === fullTabsHtml) {
+    updateNavButtonStates();
+    return;
+  }
+  tabItemsContainer.dataset.lastHtml = fullTabsHtml;
+  tabItemsContainer.innerHTML = fullTabsHtml;
 
   // Bind tab click (not close)
-  tabBar.querySelectorAll('.tab-item').forEach(el => {
+  tabItemsContainer.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', e => {
       if (!e.target.closest('.tab-close') && !e.target.closest('.tab-hibernate-btn') && !e.target.closest('.tab-sync-badge')) {
         switchTab(activeStoreId, el.dataset.tabId);
@@ -343,7 +394,7 @@ function renderTabBar() {
   });
 
   // Bind click pada badge sinkronisasi untuk membuka modal info edukasi
-  tabBar.querySelectorAll('.tab-sync-badge').forEach(el => {
+  tabItemsContainer.querySelectorAll('.tab-sync-badge').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
       if (typeof openWaSyncEduModal === 'function') {
@@ -353,7 +404,7 @@ function renderTabBar() {
   });
 
   // Bind hibernate buttons
-  tabBar.querySelectorAll('.tab-hibernate-btn').forEach(el => {
+  tabItemsContainer.querySelectorAll('.tab-hibernate-btn').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
       const storeId = Object.keys(storeTabs).find(sid =>
@@ -369,7 +420,7 @@ function renderTabBar() {
   });
 
   // Bind close buttons
-  tabBar.querySelectorAll('.tab-close').forEach(el => {
+  tabItemsContainer.querySelectorAll('.tab-close').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
       closeTab(activeStoreId, el.dataset.tabId);
@@ -418,6 +469,7 @@ function navigateFromAddressBar() {
     } catch (e) {
       wv.src = targetUrl;
     }
+    input.blur();
   }
 }
 window.navigateFromAddressBar = navigateFromAddressBar;
@@ -482,9 +534,11 @@ function addTab(storeId, url, title) {
 // Buka URL sebagai tab baru — dipanggil dari Ctrl+Click atau new-window event
 function openUrlInNewTab(store, url) {
   if (!url || url === 'about:blank') return;
+  if (!store || !store.id) return;
   if (!storeTabs[store.id]) ensureStoreTabs(store);
   addTab(store.id, url, url.length > 40 ? url.substring(0, 38) + '…' : url);
 }
+window.openUrlInNewTab = openUrlInNewTab;
 
 function closeTab(storeId, tabId) {
   const tabs = storeTabs[storeId];

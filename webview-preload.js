@@ -36,6 +36,51 @@ if (typeof window !== 'undefined' && window.location && (window.location.hostnam
   return;
 }
 
+// ── UNIVERSAL LINK & TAB OPENER INTERCEPTOR ──────────────────────────────────
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href], [data-href], [data-url]');
+  if (!link) return;
+
+  let href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || link.href;
+  if (!href || typeof href !== 'string') return;
+  href = href.trim();
+  if (!href || href.startsWith('javascript:') || href === '#') return;
+
+  const target = (link.getAttribute('target') || '').toLowerCase();
+  const isCtrlOrMiddle = e.ctrlKey || e.metaKey || e.button === 1;
+
+  if (target === '_blank' || isCtrlOrMiddle) {
+    try {
+      const fullUrl = new URL(href, window.location.href).href;
+      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) {
+        const lowerUrl = fullUrl.toLowerCase();
+        const isOAuth = lowerUrl.includes('accounts.google.com') ||
+                        lowerUrl.includes('accounts.youtube.com') ||
+                        lowerUrl.includes('appleid.apple.com') ||
+                        lowerUrl.includes('login.live.com') ||
+                        lowerUrl.includes('login.microsoftonline.com') ||
+                        lowerUrl.includes('facebook.com/dialog/oauth') ||
+                        lowerUrl.includes('facebook.com/login') ||
+                        lowerUrl.includes('github.com/login') ||
+                        lowerUrl.includes('github.com/sessions') ||
+                        lowerUrl.includes('gitlab.com/oauth') ||
+                        lowerUrl.includes('oauth') ||
+                        lowerUrl.includes('/auth/') ||
+                        lowerUrl.includes('/authorize') ||
+                        lowerUrl.includes('/sso/') ||
+                        lowerUrl.includes('response_type=code') ||
+                        lowerUrl.includes('client_id=');
+
+        if (!isOAuth) {
+          e.preventDefault();
+          e.stopPropagation();
+          ipcRenderer.sendToHost('ctrl-click-link', fullUrl);
+        }
+      }
+    } catch (err) {}
+  }
+}, true);
+
 // ── STATE & TEMPLATES (Synced from host dashboard) ───────────────────────────
 let smartTemplates = [];
 let currentStoreName = '';

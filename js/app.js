@@ -942,12 +942,8 @@ function setupFocusAndCrashRecoveryLifecycle() {
     const entry = webviewMap[tabId];
     if (entry && entry.webview) {
       if (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed()) {
-        console.warn(`[Focus Recovery] Active tab ${tabId} was dead. Reconstructing...`);
+        console.warn(`[Crash Recovery] Active tab ${tabId} was dead. Reconstructing...`);
         showTab(activeStoreId, tabId);
-      } else if (!entry.hibernated && entry.webview.classList.contains('visible')) {
-        try {
-          entry.webview.focus();
-        } catch (e) {}
       }
     }
   };
@@ -963,8 +959,9 @@ function setupFocusAndCrashRecoveryLifecycle() {
   });
 
   // Listener IPC dari host main.js jika ada perintah buka tab baru
-  if (window.electronAPI && typeof window.electronAPI.onOpenNewTab === 'function') {
-    window.electronAPI.onOpenNewTab((data) => {
+  const registerOpenTabListener = window.electronAPI && (window.electronAPI.onWebviewOpenNewTab || window.electronAPI.onOpenNewTab);
+  if (typeof registerOpenTabListener === 'function') {
+    registerOpenTabListener((data) => {
       if (!data || !data.url) return;
       let targetStore = null;
       if (data.wcId) {

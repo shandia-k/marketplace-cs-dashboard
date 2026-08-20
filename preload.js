@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Crash Guard Lifecycle & Tab Manager
   onWebviewRenderProcessGone: (callback) => ipcRenderer.on('webview-render-process-gone', (_event, value) => callback(value)),
-  onWebviewOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value))
+  onWebviewOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value)),
+  onOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value))
 });
 

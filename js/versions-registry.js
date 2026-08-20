@@ -31,10 +31,70 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.11',
-      badge: 'Versi Terbaru 🚀',
+      version: '1.0.12',
+      badge: 'Versi Terbaru ⚡',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.11 🚀',
+      pillTag: 'v1.0.12 ⚡',
+      releaseDate: 'Agustus 2026',
+      title: 'Tab Address Bar Focus Stability & Universal Link Opener Hotfix',
+      tagline: 'Hotfix darurat: Penyelesaian tuntas masalah fokus berkedip (focus bouncing/flickering) pada textbox address bar tab, pencegahan re-render destruktif DOM, serta perbaikan pembukaan tab baru otomatis saat mengklik nomor resi, invoice, dan link pesanan di chat marketplace.',
+      highlights: [
+        {
+          icon: '🔍',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Address Bar Persistent Shell',
+          desc: 'Arsitektur shell tetap pada tab bar mencegah pembongkaran DOM textbox dan tombol navigasi saat ada pembaruan chat/status.'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Eliminasi Rogue Focus Theft',
+          desc: 'Pembersihan pemanggilan paksa webview.focus() menghilangkan loop perebutan fokus, kedipan textbox, dan tombol yang macet.'
+        },
+        {
+          icon: '📦',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Resi & Invoice Link Opener',
+          desc: 'Penyelarasan IPC handler dan intersepsi klik link memastikan nomor resi, invoice, dan target="_blank" langsung membuka tab baru.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: 'Protected User Input State',
+          desc: 'Proteksi editan aktif mencegah teks URL yang sedang diketik tertimpa oleh URL latar belakang, dilengkapi shortcut tombol Escape.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Stabilisasi Fokus & Arsitektur Persistent Tab Bar',
+          tag: 'Focus & Navigation',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Persistent Shell Architecture: Mengisolasi kontrol navigasi statis (Back, Forward, Refresh, Home) dan textbox URL agar tidak dihancurkan dari DOM setiap kali terjadi event background (update judul, unread badge, sinkronisasi WA).',
+            'Eliminasi Rogue Webview Focus: Menghapus pemanggilan paksa entry.webview.focus() pada lifecycle window focus, menyelesaikan loop perebutan fokus bolak-balik yang menyebabkan textbox berkedip-kedip (flickering) dan tombol dashboard tidak responsif.',
+            'Safe Active Input Guard: Menjaga teks yang sedang diketik CS di address bar agar tidak ditimpa URL lama saat document.activeElement sedang fokus pada textbox.',
+            'Smooth Selection & Escape Handling: Seleksi teks otomatis saat pertama kali fokus tanpa timer berbenturan, serta penambahan tombol Escape untuk membatalkan editan URL seketika.'
+          ]
+        },
+        {
+          category: 'Universal Link Opener & Integrasi Pesanan / Resi',
+          tag: 'Link Interceptor',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Penyelarasan IPC New Tab API: Menyelaraskan registrasi listener onWebviewOpenNewTab dan onOpenNewTab antara preload.js dan app.js sehingga sinyal setWindowOpenHandler diproses seketika.',
+            'Perbaikan Handler Event new-window: Memperbaiki referensi variabel URL pada listener new-window di webview.js sehingga link popup/window.open langsung membuka tab baru di toko terkait.',
+            'In-Page Link Click Interceptor: Menambahkan penangkap klik DOM di webview-preload.js untuk link invoice, nomor resi pengiriman, target="_blank", serta kombinasi Ctrl+Click / Middle-Click.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.11',
+      badge: 'Stabil 🚀',
+      badgeColor: '#64748b',
+      pillTag: 'v1.0.11',
       releaseDate: 'Agustus 2026',
       title: 'Universal OAuth SSO Engine, Smart Password Autofill & reCAPTCHA Compatibility',
       tagline: 'Pembaruan stabilitas: Integrasi otentikasi login Google SSO & Universal OAuth (GitHub, Chatwoot, Biteship, OMS, Microsoft, Apple) dengan partisi native, sistem perekaman & pengisian otomatis akun/password (Smart Autofill Dual-Theme), perbaikan kompatibilitas Google reCAPTCHA di tab web, serta sinkronisasi storage flush berkala.',
