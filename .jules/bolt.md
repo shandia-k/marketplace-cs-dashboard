@@ -1,0 +1,3 @@
+## 2024-05-24 - Debouncing Synchronous I/O in Rapid Event Listeners
+**Learning:** The frontend uses Vanilla JS without a Virtual DOM, and synchronous I/O operations like writing state to `localStorage` via `JSON.stringify` on every keystroke blocks the main thread. When debouncing event listeners that capture UI state, reading the DOM must happen immediately to avoid data loss on context switch, and only the expensive I/O operation (e.g., `saveScratchpadState`) should be debounced.
+**Action:** Always wrap rapid, high-frequency event listeners in `debounce` utilities to prevent severe UI thrashing, but ensure the UI state is captured synchronously before the debounced function is called.
