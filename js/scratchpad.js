@@ -166,12 +166,21 @@ function closeScratchpadTab(tabId) {
 }
 
 // Update current tab content on input
+const debouncedSaveScratchpadState = window.debounce(saveScratchpadState, 300);
+
 spTextarea.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
+    // Read the UI state immediately and update in-memory state
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    // Debounce the expensive I/O operation (localStorage write)
+    debouncedSaveScratchpadState();
   }
+});
+
+// Ensure any pending state is saved immediately before the window unloads
+window.addEventListener('beforeunload', () => {
+  saveScratchpadState();
 });
 
 // Add tab button
