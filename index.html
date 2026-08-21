@@ -223,7 +223,7 @@
               <div class="pwd-input-group">
                 <input type="password" id="reset-new-password" placeholder="Masukkan PIN baru" autocomplete="new-password">
                 <button type="button" class="btn-toggle-pwd" data-target="reset-new-password" title="Lihat PIN" aria-label="Lihat PIN">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
@@ -377,6 +377,31 @@
             <path d="M12 5v14M5 12h14" />
           </svg>
           Tambah Toko Pertama
+        </button>
+      </div>
+
+      <!-- Find In Page (Ctrl+F) Floating Toolbar -->
+      <div class="find-in-page-bar" id="find-in-page-bar" style="display: none;" role="search" aria-label="Cari di halaman">
+        <div class="find-input-wrap">
+          <input type="text" id="find-in-page-input" placeholder="Cari di halaman..." autocomplete="off" spellcheck="false">
+          <span class="find-match-count" id="find-match-count">0/0</span>
+        </div>
+        <div class="find-divider"></div>
+        <button type="button" class="btn-find-nav" id="btn-find-prev" title="Sebelumnya (Shift+Enter)" aria-label="Sebelumnya">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+        </button>
+        <button type="button" class="btn-find-nav" id="btn-find-next" title="Berikutnya (Enter)" aria-label="Berikutnya">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <button type="button" class="btn-find-close" id="btn-find-close" title="Tutup (Esc)" aria-label="Tutup pencarian">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
@@ -640,7 +665,7 @@
               <div class="pwd-input-group">
                 <input type="password" id="acc-current-password" placeholder="Masukkan PIN saat ini" autocomplete="current-password">
                 <button type="button" class="btn-toggle-pwd" data-target="acc-current-password" title="Lihat PIN" aria-label="Lihat PIN">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
@@ -649,7 +674,7 @@
               <div class="pwd-input-group">
                 <input type="password" id="acc-new-password" placeholder="PIN baru" autocomplete="new-password">
                 <button type="button" class="btn-toggle-pwd" data-target="acc-new-password" title="Lihat PIN" aria-label="Lihat PIN">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
@@ -658,7 +683,7 @@
               <div class="pwd-input-group">
                 <input type="password" id="acc-new-password-confirm" placeholder="Ulangi PIN baru" autocomplete="new-password">
                 <button type="button" class="btn-toggle-pwd" data-target="acc-new-password-confirm" title="Lihat PIN" aria-label="Lihat PIN">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
@@ -691,7 +716,7 @@
               <div class="pwd-input-group">
                 <input type="password" id="acc-pin-for-security" placeholder="Masukkan PIN untuk konfirmasi" autocomplete="current-password">
                 <button type="button" class="btn-toggle-pwd" data-target="acc-pin-for-security" title="Lihat PIN" aria-label="Lihat PIN">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
@@ -734,9 +759,9 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 Buka Checklist Tugas 📋
               </button>
-              <button type="button" class="btn-secondary" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
+              <button type="button" class="btn-secondary" id="btn-settings-changelog" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.11 🚀
+                Info Sistem & Changelog v1.0.13 🚀
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -1139,7 +1164,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.11</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.13</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -1248,6 +1273,110 @@
     </div>
   </div>
 
+  <!-- Image QR Code Modal -->
+  <div class="modal-overlay" id="image-qr-modal" style="z-index: 9998; display: none;">
+    <div class="modal" style="max-width: 460px;" role="dialog" aria-labelledby="image-qr-modal-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(223, 22, 131, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-primary, #df1683); font-size: 18px;">
+            📱
+          </div>
+          <div>
+            <h3 id="image-qr-modal-title" style="margin: 0; font-size: 15.5px;">QR Code Gambar</h3>
+            <span style="font-size: 11.5px; color: var(--text-secondary);">Pindai langsung via kamera HP atau bagikan link</span>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-image-qr-close" aria-label="Tutup QR Code">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px;">
+        
+        <!-- QR Code Canvas Display Box -->
+        <div style="background: #ffffff; padding: 14px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: flex; justify-content: center; align-items: center; border: 1px solid rgba(0,0,0,0.08);">
+          <img id="image-qr-preview-img" src="" alt="QR Code" style="width: 220px; height: 220px; display: block; object-fit: contain;">
+        </div>
+
+        <!-- Image URL Box with Copy Button -->
+        <div style="width: 100%; display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-size: 11.5px; color: var(--text-secondary); font-weight: 500;">Tautan Sumber Gambar:</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="image-qr-url-input" readonly style="flex: 1; font-size: 12px; background: var(--bg-input, rgba(0,0,0,0.2)); border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 10px; color: var(--text-primary); outline: none;" value="">
+            <button type="button" class="btn-secondary" id="btn-image-qr-copy-url" style="padding: 7px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Salin Link
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn-secondary" id="btn-image-qr-copy-img" style="padding: 8px; font-size: 12px; justify-content: center; display: flex; align-items: center; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Salin QR Gambar
+          </button>
+          <button type="button" class="btn-primary" id="btn-image-qr-download" style="padding: 8px; font-size: 12px; justify-content: center; display: flex; align-items: center; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Unduh QR (.png)
+          </button>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn-secondary" id="btn-image-qr-done" style="padding: 7px 18px;">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OCR Result Modal -->
+  <div class="modal-overlay" id="ocr-result-modal" style="z-index: 9998; display: none;">
+    <div class="modal" style="max-width: 540px;" role="dialog" aria-labelledby="ocr-result-modal-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center; color: #38bdf8; font-size: 18px;">
+            🔍
+          </div>
+          <div>
+            <h3 id="ocr-result-modal-title" style="margin: 0; font-size: 15.5px;">Hasil Ekstraksi Teks (OCR)</h3>
+            <span id="ocr-result-stats" style="font-size: 11.5px; color: var(--text-secondary);">Teks berhasil disalin ke clipboard</span>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-ocr-result-close" aria-label="Tutup Hasil OCR">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 20px;">
+        
+        <div style="position: relative;">
+          <textarea id="ocr-result-textarea" style="width: 100%; height: 160px; font-size: 13px; font-family: inherit; line-height: 1.5; background: var(--bg-input, rgba(0,0,0,0.25)); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: var(--text-primary); resize: vertical; outline: none;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" id="btn-ocr-copy-again" style="padding: 7px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Salin Ulang Teks
+          </button>
+          <button type="button" class="btn-secondary" id="btn-ocr-send-scratchpad" style="padding: 7px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Tempel ke Scratchpad
+          </button>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn-primary" id="btn-ocr-result-done" style="padding: 7px 18px;">
+          Selesai & Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- UNIFIED FLOATING BOTTOM-RIGHT DOCK -->
   <div class="floating-bottom-dock" id="floating-bottom-dock">
     <!-- 1. Floating CS Toolkit Button & Speed Dial Menu (Anchor Paling Kanan) -->
@@ -1343,7 +1472,7 @@
               <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
               <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
             </div>
-            <span class="cs-toolkit-item-badge">v1.0.11</span>
+            <span class="cs-toolkit-item-badge" id="toolkit-app-version-badge">v1.0.13</span>
           </div>
         </div>
       </div>
@@ -1919,6 +2048,7 @@
   <script src="js/utils.js"></script>
   <script src="js/telemetry.js"></script>
   <script src="js/sidebar.js"></script>
+  <script src="js/feedback.js"></script>
   <script src="js/tabs.js"></script>
   <script src="js/webview.js"></script>
   <script src="js/modal.js"></script>

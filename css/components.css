@@ -1912,4 +1912,176 @@ body:has(.quickreply-drawer.active) .cs-toolkit-fab-container,
   transform: translateX(20px);
 }
 
+/* ==========================================================================
+   FIND IN PAGE (Ctrl+F) FLOATING TOOLBAR
+   ========================================================================== */
+.find-in-page-bar {
+  position: absolute;
+  top: 52px;
+  right: 20px;
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: var(--bg-card, #1e202e);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  animation: slideInDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+[data-theme="light"] .find-in-page-bar {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.find-input-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+  background: var(--bg-input, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  padding: 0 6px 0 8px;
+  height: 30px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+[data-theme="light"] .find-input-wrap {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.find-input-wrap:focus-within {
+  border-color: var(--accent-primary, #df1683);
+  box-shadow: 0 0 0 2px rgba(223, 22, 131, 0.2);
+}
+
+.find-input-wrap.has-no-matches,
+.find-input-wrap.has-no-matches:focus-within {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+}
+
+.find-input-wrap.has-matches,
+.find-input-wrap.has-matches:focus-within {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+#find-in-page-input {
+  width: 170px;
+  min-width: 130px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #ffffff);
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  padding: 0;
+}
+
+[data-theme="light"] #find-in-page-input {
+  color: #0f172a;
+}
+
+#find-in-page-input::placeholder {
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
+
+.find-match-count {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+  margin-left: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.find-match-count.has-matches {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-weight: 700;
+}
+
+.find-match-count.no-matches {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  font-weight: 700;
+}
+
+.find-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color, rgba(255, 255, 255, 0.1));
+  margin: 0 2px;
+}
+
+.btn-find-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-find-nav:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #ffffff);
+}
+
+[data-theme="light"] .btn-find-nav:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-find-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-find-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+
 

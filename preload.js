@@ -66,6 +66,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Crash Guard Lifecycle & Tab Manager
   onWebviewRenderProcessGone: (callback) => ipcRenderer.on('webview-render-process-gone', (_event, value) => callback(value)),
   onWebviewOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value)),
-  onOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value))
+  onOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value)),
+
+  // Image Context Menu & Media Toolset
+  saveImageAs: (imageUrl) => ipcRenderer.invoke('save-image-as', imageUrl),
+  copyImageToClipboard: (imageUrl) => ipcRenderer.invoke('copy-image-to-clipboard', imageUrl),
+  extractTextFromImage: (imageUrl) => ipcRenderer.invoke('extract-text-from-image', imageUrl),
+  generateQrCode: (text, options) => ipcRenderer.invoke('generate-qr-code', text, options),
+  onShowToastMessage: (callback) => ipcRenderer.on('show-toast-message', (_event, value) => callback(value)),
+  onShowImageQrModal: (callback) => ipcRenderer.on('show-image-qr-modal', (_event, value) => callback(value)),
+  onShowOcrResultModal: (callback) => ipcRenderer.on('show-ocr-result-modal', (_event, value) => callback(value)),
+
+  // Find In Page (Ctrl+F) & Debugging
+  findInPage: (params) => ipcRenderer.invoke('find-in-page', params),
+  stopFindInPage: (params) => ipcRenderer.invoke('stop-find-in-page', params),
+  toggleDevTools: () => ipcRenderer.send('toggle-devtools'),
+  onFoundInPageResult: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('found-in-page-result', listener);
+    return () => ipcRenderer.removeListener('found-in-page-result', listener);
+  }
 });
 

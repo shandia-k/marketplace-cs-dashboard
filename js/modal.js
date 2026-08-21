@@ -3,33 +3,8 @@ let customSearchDebounceTimer = null;
 let currentCustomSearchResults = [];
 const customSearchCache = new Map();
 
-const POPULAR_MARKETPLACE_PRESETS_FRONTEND = [
-  { keywords: ['grab', 'grab merchant', 'grabfood', 'grab merchant portal', 'grab seller'], title: 'GrabMerchant Portal', url: 'https://merchant.grab.com/portal/', domain: 'merchant.grab.com', snippet: 'Portal resmi GrabMerchant & GrabFood Indonesia' },
-  { keywords: ['gobiz', 'gofood', 'gojek merchant', 'go food'], title: 'GoBiz Portal Mitra Usaha Gojek', url: 'https://app.gobiz.com/', domain: 'app.gobiz.com', snippet: 'Dashboard resmi GoBiz untuk GoFood & GoPay' },
-  { keywords: ['shopeefood', 'shopee partner', 'shopee merchant'], title: 'Shopee Partner Merchant Portal', url: 'https://partner.shopee.co.id/', domain: 'partner.shopee.co.id', snippet: 'Portal resmi Merchant ShopeeFood & ShopeePay' },
-  { keywords: ['dokterin', 'dokter in', 'dokterin seller', 'dokterin partner'], title: 'DokterIN Partner / Seller', url: 'https://partner.dokterin.co.id/', domain: 'partner.dokterin.co.id', snippet: 'Portal resmi DokterIN Partner & Tenaga Medis' },
-  { keywords: ['zalora', 'zalora seller', 'zalora seller center'], title: 'Zalora Seller Center Indonesia', url: 'https://sellercenter.zalora.co.id/', domain: 'sellercenter.zalora.co.id', snippet: 'Pusat kelola toko resmi Zalora Indonesia' },
-  { keywords: ['evermos', 'evermos reseller', 'evermos login'], title: 'Evermos Reseller & Commerce', url: 'https://evermos.com/login', domain: 'evermos.com', snippet: 'Platform social commerce & reseller Evermos' },
-  { keywords: ['whatsapp', 'wa', 'wa web', 'whatsapp web'], title: 'WhatsApp Web', url: 'https://web.whatsapp.com/', domain: 'web.whatsapp.com', snippet: 'Official WhatsApp Web Messenger' },
-  { keywords: ['telegram', 'tele', 'telegram web'], title: 'Telegram Web', url: 'https://web.telegram.org/', domain: 'web.telegram.org', snippet: 'Official Telegram Web Client' },
-  { keywords: ['shopify', 'shopify admin', 'shopify seller'], title: 'Shopify Admin Portal', url: 'https://accounts.shopify.com/store-login', domain: 'accounts.shopify.com', snippet: 'Shopify Store Admin & Dashboard' },
-  { keywords: ['olx', 'olx indonesia', 'olx seller'], title: 'OLX Indonesia', url: 'https://www.olx.co.id/', domain: 'olx.co.id', snippet: 'Pusat jual beli online OLX Indonesia' },
-  { keywords: ['bhinneka', 'bhinneka merchant'], title: 'Bhinneka Merchant Center', url: 'https://merchant.bhinneka.com/', domain: 'merchant.bhinneka.com', snippet: 'Portal Merchant Partner Bhinneka' },
-  { keywords: ['padi', 'padi umkm', 'padi seller'], title: 'PaDi UMKM Seller', url: 'https://seller.padiumkm.id/', domain: 'seller.padiumkm.id', snippet: 'Pasar Digital UMKM BUMN Seller Center' },
-  { keywords: ['sirclo', 'sirclo store'], title: 'SIRCLO Store Admin', url: 'https://admin.sirclo.com/', domain: 'admin.sirclo.com', snippet: 'Dashboard Admin Sirclo Store' },
-  { keywords: ['jakmall', 'jakmall mitra'], title: 'Jakmall Mitra Dropship', url: 'https://mitra.jakmall.com/', domain: 'mitra.jakmall.com', snippet: 'Pusat Mitra Dropship Jakmall' },
-  { keywords: ['orderonline', 'order online', 'orderonline.id'], title: 'OrderOnline.id Portal', url: 'https://orderonline.id/login/', domain: 'orderonline.id', snippet: 'Platform otomasi order & checkout' },
-  { keywords: ['mengantar', 'mengantar.com', 'mengantar app'], title: 'Mengantar Shipping Dashboard', url: 'https://app.mengantar.com/', domain: 'app.mengantar.com', snippet: 'Platform pengiriman & COD Mengantar' },
-  { keywords: ['kiriminaja', 'kirimin aja'], title: 'KiriminAja Dashboard Ekspedisi', url: 'https://dashboard.kiriminaja.com/', domain: 'dashboard.kiriminaja.com', snippet: 'Dashboard pengiriman multi ekspedisi KiriminAja' },
-  { keywords: ['biteship', 'biteship dashboard'], title: 'Biteship Dashboard', url: 'https://dashboard.biteship.com/', domain: 'dashboard.biteship.com', snippet: 'Layanan API logistik & ekspedisi Biteship' },
-  { keywords: ['instagram', 'ig web', 'instagram direct'], title: 'Instagram Web Inbox', url: 'https://www.instagram.com/direct/inbox/', domain: 'instagram.com', snippet: 'Instagram Direct Messages Web' },
-  { keywords: ['lazada', 'lazada seller center'], title: 'Lazada Seller Center', url: 'https://sellercenter.lazada.co.id/apps/seller/chat', domain: 'sellercenter.lazada.co.id', snippet: 'Lazada Seller Center Chat' },
-  { keywords: ['tiktok', 'tiktok shop', 'tiktok seller'], title: 'TikTok Shop Seller Center', url: 'https://seller-id.tokopedia.com/account/login', domain: 'seller-id.tokopedia.com', snippet: 'TikTok Shop / Tokopedia Seller Center' },
-  { keywords: ['blibli', 'blibli seller'], title: 'Blibli Seller Center', url: 'https://seller.blibli.com/backend/chat', domain: 'seller.blibli.com', snippet: 'Blibli Seller Chat Portal' },
-  { keywords: ['bukalapak', 'bukalapak seller'], title: 'Bukalapak Seller Center', url: 'https://seller.bukalapak.com/message', domain: 'seller.bukalapak.com', snippet: 'Bukalapak Seller Message' },
-  { keywords: ['shopee', 'shopee seller'], title: 'Shopee Seller Centre', url: 'https://seller.shopee.co.id/', domain: 'seller.shopee.co.id', snippet: 'Shopee Seller Centre' },
-  { keywords: ['tokopedia', 'tokopedia seller'], title: 'Tokopedia Seller Center', url: 'https://seller.tokopedia.com/chat', domain: 'seller.tokopedia.com', snippet: 'Tokopedia Seller Chat Portal' }
-];
+const POPULAR_MARKETPLACE_PRESETS_FRONTEND = typeof POPULAR_MARKETPLACE_PRESETS !== 'undefined' ? POPULAR_MARKETPLACE_PRESETS : (window.POPULAR_MARKETPLACE_PRESETS || []);
+
 
 async function searchWebUrlsFallback(query) {
   const q = (query || '').trim();
@@ -1537,3 +1512,158 @@ function showWaSyncEduModalIfNeeded() {
 window.openWaSyncEduModal = openWaSyncEduModal;
 window.closeWaSyncEduModal = closeWaSyncEduModal;
 window.showWaSyncEduModalIfNeeded = showWaSyncEduModalIfNeeded;
+
+// ── Image QR Code Modal ─────────────────────────────────────────────────────
+let currentImageQrData = null;
+
+function showImageQrModal(data) {
+  if (!data || !data.qrDataUrl) return;
+  currentImageQrData = data;
+
+  const modal = document.getElementById('image-qr-modal');
+  const imgEl = document.getElementById('image-qr-preview-img');
+  const inputEl = document.getElementById('image-qr-url-input');
+
+  if (imgEl) imgEl.src = data.qrDataUrl;
+  if (inputEl) inputEl.value = data.imageUrl || '';
+
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+  }
+}
+
+function closeImageQrModal() {
+  const modal = document.getElementById('image-qr-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+}
+
+// Copy URL from QR Modal
+document.getElementById('btn-image-qr-copy-url')?.addEventListener('click', () => {
+  const inputEl = document.getElementById('image-qr-url-input');
+  if (inputEl && inputEl.value) {
+    navigator.clipboard.writeText(inputEl.value).then(() => {
+      showToast('Tautan gambar disalin ke clipboard!', 'success');
+    }).catch(() => {
+      inputEl.select();
+      document.execCommand('copy');
+      showToast('Tautan gambar disalin!', 'success');
+    });
+  }
+});
+
+// Copy QR Code Image to Clipboard
+document.getElementById('btn-image-qr-copy-img')?.addEventListener('click', async () => {
+  if (!currentImageQrData || !currentImageQrData.qrDataUrl) return;
+  try {
+    if (window.electronAPI && typeof window.electronAPI.copyImageToClipboard === 'function') {
+      await window.electronAPI.copyImageToClipboard(currentImageQrData.qrDataUrl);
+    } else {
+      const res = await fetch(currentImageQrData.qrDataUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      showToast('Gambar QR Code berhasil disalin!', 'success');
+    }
+  } catch (err) {
+    showToast('Gagal menyalin gambar QR: ' + err.message, 'error');
+  }
+});
+
+// Download QR Code PNG
+document.getElementById('btn-image-qr-download')?.addEventListener('click', () => {
+  if (!currentImageQrData || !currentImageQrData.qrDataUrl) return;
+  try {
+    const a = document.createElement('a');
+    a.href = currentImageQrData.qrDataUrl;
+    a.download = `qrcode_${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('QR Code berhasil diunduh!', 'success');
+  } catch (err) {
+    showToast('Gagal mengunduh QR Code: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('btn-image-qr-close')?.addEventListener('click', closeImageQrModal);
+document.getElementById('btn-image-qr-done')?.addEventListener('click', closeImageQrModal);
+
+window.showImageQrModal = showImageQrModal;
+window.closeImageQrModal = closeImageQrModal;
+
+// ── OCR Result Modal ────────────────────────────────────────────────────────
+let currentOcrText = '';
+
+function showOcrResultModal(data) {
+  if (!data || !data.text) return;
+  currentOcrText = data.text;
+
+  const modal = document.getElementById('ocr-result-modal');
+  const textarea = document.getElementById('ocr-result-textarea');
+  const statsEl = document.getElementById('ocr-result-stats');
+
+  if (textarea) textarea.value = data.text;
+  if (statsEl) {
+    const chars = data.text.length;
+    const words = data.text.trim().split(/\s+/).filter(Boolean).length;
+    statsEl.textContent = `Tersalin ke clipboard (${chars} karakter, ${words} kata)`;
+  }
+
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+  }
+}
+
+function closeOcrResultModal() {
+  const modal = document.getElementById('ocr-result-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+}
+
+// Copy Again
+document.getElementById('btn-ocr-copy-again')?.addEventListener('click', () => {
+  const textarea = document.getElementById('ocr-result-textarea');
+  const text = textarea ? textarea.value : currentOcrText;
+  if (text) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Teks berhasil disalin ke clipboard!', 'success');
+    }).catch(() => {
+      if (textarea) { textarea.select(); document.execCommand('copy'); }
+      showToast('Teks berhasil disalin!', 'success');
+    });
+  }
+});
+
+// Send to Scratchpad
+document.getElementById('btn-ocr-send-scratchpad')?.addEventListener('click', () => {
+  const textarea = document.getElementById('ocr-result-textarea');
+  const text = textarea ? textarea.value : currentOcrText;
+  if (!text) return;
+
+  try {
+    if (typeof openScratchpad === 'function') {
+      openScratchpad();
+    }
+    const spTextarea = document.getElementById('scratchpad-textarea');
+    if (spTextarea) {
+      spTextarea.value = (spTextarea.value ? spTextarea.value + '\n\n' : '') + text;
+      spTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    showToast('Teks OCR berhasil ditempel ke Scratchpad!', 'success');
+  } catch (err) {
+    showToast('Gagal menempel ke Scratchpad: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('btn-ocr-result-close')?.addEventListener('click', closeOcrResultModal);
+document.getElementById('btn-ocr-result-done')?.addEventListener('click', closeOcrResultModal);
+
+window.showOcrResultModal = showOcrResultModal;
+window.closeOcrResultModal = closeOcrResultModal;
+

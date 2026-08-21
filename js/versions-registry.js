@@ -31,10 +31,91 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.12',
-      badge: 'Versi Terbaru ⚡',
+      version: '1.0.13',
+      badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.12 ⚡',
+      pillTag: 'v1.0.13 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Native Find in Page Engine, OCR Context Menu Suite & Modular Architecture Refactor',
+      tagline: 'Pembaruan besar: Arsitektur pencarian kata instan (Ctrl+F) berbasis single-channel IPC Chromium dengan auto-scroll & navigasi keyboard, menu konteks klik kanan komprehensif (OCR Ekstraksi Teks Gambar Offline, Salin Gambar, Save As), refactoring arsitektur backend modular 8-tier, serta fondasi Anti-Regression Guard Zero-Defect.',
+      highlights: [
+        {
+          icon: '🔍',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Real-time Find in Page (Ctrl+F)',
+          desc: 'Pencarian kata instan di semua webview dengan highlight oranye/kuning real-time, live match badge counter, dan auto-scroll ke posisi kata saat navigasi.'
+        },
+        {
+          icon: '📋',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Right-Click Context Menu & OCR',
+          desc: 'Menu konteks klik kanan lengkap dengan ekstraksi teks dari gambar (OCR offline Bahasa Indonesia & Inggris), simpan/salin gambar, dan copy link.'
+        },
+        {
+          icon: '🏗️',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Modular Service Architecture',
+          desc: 'Refactoring arsitektur backend Electron menjadi modul-modul servis terpisah (Auth, Storage, Session, IPC, Context Menu, System, Updater).'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(139, 92, 246, 0.15)',
+          title: '8-Tier Anti-Regression Guard',
+          desc: 'Rangkaian test otomatis 24 file (Unit, Security RBAC HMAC, Storage Atomic Write, Preload Surface, Regression Catalog) menjamin keandalan zero-defect.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Pencarian Kata Instan (Ctrl+F) & Floating Search Bar',
+          tag: 'Find In Page',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Single-Path IPC Search Execution: Mengubah arsitektur pencarian dari dual-execution (DOM+IPC) menjadi single-path IPC native ke WebContents, mengeliminasi race condition request ID yang membuat mark oranye terkunci.',
+            'Real-time Active Match Highlighting: Mengaktifkan mode findNext: true pada event ketikan user sehingga Chromium langsung mengaktifkan match pertama, menghitung jumlah kata (misal 1/41), dan menggambar highlight secara instan.',
+            'Auto-Scroll & Keyboard Navigation: Tombol Atas/Bawah serta shortcut keyboard (Enter, Shift+Enter, F3, Shift+F3, ArrowUp, ArrowDown) otomatis men-scroll halaman webview ke target teks yang dituju.',
+            'Idempotent Result Binding: Menghubungkan IPC found-in-page-result langsung ke controller UI counter, memastikan badge pencarian selalu sinkron di seluruh tab.'
+          ]
+        },
+        {
+          category: 'Menu Konteks Klik Kanan & Ekstraksi Gambar (OCR)',
+          tag: 'Context Menu & OCR',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'OCR Image-to-Text Offline: Ekstraksi teks dari gambar invoice, resi, atau bukti transfer langsung via menu klik kanan menggunakan engine Tesseract dengan model bahasa Bahasa Indonesia (ind) dan Inggris (eng).',
+            'Image Utility Suite: Fitur Buka Gambar di Tab Baru, Salin Gambar, Salin Alamat Gambar, Simpan Gambar Sebagai..., serta Pembuat QR Code Gambar.',
+            'Editing Shortcuts & Native Actions: Operasi standar teks (Cut, Copy, Paste, Select All) yang responsif di seluruh halaman marketplace.'
+          ]
+        },
+        {
+          category: 'Refactoring Backend Modular & Keamanan',
+          tag: 'Architecture & Security',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Modular Service Separation: Pemisahan main.js menjadi arsitektur modular di src/main/ (config, ipc, auth, storage, session, updater, context-menu).',
+            'Atomic Storage & Backup Auto-Recovery: Penyimpanan data toko dengan mekanisme atomic write (.tmp -> target) dan auto-backup .bak otomatis untuk mencegah korupsi data akibat crash sistem.',
+            'RBAC Integrity & Tamper Guard: Pengamanan role user Super Admin vs CS dengan enkripsi HMAC SHA-256 dan perlindungan terhadap brute force / IDOR.'
+          ]
+        },
+        {
+          category: 'Sistem Pengujian & Anti-Regression Guard',
+          tag: 'Quality Assurance',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Pre-Start Anti-Regression Guard: Script validasi otomatis (scripts/anti-regression-guard.js) yang memverifikasi integritas versi, changelog, dan keamanan sebelum aplikasi dijalankan atau dibuild.',
+            '24-File Test Suite (Level 1–8): Cakupan pengujian menyeluruh mencakup unit logic, security crypto, storage migration, IPC contracts, renderer state, dan regression catalog [REG-001] s/d [REG-008].'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.12',
+      badge: 'Stabil ⚡',
+      badgeColor: '#64748b',
+      pillTag: 'v1.0.12',
       releaseDate: 'Agustus 2026',
       title: 'Tab Address Bar Focus Stability & Universal Link Opener Hotfix',
       tagline: 'Hotfix darurat: Penyelesaian tuntas masalah fokus berkedip (focus bouncing/flickering) pada textbox address bar tab, pencegahan re-render destruktif DOM, serta perbaikan pembukaan tab baru otomatis saat mengklik nomor resi, invoice, dan link pesanan di chat marketplace.',

@@ -130,18 +130,36 @@ function getStorePartition(store, username) {
   return store?.partition || `persist:${store?.id || 'default'}`;
 }
 
+// ── User & CS Profile Helpers ────────────────────────────────────────────────
+function getEffectiveCSName(profile, username) {
+  if (profile && profile.displayName) return profile.displayName;
+  if (username) return username;
+  if (typeof window !== 'undefined') {
+    if (window.currentUserProfile && window.currentUserProfile.displayName) {
+      return window.currentUserProfile.displayName;
+    }
+    if (window.currentUserName) return window.currentUserName;
+    if (window.currentUser) return window.currentUser;
+  }
+  return 'CS';
+}
+if (typeof window !== 'undefined') {
+  window.getEffectiveCSName = getEffectiveCSName;
+}
+
 // ── Unified Template Engine ──────────────────────────────────────────────────
 function resolveTemplateVariables(rawText, options = {}) {
   if (!rawText) return '';
   const opts = typeof options === 'string' ? { clipboard: options } : (options || {});
-  const clip = (opts.clipboard !== undefined ? opts.clipboard : (window.currentClipboardValue || '')).trim();
-  const store = opts.storeName || (window.stores && window.activeStoreId ? window.stores.find(s => s.id === window.activeStoreId)?.name : '') || 'Toko Kami';
+  const clip = (opts.clipboard !== undefined ? opts.clipboard : (typeof window !== 'undefined' ? window.currentClipboardValue : '')) || '';
+  const cleanClip = typeof clip === 'string' ? clip.trim() : '';
+  const store = opts.storeName || (typeof window !== 'undefined' && window.stores && window.activeStoreId ? window.stores.find(s => s.id === window.activeStoreId)?.name : '') || 'Toko Kami';
   const waktu = opts.waktu || getGreetingTime();
-  const csName = opts.csName || (window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS');
+  const csName = opts.csName || getEffectiveCSName(opts.userProfile, opts.username);
   const customer = opts.customer || 'Kak';
 
   return rawText
-    .replace(/\{(clipboard|order|resi)\}/gi, () => clip || '...')
+    .replace(/\{(clipboard|order|resi)\}/gi, () => cleanClip || '...')
     .replace(/\{toko\}/gi, () => store)
     .replace(/\{waktu\}/gi, () => waktu)
     .replace(/\{(cs|nama_cs|nama|cs_name|nama_pengguna|user)\}/gi, () => csName)

@@ -18,21 +18,39 @@ try {
   if (typeof navigator !== 'undefined' && 'webdriver' in navigator) {
     try {
       delete Object.getPrototypeOf(navigator).webdriver;
-    } catch (e) {}
+    } catch (e) { }
   }
-} catch (e) {}
+} catch (e) { }
 
-// Jika berada di halaman autentikasi Google / OAuth, jangan inject listener inline marketplace
-// agar halaman login Google berjalan 100% native tanpa interferensi skrip
-if (typeof window !== 'undefined' && window.location && (window.location.hostname === 'accounts.google.com' || window.location.hostname.endsWith('.google.com'))) {
-  // Hanya pasang handler navigasi & zoom keyboard standar
-  window.addEventListener('keydown', (e) => {
-    if (e.altKey && e.key === 'ArrowLeft') {
-      ipcRenderer.sendToHost('nav-back');
-    } else if (e.altKey && e.key === 'ArrowRight') {
-      ipcRenderer.sendToHost('nav-forward');
-    }
-  }, true);
+// ── KEYBOARD SHORTCUTS & FIND IN PAGE (Ctrl+F) INTERCEPTOR ──────────────────
+window.addEventListener('keydown', (e) => {
+  // Ctrl+F / Cmd+F: Find in Page
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    const sel = (window.getSelection()?.toString() || '').trim();
+    ipcRenderer.sendToHost('open-find-in-page', sel);
+  }
+  // Alt+Left / Alt+Right: Nav Back / Forward
+  else if (e.altKey && e.key === 'ArrowLeft') {
+    ipcRenderer.sendToHost('nav-back');
+  } else if (e.altKey && e.key === 'ArrowRight') {
+    ipcRenderer.sendToHost('nav-forward');
+  }
+  // Ctrl+Plus / Ctrl+Minus / Ctrl+0: Zoom
+  else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+    e.preventDefault();
+    ipcRenderer.sendToHost('zoom-change', 1);
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_')) {
+    e.preventDefault();
+    ipcRenderer.sendToHost('zoom-change', -1);
+  } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+    e.preventDefault();
+    ipcRenderer.sendToHost('zoom-reset');
+  }
+}, true);
+
+// Jika berada di halaman autentikasi Google / OAuth murni, jangan inject listener inline marketplace
+if (typeof window !== 'undefined' && window.location && window.location.hostname === 'accounts.google.com') {
   return;
 }
 
@@ -55,21 +73,21 @@ document.addEventListener('click', (e) => {
       if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) {
         const lowerUrl = fullUrl.toLowerCase();
         const isOAuth = lowerUrl.includes('accounts.google.com') ||
-                        lowerUrl.includes('accounts.youtube.com') ||
-                        lowerUrl.includes('appleid.apple.com') ||
-                        lowerUrl.includes('login.live.com') ||
-                        lowerUrl.includes('login.microsoftonline.com') ||
-                        lowerUrl.includes('facebook.com/dialog/oauth') ||
-                        lowerUrl.includes('facebook.com/login') ||
-                        lowerUrl.includes('github.com/login') ||
-                        lowerUrl.includes('github.com/sessions') ||
-                        lowerUrl.includes('gitlab.com/oauth') ||
-                        lowerUrl.includes('oauth') ||
-                        lowerUrl.includes('/auth/') ||
-                        lowerUrl.includes('/authorize') ||
-                        lowerUrl.includes('/sso/') ||
-                        lowerUrl.includes('response_type=code') ||
-                        lowerUrl.includes('client_id=');
+          lowerUrl.includes('accounts.youtube.com') ||
+          lowerUrl.includes('appleid.apple.com') ||
+          lowerUrl.includes('login.live.com') ||
+          lowerUrl.includes('login.microsoftonline.com') ||
+          lowerUrl.includes('facebook.com/dialog/oauth') ||
+          lowerUrl.includes('facebook.com/login') ||
+          lowerUrl.includes('github.com/login') ||
+          lowerUrl.includes('github.com/sessions') ||
+          lowerUrl.includes('gitlab.com/oauth') ||
+          lowerUrl.includes('oauth') ||
+          lowerUrl.includes('/auth/') ||
+          lowerUrl.includes('/authorize') ||
+          lowerUrl.includes('/sso/') ||
+          lowerUrl.includes('response_type=code') ||
+          lowerUrl.includes('client_id=');
 
         if (!isOAuth) {
           e.preventDefault();
@@ -77,8 +95,46 @@ document.addEventListener('click', (e) => {
           ipcRenderer.sendToHost('ctrl-click-link', fullUrl);
         }
       }
-    } catch (err) {}
+    } catch (err) { }
   }
+}, true);
+
+// ── CONTEXT MENU IMAGE RESOLVER (CSS Backgrounds & Custom Canvas) ────────────
+document.addEventListener('contextmenu', (e) => {
+  try {
+    const target = e.target;
+    if (!target) return;
+
+    let imageUrl = '';
+    if (target.tagName === 'IMG' && (target.currentSrc || target.src)) {
+      imageUrl = target.currentSrc || target.src;
+    } else if (target.tagName === 'CANVAS') {
+      try { imageUrl = target.toDataURL('image/png'); } catch (err) { }
+    } else {
+      const style = window.getComputedStyle(target);
+      const bg = style.backgroundImage;
+      if (bg && bg !== 'none' && bg.startsWith('url(')) {
+        const match = bg.match(/url\(['"]?(.*?)['"]?\)/);
+        if (match && match[1]) {
+          imageUrl = match[1];
+        }
+      }
+      if (!imageUrl) {
+        const parentImg = target.querySelector('img') || target.closest('picture')?.querySelector('img');
+        if (parentImg && (parentImg.currentSrc || parentImg.src)) {
+          imageUrl = parentImg.currentSrc || parentImg.src;
+        }
+      }
+    }
+
+    if (imageUrl) {
+      ipcRenderer.sendToHost('image-context-detected', {
+        srcURL: imageUrl,
+        x: e.clientX,
+        y: e.clientY
+      });
+    }
+  } catch (err) { }
 }, true);
 
 // ── STATE & TEMPLATES (Synced from host dashboard) ───────────────────────────
@@ -126,12 +182,12 @@ ipcRenderer.on('sync-smart-templates', (event, data) => {
 // Minta data terkini dari host dashboard segera setelah webview terpasang
 try {
   ipcRenderer.sendToHost('request-quickreply-data');
-} catch (e) {}
+} catch (e) { }
 
 window.addEventListener('DOMContentLoaded', () => {
   try {
     ipcRenderer.sendToHost('request-quickreply-data');
-  } catch (e) {}
+  } catch (e) { }
 });
 
 // ── REAL-TIME CLIPBOARD AUTO-CAPTURE (COPY & CUT) ─────────────────────────────
@@ -152,7 +208,7 @@ function captureClipboardFromDOM() {
           renderInlineItems();
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }, 40);
 }
 
@@ -214,7 +270,7 @@ function detectActiveCustomerName() {
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }
   return '';
 }
@@ -230,7 +286,8 @@ function getGreetingTime() {
 
 function resolveVariables(rawText, overrideClipboard) {
   if (!rawText) return '';
-  const clip = (overrideClipboard !== undefined ? overrideClipboard : currentClipboardValue).trim();
+  const rawClip = (overrideClipboard !== undefined ? overrideClipboard : currentClipboardValue) || '';
+  const clip = typeof rawClip === 'string' ? rawClip.trim() : '';
   const store = currentStoreName || 'Toko Kami';
   const waktu = getGreetingTime();
   const cs = currentCsName || 'CS';
@@ -292,7 +349,7 @@ function highlightVariablesHtml(rawText, overrideClipboard, query) {
       const cleanQ = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`(${cleanQ})`, 'gi');
       escaped = escaped.replace(regex, '<mark class="cs-query-highlight">$1</mark>');
-    } catch (e) {}
+    } catch (e) { }
   }
 
   escaped = escaped.replace(/___CS_CLIP_VAR___/g, clipPill);
@@ -357,7 +414,7 @@ function findChatInput() {
           return el;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }
   return null;
 }
@@ -856,11 +913,11 @@ function renderInlineItems() {
   }
 
   const categoryLabels = {
-    greeting:  { label: 'Sapaan', class: 'cs-badge-greeting' },
-    order:     { label: 'Pesanan & Resi', class: 'cs-badge-order' },
+    greeting: { label: 'Sapaan', class: 'cs-badge-greeting' },
+    order: { label: 'Pesanan & Resi', class: 'cs-badge-order' },
     complaint: { label: 'Komplain', class: 'cs-badge-complaint' },
-    product:   { label: 'Produk', class: 'cs-badge-product' },
-    custom:    { label: 'Kustom', class: 'cs-badge-custom' }
+    product: { label: 'Produk', class: 'cs-badge-product' },
+    custom: { label: 'Kustom', class: 'cs-badge-custom' }
   };
 
   listContainer.innerHTML = inlineFilteredTemplates.map((t, idx) => {
@@ -873,7 +930,7 @@ function renderInlineItems() {
         const cleanQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`(${cleanQ})`, 'gi');
         titleHtml = titleHtml.replace(regex, '<mark class="cs-query-highlight">$1</mark>');
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const previewHtml = highlightVariablesHtml(t.content, undefined, q);
@@ -921,7 +978,7 @@ function selectInlineTemplate(index) {
     insertTextIntoTarget(activeTargetInput, resolved, inlineQuery);
     try {
       ipcRenderer.sendToHost('quick-reply-used');
-    } catch (e) {}
+    } catch (e) { }
     closeInlineSmartQuickReply();
   } finally {
     setTimeout(() => {
@@ -958,7 +1015,7 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
     target.focus();
     if (replaceQuery && target.innerText && target.innerText.endsWith(replaceQuery)) {
       for (let i = 0; i < replaceQuery.length; i++) {
-        try { document.execCommand('delete', false, null); } catch (e) {}
+        try { document.execCommand('delete', false, null); } catch (e) { }
       }
     }
 
@@ -988,7 +1045,7 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
       try {
         target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
         target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-      } catch (e) {}
+      } catch (e) { }
     }
   } else if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
     target.focus();
@@ -1007,7 +1064,7 @@ function insertTextIntoTarget(target, text, replaceQuery = '') {
     try {
       target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
       target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -1023,7 +1080,7 @@ async function showInlineSmartQuickReply(target) {
         ipcRenderer.sendToHost('clipboard-copied', clip);
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // Request latest data/clipboard/theme/history from host
   ipcRenderer.sendToHost('request-quickreply-data');
@@ -1403,25 +1460,25 @@ function parseUnreadFromDOM() {
       });
       if (sum > 0) return sum;
     }
-  } catch (e) {}
+  } catch (e) { }
   return 0;
 }
 
 function checkUnread() {
   // 1. Cek DOM terlebih dahulu untuk akurasi jumlah pesan total (mendukung akumulasi multi-pesan WA & baris Gmail)
   let count = parseUnreadFromDOM();
-  
+
   // 2. Jika DOM belum memuat badge, baru periksa title sebagai fallback
   if (count === 0) {
     const titleCount = parseUnreadFromTitle(document.title);
     if (titleCount > 0) count = titleCount;
   }
-  
+
   if (count !== lastSentUnread) {
     lastSentUnread = count;
     try {
       ipcRenderer.sendToHost('unread-count', count);
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -1475,7 +1532,7 @@ function checkSyncStatus() {
 
     // 2. Cari progress bar sinkronisasi di mana saja di dalam halaman WhatsApp
     const syncProgressEl = document.querySelector('progress, [role="progressbar"], [data-testid*="progress"], [data-testid="sync-progress"], [data-testid*="sync"]');
-    
+
     // 3. Periksa seluruh elemen banner status, alert, drawer, dan modal popups
     const alertBanners = document.querySelectorAll('[role="status"], [role="alert"], [data-testid*="sync"], [data-testid*="banner"], [data-testid*="drawer"], [data-animate-modal-popup], [data-animate-drawer-left]');
     let bannerText = '';
@@ -1513,8 +1570,8 @@ function checkSyncStatus() {
       }
       if (percent === null && bannerText) {
         const match = bannerText.match(/(?:mengunduh|downloading|organizing|memuat|sinkronisasi|sync|messages|obrolan|chat)[^\n\r%]{0,40}?(\d{1,3})\s*%/i) ||
-                      bannerText.match(/(\d{1,3})\s*%\s*(?:selesai|completed|mengunduh|downloading|sinkronisasi)/i) ||
-                      bannerText.match(/(\d{1,3})\s*%/);
+          bannerText.match(/(\d{1,3})\s*%\s*(?:selesai|completed|mengunduh|downloading|sinkronisasi)/i) ||
+          bannerText.match(/(\d{1,3})\s*%/);
         if (match) {
           const p = parseInt(match[1], 10);
           if (p >= 0 && p <= 100) percent = p;
@@ -1532,7 +1589,7 @@ function checkSyncStatus() {
             completed: true,
             type: 'whatsapp'
           });
-        } catch (e) {}
+        } catch (e) { }
         return;
       }
 
@@ -1545,7 +1602,7 @@ function checkSyncStatus() {
             progress: percent,
             type: 'whatsapp'
           });
-        } catch (e) {}
+        } catch (e) { }
       }
     } else {
       // Banner tidak terlihat di layar saat ini (misal user beralih dari menu Profil ke menu Chat list).
@@ -1562,11 +1619,11 @@ function checkSyncStatus() {
               completed: true,
               type: 'whatsapp'
             });
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 setInterval(checkSyncStatus, 2500);
@@ -1625,7 +1682,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
     if (!value || typeof value !== 'string') return;
     const clean = value.trim();
     if (clean.length < 3 || clean.length > 100) return;
-    
+
     try {
       let entries = getStoredEntries();
       const existing = entries.find(e => e && e.value && e.value.toLowerCase() === clean.toLowerCase());
@@ -1641,7 +1698,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
       if (entries.length > 10) entries = entries.slice(0, 10);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
       localStorage.setItem(REMEMBER_KEY, JSON.stringify({ user: clean, pass: encPass }));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function deleteEntry(valueToDelete) {
@@ -1649,12 +1706,12 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
       let entries = getStoredEntries();
       entries = entries.filter(e => e && e.value !== valueToDelete);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      
+
       const rawRem = localStorage.getItem(REMEMBER_KEY);
       if (rawRem && rawRem.includes(valueToDelete)) {
         localStorage.removeItem(REMEMBER_KEY);
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Deteksi apakah input merupakan field username/email/login
@@ -1779,9 +1836,9 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
             </div>
             <div style="display:flex; flex-direction:column; overflow:hidden; gap:1px;">
               <span style="color:var(--af-text); font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis;">${escapeLocalHtml(item.value)}</span>
-              ${hasPass 
-                ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#10b981; font-size:10.5px; font-weight:500;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>•••••••• Password Tersimpan</span>' 
-                : '<span style="color:var(--af-muted); font-size:10.5px;">Username Saja</span>'}
+              ${hasPass
+          ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#10b981; font-size:10.5px; font-weight:500;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>•••••••• Password Tersimpan</span>'
+          : '<span style="color:var(--af-muted); font-size:10.5px;">Username Saja</span>'}
             </div>
           </div>
           <button type="button" class="__cs_autofill_del" data-del="${escapeLocalHtml(item.value)}" title="Hapus dari riwayat akun tersimpan" style="background:transparent; border:none; color:var(--af-muted); font-size:14px; padding:4px 8px; cursor:pointer; border-radius:6px; margin-left:8px; line-height:1; transition:all 0.15s;">✕</button>
@@ -1832,7 +1889,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
     inputEl.value = val;
     inputEl.dispatchEvent(new Event('input', { bubbles: true }));
     inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-    
+
     // Jika ada password tersimpan, otomatis isi ke input password
     try {
       const form = inputEl.form || inputEl.closest('form') || document;
@@ -1849,7 +1906,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
         passInput.focus();
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
     inputEl.focus();
   }
 
@@ -1928,7 +1985,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
       if (foundUser) {
         saveEntry(foundUser, foundType, foundPass);
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   document.addEventListener('submit', (e) => {
@@ -1977,7 +2034,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
           break;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   if (document.readyState === 'loading') {

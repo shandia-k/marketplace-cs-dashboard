@@ -1,5 +1,9 @@
-// ── Activate Store (Switch Panel) ─────────────────────────────────────────────
 function activateStore(storeId) {
+  // Tutup & isolasi Find in Page agar tidak bocor saat berpindah toko
+  if (typeof closeFindInPage === 'function') {
+    closeFindInPage({ skipFocus: true });
+  }
+
   // Hide all currently visible webviews
   Object.keys(webviewMap).forEach(tabId => {
     webviewMap[tabId].webview?.classList.remove('visible');
@@ -476,11 +480,41 @@ window.navigateFromAddressBar = navigateFromAddressBar;
 
 // ── Helper: ambil webview aktif saat ini ──────────────────────────────────────
 function getActiveWebview() {
-  if (!activeStoreId) return null;
-  const tabId = activeTabMap[activeStoreId];
-  if (!tabId) return null;
-  return webviewMap[tabId]?.webview || null;
+  if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
+    const tabId = activeTabMap[activeStoreId];
+    const entry = webviewMap[tabId];
+    if (entry && entry.webview && entry.webview.isConnected) {
+      return entry.webview;
+    }
+  }
+  const visibleWv = document.querySelector('webview.store-webview.visible') || document.querySelector('webview.visible');
+  return visibleWv || null;
 }
+
+function getActiveWcId() {
+  const wv = getActiveWebview();
+  if (wv && typeof wv.getWebContentsId === 'function') {
+    try {
+      const liveId = wv.getWebContentsId();
+      if (typeof liveId === 'number' && liveId > 0) {
+        if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
+          const tabId = activeTabMap[activeStoreId];
+          if (webviewMap[tabId]) webviewMap[tabId].wcId = liveId;
+        }
+        return liveId;
+      }
+    } catch (e) { }
+  }
+
+  if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
+    const tabId = activeTabMap[activeStoreId];
+    const entry = webviewMap[tabId];
+    if (entry && entry.wcId) return entry.wcId;
+  }
+  return null;
+}
+window.getActiveWcId = getActiveWcId;
+window.getActiveWebview = getActiveWebview;
 
 // ── Update state tombol back/forward ─────────────────────────────────────────
 function updateNavButtonStates() {
@@ -576,6 +610,11 @@ function closeTab(storeId, tabId) {
 }
 
 function switchTab(storeId, tabId) {
+  // Tutup & isolasi Find in Page saat berpindah tab
+  if (activeTabMap[storeId] !== tabId && typeof closeFindInPage === 'function') {
+    closeFindInPage({ skipFocus: true });
+  }
+
   // Hide previous active webview (skip if hibernated)
   const prevTabId = activeTabMap[storeId];
   if (prevTabId && webviewMap[prevTabId] && !webviewMap[prevTabId].hibernated) {

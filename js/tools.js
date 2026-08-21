@@ -664,6 +664,263 @@ function bindToolsEvents() {
   document.getElementById('modal-caseconv-overlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'modal-caseconv-overlay') closeCaseConvModal();
   });
+
+  // 5. Find in Page (Ctrl+F) Event Bindings
+  initFindInPageEvents();
+}
+
+// ── FIND IN PAGE (Ctrl+F) FLOATING TOOLBAR CONTROLLER ────────────────────────
+let findInPageActiveQuery = '';
+let currentFindRequestId = null;
+let currentMatchOrdinal = 0;
+let totalMatchesCount = 0;
+let findDebounceTimer = null;
+
+function formatMatchCounter(activeMatch, totalMatches, query = '') {
+  if (!query || query.trim() === '') {
+    return { text: '0/0', className: '', isNoMatches: false, isHasMatches: false };
+  }
+  const active = typeof activeMatch === 'number' ? activeMatch : 0;
+  const total = typeof totalMatches === 'number' ? totalMatches : 0;
+
+  if (total === 0) {
+    return { text: '0/0', className: 'no-matches', isNoMatches: true, isHasMatches: false };
+  }
+  return { text: `${active}/${total}`, className: 'has-matches', isNoMatches: false, isHasMatches: true };
+}
+
+function updateFindCounter(activeMatch, totalMatches) {
+  const countEl = document.getElementById('find-match-count');
+  const inputEl = document.getElementById('find-in-page-input');
+  const wrapEl = inputEl?.closest('.find-input-wrap');
+  if (!countEl) return;
+
+  const query = inputEl ? inputEl.value : findInPageActiveQuery;
+  const { text, className, isNoMatches, isHasMatches } = formatMatchCounter(activeMatch, totalMatches, query);
+
+  countEl.textContent = text;
+  countEl.className = 'find-match-count ' + className;
+
+  if (wrapEl) {
+    wrapEl.classList.toggle('has-no-matches', isNoMatches);
+    wrapEl.classList.toggle('has-matches', isHasMatches);
+  }
+}
+
+function openFindInPage(initialText = '') {
+  const bar = document.getElementById('find-in-page-bar');
+  const input = document.getElementById('find-in-page-input');
+  if (!bar || !input) return;
+
+  const wv = typeof getActiveWebview === 'function' ? getActiveWebview() : null;
+  if (!wv) return; // Hanya buka toolbar jika ada webview aktif
+
+  bar.style.display = 'flex';
+
+  if (typeof initialText === 'string' && initialText.trim().length > 0) {
+    input.value = initialText.trim();
+  } else {
+    input.value = '';
+  }
+
+  input.focus();
+  input.select();
+
+  if (input.value.trim().length > 0) {
+    clearTimeout(findDebounceTimer);
+    findInActiveWebview(true, true);
+  } else {
+    updateFindCounter(0, 0);
+  }
+}
+
+function closeFindInPage(options = {}) {
+  const bar = document.getElementById('find-in-page-bar');
+  if (bar) bar.style.display = 'none';
+
+  const input = document.getElementById('find-in-page-input');
+  if (input) input.value = '';
+
+  const wv = typeof getActiveWebview === 'function' ? getActiveWebview() : document.querySelector('webview.store-webview.visible');
+  let wcId = typeof getActiveWcId === 'function' ? getActiveWcId() : null;
+
+  if (!wcId && wv && typeof wv.getWebContentsId === 'function') {
+    try { wcId = wv.getWebContentsId(); } catch (e) { }
+  }
+
+  // Bersihkan via IPC WebContents (prioritas — lebih reliable)
+  if (window.electronAPI?.stopFindInPage && wcId) {
+    try {
+      window.electronAPI.stopFindInPage({ wcId, action: 'clearSelection' });
+    } catch (e) { }
+  } else if (wv && typeof wv.stopFindInPage === 'function') {
+    try {
+      wv.stopFindInPage('clearSelection');
+    } catch (e) { }
+  }
+
+  // Bersihkan juga seluruh webview di background jika ada sesi pencarian yang tertinggal
+  if (typeof webviewMap === 'object' && webviewMap !== null) {
+    Object.values(webviewMap).forEach(entry => {
+      if (entry?.wcId && window.electronAPI?.stopFindInPage) {
+        try { window.electronAPI.stopFindInPage({ wcId: entry.wcId, action: 'clearSelection' }); } catch (e) { }
+      } else if (entry?.webview && typeof entry.webview.stopFindInPage === 'function') {
+        try { entry.webview.stopFindInPage('clearSelection'); } catch (e) { }
+      }
+    });
+  }
+
+  findInPageActiveQuery = '';
+  currentFindRequestId = null;
+  currentMatchOrdinal = 0;
+  totalMatchesCount = 0;
+  updateFindCounter(0, 0);
+
+  if (!options.skipFocus && wv && typeof wv.focus === 'function') {
+    try { wv.focus(); } catch (e) { }
+  }
+}
+
+async function findInActiveWebview(forward = true, findNext = true) {
+  const input = document.getElementById('find-in-page-input');
+  const rawQuery = input ? input.value : '';
+  const query = rawQuery.trim();
+  const wv = typeof getActiveWebview === 'function' ? getActiveWebview() : document.querySelector('webview.store-webview.visible');
+  let wcId = typeof getActiveWcId === 'function' ? getActiveWcId() : null;
+
+  if (!wcId && wv && typeof wv.getWebContentsId === 'function') {
+    try { wcId = wv.getWebContentsId(); } catch (e) { }
+  }
+
+  if (!wv && !wcId) {
+    return;
+  }
+
+  // Jika input kosong, bersihkan seleksi di layar
+  if (!query) {
+    if (window.electronAPI?.stopFindInPage && wcId) {
+      try { await window.electronAPI.stopFindInPage({ wcId, action: 'clearSelection' }); } catch (e) { }
+    } else if (wv && typeof wv.stopFindInPage === 'function') {
+      try { wv.stopFindInPage('clearSelection'); } catch (e) { }
+    }
+    findInPageActiveQuery = '';
+    currentFindRequestId = null;
+    currentMatchOrdinal = 0;
+    totalMatchesCount = 0;
+    updateFindCounter(0, 0);
+    return;
+  }
+
+  if (query !== findInPageActiveQuery) {
+    currentMatchOrdinal = 0;
+    totalMatchesCount = 0;
+  }
+
+  findInPageActiveQuery = query;
+
+  // Single-path execution: IPC (langsung ke WebContents di main process)
+  if (window.electronAPI?.findInPage && wcId) {
+    try {
+      const reqId = await window.electronAPI.findInPage({
+        wcId,
+        text: query,
+        forward: Boolean(forward),
+        findNext: Boolean(findNext),
+        matchCase: false
+      });
+      if (typeof reqId === 'number') {
+        currentFindRequestId = reqId;
+      }
+    } catch (err) {
+      console.warn('[FindInPage:IPC] Error finding text:', err);
+    }
+  } else if (wv && typeof wv.findInPage === 'function') {
+    try {
+      const reqId = wv.findInPage(query, {
+        forward: Boolean(forward),
+        findNext: Boolean(findNext),
+        matchCase: false
+      });
+      if (typeof reqId === 'number') {
+        currentFindRequestId = reqId;
+      }
+    } catch (e) {
+      console.error('[FindInPage:DOM] Error wv.findInPage:', e);
+    }
+  }
+}
+
+function handleFoundInPageResult(targetIdentifier, result) {
+  if (!result) return;
+
+  if (typeof result.matches === 'number') {
+    totalMatchesCount = result.matches;
+  }
+
+  if (typeof result.activeMatchOrdinal === 'number') {
+    if (result.activeMatchOrdinal > 0) {
+      currentMatchOrdinal = result.activeMatchOrdinal;
+    } else if (totalMatchesCount > 0 && currentMatchOrdinal === 0) {
+      currentMatchOrdinal = 1;
+    } else if (totalMatchesCount === 0) {
+      currentMatchOrdinal = 0;
+    }
+  }
+
+  updateFindCounter(currentMatchOrdinal, totalMatchesCount);
+}
+
+function initFindInPageEvents() {
+  const input = document.getElementById('find-in-page-input');
+  const btnPrev = document.getElementById('btn-find-prev');
+  const btnNext = document.getElementById('btn-find-next');
+  const btnClose = document.getElementById('btn-find-close');
+
+  if (input) {
+    input.addEventListener('input', () => {
+      clearTimeout(findDebounceTimer);
+      findDebounceTimer = setTimeout(() => {
+        findInActiveWebview(true, true);
+      }, 150);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === 'F3') {
+        e.preventDefault();
+        clearTimeout(findDebounceTimer);
+        if (e.shiftKey) {
+          findInActiveWebview(false, true);
+        } else {
+          findInActiveWebview(true, true);
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        clearTimeout(findDebounceTimer);
+        findInActiveWebview(true, true);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        clearTimeout(findDebounceTimer);
+        findInActiveWebview(false, true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeFindInPage();
+      }
+    });
+  }
+
+  btnPrev?.addEventListener('click', () => {
+    clearTimeout(findDebounceTimer);
+    findInActiveWebview(false, true);
+  });
+
+  btnNext?.addEventListener('click', () => {
+    clearTimeout(findDebounceTimer);
+    findInActiveWebview(true, true);
+  });
+
+  btnClose?.addEventListener('click', () => {
+    closeFindInPage();
+  });
 }
 
 // Expose globals
@@ -680,3 +937,9 @@ window.transformCase              = transformCase;
 window.toggleToolkitMenu          = toggleToolkitMenu;
 window.closeToolkitMenu           = closeToolkitMenu;
 window.bindToolsEvents            = bindToolsEvents;
+window.openFindInPage             = openFindInPage;
+window.closeFindInPage            = closeFindInPage;
+window.findInActiveWebview        = findInActiveWebview;
+window.handleFoundInPageResult    = handleFoundInPageResult;
+window.formatMatchCounter         = formatMatchCounter;
+window.updateFindCounter          = updateFindCounter;

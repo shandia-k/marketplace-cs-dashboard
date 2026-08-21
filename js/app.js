@@ -918,6 +918,9 @@ window.initApp = async function() {
     startStaggeredBackgroundPing();
   }
 
+  // Sinkronisasi otomatis label versi aplikasi dari VERSIONS_REGISTRY
+  syncAppVersionLabels();
+
   // Inisialisasi Onboarding & Interactive Tour Guide (v1.0.6)
   if (window.OnboardingManager && typeof window.OnboardingManager.init === 'function') {
     window.OnboardingManager.init();
@@ -926,6 +929,36 @@ window.initApp = async function() {
   // Setup Lifecycle Pemulihan Fokus, Visibilitas, & Anti-Blank Crash Guard (v1.0.10)
   setupFocusAndCrashRecoveryLifecycle();
 };
+
+// ── Sinkronisasi Dinamis Label Versi Aplikasi dari VERSIONS_REGISTRY ─────────
+function syncAppVersionLabels() {
+  const latest = window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function'
+    ? window.VERSIONS_REGISTRY.getLatestVersion()
+    : null;
+  const ver = latest ? latest.version : '1.0.13';
+
+  // 1. Tombol Changelog di Settings Modal
+  const changelogBtn = document.getElementById('btn-settings-changelog');
+  if (changelogBtn) {
+    changelogBtn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      Info Sistem & Changelog v${ver} 🚀
+    `;
+  }
+
+  // 2. Badge versi di Modal Updater
+  const updaterVer = document.getElementById('updater-current-version');
+  if (updaterVer) {
+    updaterVer.textContent = `Versi saat ini: v${ver}`;
+  }
+
+  // 3. Badge versi di CS Toolkit Drawer
+  const toolkitBadge = document.getElementById('toolkit-app-version-badge') || document.querySelector('.cs-toolkit-item-badge');
+  if (toolkitBadge) {
+    toolkitBadge.textContent = `v${ver}`;
+  }
+}
+window.syncAppVersionLabels = syncAppVersionLabels;
 
 // ── Focus, Visibility & Crash Recovery Lifecycle (Anti-Blank Guard) ─────────
 let isRecoveryLifecycleBound = false;
@@ -979,6 +1012,42 @@ function setupFocusAndCrashRecoveryLifecycle() {
     });
   }
 
+  // Listener IPC Toast Notification dari Main Process
+  if (window.electronAPI && typeof window.electronAPI.onShowToastMessage === 'function') {
+    window.electronAPI.onShowToastMessage((data) => {
+      if (data && data.message && typeof showToast === 'function') {
+        showToast(data.message, data.type || '');
+      }
+    });
+  }
+
+  // Listener IPC Hasil Find in Page (Ctrl+F) dari WebContents Main Process
+  if (window.electronAPI && typeof window.electronAPI.onFoundInPageResult === 'function') {
+    window.electronAPI.onFoundInPageResult((data) => {
+      if (data && data.result && typeof handleFoundInPageResult === 'function') {
+        handleFoundInPageResult(data.wcId, data.result);
+      }
+    });
+  }
+
+  // Listener IPC Modal QR Code Gambar dari Main Process
+  if (window.electronAPI && typeof window.electronAPI.onShowImageQrModal === 'function') {
+    window.electronAPI.onShowImageQrModal((data) => {
+      if (data && typeof showImageQrModal === 'function') {
+        showImageQrModal(data);
+      }
+    });
+  }
+
+  // Listener IPC Modal Hasil OCR Teks Gambar dari Main Process
+  if (window.electronAPI && typeof window.electronAPI.onShowOcrResultModal === 'function') {
+    window.electronAPI.onShowOcrResultModal((data) => {
+      if (data && typeof showOcrResultModal === 'function') {
+        showOcrResultModal(data);
+      }
+    });
+  }
+
   // Keyboard shortcut Ctrl+Shift+R atau Ctrl+F5 untuk memulihkan (hard recreate) tab aktif
   // Keyboard shortcut Ctrl+R atau F5 untuk memuat ulang (soft reload) tab aktif
   window.addEventListener('keydown', (e) => {
@@ -986,6 +1055,12 @@ function setupFocusAndCrashRecoveryLifecycle() {
       e.preventDefault();
       if (typeof forceRecreateActiveTab === 'function') {
         forceRecreateActiveTab();
+      }
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      const sel = (window.getSelection()?.toString() || '').trim();
+      if (typeof openFindInPage === 'function') {
+        openFindInPage(sel);
       }
     } else if ((e.ctrlKey && (e.key === 'R' || e.key === 'r')) || e.key === 'F5') {
       const activeWv = typeof getActiveWebview === 'function' ? getActiveWebview() : null;
@@ -997,6 +1072,11 @@ function setupFocusAndCrashRecoveryLifecycle() {
         } catch (err) {
           activeWv.src = activeWv.src;
         }
+      }
+    } else if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i'))) {
+      e.preventDefault();
+      if (window.electronAPI && typeof window.electronAPI.toggleDevTools === 'function') {
+        window.electronAPI.toggleDevTools();
       }
     }
   });

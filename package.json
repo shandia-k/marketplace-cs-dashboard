@@ -1,12 +1,24 @@
 {
   "name": "marketplace-cs-dashboard",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Dashboard CS Multi-Marketplace - Kelola semua akun chat marketplace dalam 1 jendela",
   "main": "main.js",
   "scripts": {
-    "start": "node scripts/validate-version.js && electron .",
+    "start": "node scripts/anti-regression-guard.js && electron .",
+    "test": "node tests/run-all-tests.js",
+    "test:unit": "node tests/run-all-tests.js --unit",
+    "test:security": "node tests/run-all-tests.js --security",
+    "test:storage": "node tests/run-all-tests.js --storage",
+    "test:ipc": "node tests/run-all-tests.js --ipc",
+    "test:renderer": "node tests/run-all-tests.js --renderer",
+    "test:webview": "node tests/run-all-tests.js --webview",
+    "test:regression": "node tests/run-all-tests.js --regression",
+    "test:smoke": "node tests/run-all-tests.js --smoke",
+    "test:e2e": "playwright test",
+    "test:all": "node tests/run-all-tests.js && playwright test",
+    "guard": "node scripts/anti-regression-guard.js",
     "validate": "node scripts/validate-version.js",
-    "build": "node scripts/validate-version.js && electron-builder --win --x64"
+    "build": "node scripts/anti-regression-guard.js && electron-builder --win --x64"
   },
   "keywords": [
     "marketplace",
@@ -19,6 +31,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "electron": "^30.0.0",
     "electron-builder": "^24.0.0"
   },
@@ -46,6 +59,8 @@
     "docx": "^9.7.1",
     "electron-updater": "^6.8.9",
     "mammoth": "^1.12.0",
+    "qrcode": "^1.5.4",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   }
 }

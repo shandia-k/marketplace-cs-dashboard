@@ -20,7 +20,7 @@ function hibernateTab(storeId, tabId, forceHard = false) {
     delete wvEntry.webview;
     delete wvEntry.loading;
   }
-  
+
   wvEntry.hibernated = true;
 
   // Update UI
@@ -54,7 +54,7 @@ async function checkAndHibernateIfNeeded() {
 
     // Hibernate yang paling lama tidak diakses (LRU)
     candidates.sort((a, b) => a.lastSeen - b.lastSeen);
-    const oldest  = candidates[0];
+    const oldest = candidates[0];
     const storeId = Object.keys(storeTabs).find(sid =>
       storeTabs[sid].some(t => t.id === oldest.tabId)
     );
@@ -156,7 +156,7 @@ window.isValidTopNavigationUrl = isValidTopNavigationUrl;
 function createWebview(store, tab) {
   // Build absolute path to webview-preload.js (works dev & packaged)
   const preloadPath = appPath.replace(/\\/g, '/');
-  const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
+  const preloadUrl = `file:///${preloadPath}/webview-preload.js`;
 
   // Auto-Healing URL: Pastikan tab.url adalah URL halaman utama yang sah dan bukan URL traffic error / 404
   const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
@@ -192,8 +192,9 @@ function createWebview(store, tab) {
   const cleanUa = isGoogleAuthUrl
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+  const isTabActive = (typeof activeStoreId !== 'undefined' && activeStoreId === store.id && activeTabMap[store.id] === tab.id);
   const wv = document.createElement('webview');
-  wv.className = 'store-webview visible';
+  wv.className = isTabActive ? 'store-webview visible' : 'store-webview';
   wv.setAttribute('src', tab.url);
   wv.setAttribute('partition', actualPartition);
   wv.setAttribute('preload', preloadUrl);
@@ -240,6 +241,16 @@ function createWebview(store, tab) {
     } else if (event.channel === 'open-quick-reply') {
       if (typeof openQuickReplyDrawer === 'function') {
         openQuickReplyDrawer();
+      }
+
+    } else if (event.channel === 'open-find-in-page') {
+      if (typeof openFindInPage === 'function') {
+        openFindInPage(event.args[0]);
+      }
+
+    } else if (event.channel === 'close-find-in-page') {
+      if (typeof closeFindInPage === 'function') {
+        closeFindInPage();
       }
 
     } else if (event.channel === 'switch-store-index') {
@@ -361,21 +372,21 @@ function createWebview(store, tab) {
 
     const lowerUrl = rawUrl.toLowerCase();
     const isOAuth = lowerUrl.includes('accounts.google.com') ||
-                    lowerUrl.includes('accounts.youtube.com') ||
-                    lowerUrl.includes('appleid.apple.com') ||
-                    lowerUrl.includes('login.live.com') ||
-                    lowerUrl.includes('login.microsoftonline.com') ||
-                    lowerUrl.includes('facebook.com/dialog/oauth') ||
-                    lowerUrl.includes('facebook.com/login') ||
-                    lowerUrl.includes('github.com/login') ||
-                    lowerUrl.includes('github.com/sessions') ||
-                    lowerUrl.includes('gitlab.com/oauth') ||
-                    lowerUrl.includes('oauth') ||
-                    lowerUrl.includes('/auth/') ||
-                    lowerUrl.includes('/authorize') ||
-                    lowerUrl.includes('/sso/') ||
-                    lowerUrl.includes('response_type=code') ||
-                    lowerUrl.includes('client_id=');
+      lowerUrl.includes('accounts.youtube.com') ||
+      lowerUrl.includes('appleid.apple.com') ||
+      lowerUrl.includes('login.live.com') ||
+      lowerUrl.includes('login.microsoftonline.com') ||
+      lowerUrl.includes('facebook.com/dialog/oauth') ||
+      lowerUrl.includes('facebook.com/login') ||
+      lowerUrl.includes('github.com/login') ||
+      lowerUrl.includes('github.com/sessions') ||
+      lowerUrl.includes('gitlab.com/oauth') ||
+      lowerUrl.includes('oauth') ||
+      lowerUrl.includes('/auth/') ||
+      lowerUrl.includes('/authorize') ||
+      lowerUrl.includes('/sso/') ||
+      lowerUrl.includes('response_type=code') ||
+      lowerUrl.includes('client_id=');
 
     // Jika ini adalah dialog popup autentikasi OAuth / SSO, jangan hijack menjadi tab baru
     // Biarkan setWindowOpenHandler di main process membukanya dengan window.opener & partisi yang sama
@@ -410,6 +421,14 @@ function createWebview(store, tab) {
     }
   });
 
+  // ── Found In Page (Ctrl+F) Event Listener ────────────────────────────────
+  // Hasil pencarian diterima via DOM event 'found-in-page' pada elemen <webview>
+  wv.addEventListener('found-in-page', (event) => {
+    if (typeof handleFoundInPageResult === 'function') {
+      handleFoundInPageResult(tab.id, event.result);
+    }
+  });
+
   // ── Loading done & Nav state update ──────────────────────────────────────
   const captureWcId = () => {
     try {
@@ -418,7 +437,7 @@ function createWebview(store, tab) {
         webviewMap[tab.id].storeId = store.id;
         webviewMap[tab.id].tabId = tab.id;
       }
-    } catch (e) {}
+    } catch (e) { }
   };
   wv.addEventListener('did-attach', captureWcId);
   wv.addEventListener('dom-ready', captureWcId);
@@ -433,7 +452,7 @@ function createWebview(store, tab) {
     if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
       updateNavButtonStates();
       if (typeof updateAddressBarUrl === 'function' && typeof wv.getURL === 'function') {
-        try { updateAddressBarUrl(wv.getURL()); } catch (err) {}
+        try { updateAddressBarUrl(wv.getURL()); } catch (err) { }
       }
     }
 
@@ -459,7 +478,7 @@ function createWebview(store, tab) {
 
     let currentUrl = e?.url;
     if (!currentUrl && typeof wv.getURL === 'function') {
-      try { currentUrl = wv.getURL(); } catch (err) {}
+      try { currentUrl = wv.getURL(); } catch (err) { }
     }
 
     if (isValidTopNavigationUrl(currentUrl)) {
@@ -527,10 +546,10 @@ function createWebview(store, tab) {
     setTimeout(() => {
       try {
         if (wv.parentNode) wv.parentNode.removeChild(wv);
-      } catch (e) {}
+      } catch (e) { }
       try {
         if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
-      } catch (e) {}
+      } catch (e) { }
 
       delete webviewMap[tab.id];
 
@@ -586,8 +605,8 @@ function forceRecreateActiveTab() {
 
   const entry = webviewMap[curTabId];
   if (entry) {
-    try { entry.webview?.remove(); } catch (e) {}
-    try { entry.loading?.remove(); } catch (e) {}
+    try { entry.webview?.remove(); } catch (e) { }
+    try { entry.loading?.remove(); } catch (e) { }
     delete webviewMap[curTabId];
   }
 
@@ -652,7 +671,7 @@ function runNextBackgroundPing() {
 
   // Buat webview ping tersembunyi
   const preloadPath = appPath.replace(/\\/g, '/');
-  const preloadUrl  = `file:///${preloadPath}/webview-preload.js`;
+  const preloadUrl = `file:///${preloadPath}/webview-preload.js`;
   const actualPartition = getStorePartition(store);
 
   const pingWv = document.createElement('webview');
@@ -692,7 +711,7 @@ function runNextBackgroundPing() {
         renderSidebar(getFilteredStores());
         if (activeStoreId === store.id) renderTabBar();
       }
-      try { pingWv.remove(); } catch (e) {}
+      try { pingWv.remove(); } catch (e) { }
       return;
     }
 
@@ -733,7 +752,7 @@ function runNextBackgroundPing() {
       // Tidak ada chat baru, hancurkan webview ping agar RAM tetap bersih
       try {
         pingWv.remove();
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -778,7 +797,7 @@ function runNextBackgroundPing() {
               return;
             }
           }
-        } catch (e) {}
+        } catch (e) { }
         cleanupPing(false);
       }
     }, 7500);
@@ -812,6 +831,6 @@ function stopStaggeredBackgroundPing() {
 }
 
 // Expose ke global
-window.cancelPendingPing            = cancelPendingPing;
+window.cancelPendingPing = cancelPendingPing;
 window.startStaggeredBackgroundPing = startStaggeredBackgroundPing;
-window.stopStaggeredBackgroundPing  = stopStaggeredBackgroundPing;
+window.stopStaggeredBackgroundPing = stopStaggeredBackgroundPing;
