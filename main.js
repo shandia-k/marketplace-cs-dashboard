@@ -71,6 +71,9 @@ function createWindow() {
     }
   });
 
+  // Buka langsung dalam mode layar maksimal (Maximized) secara default
+  mainWindow.maximize();
+
   mainWindow.loadFile('index.html');
 
   // Pasang listener context menu pada jendela utama

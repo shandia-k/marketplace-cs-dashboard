@@ -31,10 +31,83 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.14',
+      version: '1.0.15',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.14 🚀',
+      pillTag: 'v1.0.15 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Floating Overlay Sidebar, Tab Micro-Animation & Smart Statusbar Suite',
+      tagline: 'Pembaruan v1.0.15: Arsitektur sidebar mengambang (Floating Overlay) anti-lag tanpa re-layout webview tamu, sistem pin docking 240px, animasi mikro geser mulus tombol tab (🍃 hibernasi & ✕ tutup) dengan nama judul utuh saat idle, sinkronisasi presisi status 3-fase tab (⚡ Aktif, 🍃 Tidur, 💤 Idle), serta popup analitik RAM dan status tab dengan zero-gap hover bridge (220ms grace period) bebas scrollbar horizontal.',
+      highlights: [
+        {
+          icon: '📌',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Floating Overlay & Pin-Docking Sidebar',
+          desc: 'Sidebar default ramping 56px mengembang mulus 240px sebagai floating overlay tanpa memicu resize webview marketplace, dilengkapi tombol Pin untuk mengunci mode docked permanen.'
+        },
+        {
+          icon: '✨',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Tab Title & Action Micro-Animation',
+          desc: 'Judul tab tampil utuh maksimal saat idle, dan secara elegan bergeser ke kiri memunculkan tombol aksi hibernasi 🍃 dan tutup ✕ saat kursor mouse di-hover.'
+        },
+        {
+          icon: '📊',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Akurasi Status Tab 3-Fase',
+          desc: 'Pemisahan telemetri status tab yang akurat antara ⚡ Aktif (memori menyala), 🍃 Tidur (disuspensi hemat RAM), dan 💤 Idle (tab tersimpan belum dimuat, 0 MB RAM).'
+        },
+        {
+          icon: '🖱️',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Smooth Tooltip Hover Bridge & Zero H-Scroll',
+          desc: 'Akses ke popup statusbar sangat nyaman dengan grace delay 220ms dan jembatan tak terlihat, serta eliminasi total scrollbar horizontal dengan flexbox ellipsis.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Arsitektur Sidebar Anti-Lag & Mode Pin Docking',
+          tag: 'Sidebar & Layout',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'Floating Overlay on Hover: Sidebar default 56px melayang mulus di atas konten webview saat kursor diarahkan, mencegah lag akibat pemanggilan ViewMsg_Resize berulang pada proses webview marketplace.',
+            'Pin-Docking Mode: Tombol Pin di header sidebar memungkinkan CS mengunci sidebar di posisi 240px (docked) yang mendorong webview secara diskret dan stabil.',
+            'Hover Protection during Background Re-Render: Deteksi hover canggih dan pencegahan bubble mouseleave memastikan sidebar tidak pernah menutup mendadak saat terjadi auto-hibernasi atau notifikasi chat masuk.',
+            'Penataan Ulang Header Sidebar: Posisi kolom pencarian dan tombol Pin ditata ergonomis berdampingan untuk kemudahan navigasi CS.'
+          ]
+        },
+        {
+          category: 'Tab Bar Experience & Micro-Interactions',
+          tag: 'Tab Bar',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Full Tab Title Display: Judul tab memanfaatkan 100% ruang horizontal saat idle tanpa terpotong oleh tombol tersembunyi.',
+            'Slide-in Action Buttons: Tombol hibernasi 🍃 dan tutup ✕ meluncur masuk dari kanan dengan transisi kurva cubic-bezier(0.16, 1, 0.3, 1) saat tab di-hover.',
+            'Hover State Contrast: Indikator toko tertidur di sidebar memiliki kontras cerah (opacity 0.92) saat kursor mendekat.'
+          ]
+        },
+        {
+          category: 'Status Bar Intelligence & Tooltip Analytics Suite',
+          tag: 'Status Bar',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Tipografi Konsisten: Menyeragamkan ukuran font statusbar 11px font-weight 600 pada indikator tidur dan toko.',
+            'Klasifikasi Tab 3-Status: Statusbar membedakan secara jujur dan transparan antara tab ⚡ Aktif, 🍃 Tidur, dan 💤 Idle (belum dimuat ke RAM saat aplikasi baru dibuka).',
+            'Zero-Gap Hover Bridge (220ms Grace Delay): Pengguna dapat menggerakkan kursor ke bawah menuju popup secara santai tanpa risiko popup tertutup sendiri.',
+            'Diferensiasi Analitik RAM: Popup RAM fokus pada status kesehatan memori, batas ambang auto-hibernasi, estimasi RAM terhemat, dan Top 5 tab terberat.',
+            'Eliminasi Scrollbar Horizontal: Kunci overflow-x hidden dan dynamic flexbox text ellipsis memastikan popup selalu proporsional dan bebas geser kanan-kiri.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.14',
+      badge: 'Stabil ⚡',
+      badgeColor: '#10b981',
+      pillTag: 'v1.0.14 ⚡',
       releaseDate: 'Agustus 2026',
       title: 'Smart Bulk Template Importer, WhatsApp Chat Stream & Scratchpad Suite',
       tagline: 'Pembaruan besar v1.0.14: Modal impor massal template pintar (Smart Bulk Importer) dengan auto-categorizer dan integrasi 1-klik dari Scratchpad, pencarian dedicated di dalam catatan (Ctrl+F) dengan backdrop mark oranye ala browser web, sistem percakapan Feedback Hub ramping ala WhatsApp dengan lightbox foto mandiri, dock Tools CS yang dapat di-drag bebas dengan mode auto-collapse transparan saat idle, serta arsitektur Direct Pull Telegram API bebas loop redirect 302.',

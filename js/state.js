@@ -1,7 +1,8 @@
 // ── State ────────────────────────────────────────────────────────────────────
 let stores        = [];
 let activeStoreId = null;
-let sidebarCollapsed = false;
+let sidebarCollapsed = true;
+let sidebarPinned    = false;
 let appPath       = ''; // Path ke direktori app (untuk webview preload)
 
 // Tab system: per-store tab list & active tab tracking

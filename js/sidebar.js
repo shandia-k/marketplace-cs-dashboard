@@ -1,10 +1,145 @@
-// ── Sidebar Collapse ──────────────────────────────────────────────────────────
-function toggleSidebar() {
-  sidebarCollapsed = !sidebarCollapsed;
-  sidebarEl.classList.toggle('collapsed', sidebarCollapsed);
-  if (typeof updateSidebarScrollAffordance === 'function') {
-    setTimeout(updateSidebarScrollAffordance, 250);
+// ── Sidebar Hover Expand & Pin Logic ──────────────────────────────────────────
+let sidebarCollapseTimer = null;
+
+function expandSidebar() {
+  if (sidebarCollapseTimer) {
+    clearTimeout(sidebarCollapseTimer);
+    sidebarCollapseTimer = null;
   }
+  sidebarCollapsed = false;
+  if (sidebarEl) {
+    sidebarEl.classList.remove('collapsed');
+    sidebarEl.classList.add('expanded');
+  }
+  if (typeof updateSidebarScrollAffordance === 'function') {
+    setTimeout(updateSidebarScrollAffordance, 100);
+  }
+}
+
+function collapseSidebar(immediate = false) {
+  if (sidebarPinned) return; // Jangan collapse jika sedang di-pin
+
+  if (immediate) {
+    if (sidebarEl && sidebarEl.matches(':hover')) return; // Jangan collapse jika mouse masih di atas sidebar
+    if (sidebarCollapseTimer) {
+      clearTimeout(sidebarCollapseTimer);
+      sidebarCollapseTimer = null;
+    }
+    sidebarCollapsed = true;
+    if (sidebarEl) {
+      sidebarEl.classList.remove('expanded');
+      sidebarEl.classList.add('collapsed');
+    }
+    if (typeof updateSidebarScrollAffordance === 'function') {
+      setTimeout(updateSidebarScrollAffordance, 100);
+    }
+    return;
+  }
+
+  if (sidebarCollapseTimer) clearTimeout(sidebarCollapseTimer);
+  sidebarCollapseTimer = setTimeout(() => {
+    if (sidebarPinned) return;
+    if (sidebarEl && sidebarEl.matches(':hover')) return; // Jangan collapse jika mouse masih di atas sidebar
+    sidebarCollapsed = true;
+    if (sidebarEl) {
+      sidebarEl.classList.remove('expanded');
+      sidebarEl.classList.add('collapsed');
+    }
+    if (typeof updateSidebarScrollAffordance === 'function') {
+      setTimeout(updateSidebarScrollAffordance, 100);
+    }
+  }, 120);
+}
+
+function togglePinSidebar() {
+  sidebarPinned = !sidebarPinned;
+  Storage.set('sidebarPinned', sidebarPinned);
+  updateSidebarPinUI();
+
+  if (sidebarPinned) {
+    expandSidebar();
+  } else {
+    // Jika di-unpin dan kursor tidak sedang di atas sidebar, collapse
+    if (!sidebarEl || !sidebarEl.matches(':hover')) {
+      collapseSidebar(true);
+    }
+  }
+}
+
+function updateSidebarPinUI() {
+  const pinBtn = document.getElementById('btn-pin-sidebar');
+  const appLayout = document.getElementById('app-layout');
+  if (!sidebarEl) return;
+
+  if (sidebarPinned) {
+    sidebarEl.classList.add('pinned');
+    if (appLayout) appLayout.classList.add('sidebar-pinned');
+    if (pinBtn) {
+      pinBtn.classList.add('pinned');
+      pinBtn.title = 'Lepas Sematan Sidebar (Otomatis Sembunyi)';
+      pinBtn.setAttribute('aria-label', 'Lepas Sematan Sidebar');
+    }
+  } else {
+    sidebarEl.classList.remove('pinned');
+    if (appLayout) appLayout.classList.remove('sidebar-pinned');
+    if (pinBtn) {
+      pinBtn.classList.remove('pinned');
+      pinBtn.title = 'Sematkan Sidebar (Tetap Terbuka)';
+      pinBtn.setAttribute('aria-label', 'Sematkan Sidebar');
+    }
+  }
+}
+
+function initSidebarHoverAndPin() {
+  if (!sidebarEl) return;
+
+  // Restore saved pin state
+  sidebarPinned = Storage.get('sidebarPinned', false);
+  updateSidebarPinUI();
+
+  if (sidebarPinned) {
+    expandSidebar();
+  } else {
+    collapseSidebar(true);
+  }
+
+  sidebarEl.addEventListener('mouseenter', () => {
+    if (!sidebarPinned) {
+      expandSidebar();
+    }
+  });
+
+  sidebarEl.addEventListener('mousemove', () => {
+    if (!sidebarPinned && sidebarEl.classList.contains('collapsed')) {
+      expandSidebar();
+    }
+  });
+
+  sidebarEl.addEventListener('mouseleave', (e) => {
+    if (sidebarPinned) return;
+    // Jangan collapse jika kursor masih di dalam boundary sidebar
+    if (e.relatedTarget && sidebarEl.contains(e.relatedTarget)) return;
+    if (sidebarEl.matches(':hover')) return;
+    // Jika focus masih di input pencarian, jangan collapse dulu
+    if (searchInput && document.activeElement === searchInput) return;
+    // Jika popover user menu masih terbuka, jangan collapse dulu
+    const userPopover = document.getElementById('user-popover-menu');
+    if (userPopover && userPopover.classList.contains('active')) return;
+    collapseSidebar(false);
+  });
+
+  if (searchInput) {
+    searchInput.addEventListener('blur', () => {
+      if (!sidebarPinned && sidebarEl && !sidebarEl.matches(':hover')) {
+        collapseSidebar(false);
+      }
+    });
+  }
+}
+
+// Backward compatibility
+function toggleSidebar() {
+  togglePinSidebar();
 }
 
 // ── Store Ordering ─────────────────────────────────────────────────────────────
@@ -63,7 +198,7 @@ function renderSidebar(filteredStores) {
   for (const [mp, mpStores] of Object.entries(groups)) {
     const cfg = MARKETPLACE_CONFIG[mp] || MARKETPLACE_CONFIG.custom;
     html += `<div class="store-group">
-      <div class="store-group-header" title="${escapeHtml(cfg.label)}">
+      <div class="store-group-header" aria-label="${escapeHtml(cfg.label)}">
         <div class="store-group-dot" style="background:${cfg.groupColor}"></div>
         <span class="store-group-label">${escapeHtml(cfg.label)}</span>
       </div>`;
@@ -72,7 +207,9 @@ function renderSidebar(filteredStores) {
       const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
       const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
       const storeTabList = storeTabs[store.id] || [];
-      const allHibernated = storeTabList.length > 0 && storeTabList.every(t => webviewMap[t.id]?.hibernated);
+      const hibernatedTabs = storeTabList.filter(t => webviewMap[t.id]?.hibernated);
+      const hasRunningTab = storeTabList.some(t => webviewMap[t.id]?.webview && !webviewMap[t.id]?.hibernated);
+      const allHibernated = hibernatedTabs.length > 0 && !hasRunningTab;
       const isSyncing = storeTabList.some(t => webviewMap[t.id]?.isSyncing);
       const syncBadge = `
         <span class="sidebar-sync-badge" title="Sedang menyinkronkan chat...">
@@ -90,7 +227,7 @@ function renderSidebar(filteredStores) {
         : (allHibernated ? '&middot; Tidur' : '');
 
       html += `
-        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-id="${store.id}" title="${escapeHtml(store.name)}${isSyncing ? ' (Menyinkronkan chat...)' : (allHibernated ? ' (Tidur)' : '')}" draggable="true">
+        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-id="${store.id}" aria-label="${escapeHtml(store.name)}" draggable="true">
           <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${isSyncing ? syncBadge : (allHibernated ? leafBadge : '')}${shieldBadge}${unreadBadge}</div>
           <div class="store-info">
             <div class="store-name">${escapeHtml(store.name)}</div>
@@ -111,6 +248,17 @@ function renderSidebar(filteredStores) {
   sidebarContent.dataset.lastHtml = html;
   sidebarContent.dataset.lastUser = window.currentUser || '';
   sidebarContent.innerHTML = html;
+
+  // Pastikan sidebar tetap expanded jika mouse saat ini sedang berada di atas sidebar
+  if (!sidebarPinned && sidebarEl && sidebarEl.matches(':hover')) {
+    sidebarEl.classList.remove('collapsed');
+    sidebarEl.classList.add('expanded');
+    sidebarCollapsed = false;
+    if (sidebarCollapseTimer) {
+      clearTimeout(sidebarCollapseTimer);
+      sidebarCollapseTimer = null;
+    }
+  }
 
   sidebarContent.querySelectorAll('.store-item').forEach(el => {
     el.addEventListener('click', () => activateStore(el.dataset.id));
@@ -259,9 +407,19 @@ function triggerSidebarScrollNudge() {
 window.updateSidebarScrollAffordance = updateSidebarScrollAffordance;
 window.triggerSidebarScrollNudge     = triggerSidebarScrollNudge;
 window.initSidebarScrollAffordance   = initSidebarScrollAffordance;
+window.togglePinSidebar              = togglePinSidebar;
+window.toggleSidebar                 = toggleSidebar;
+window.expandSidebar                 = expandSidebar;
+window.collapseSidebar               = collapseSidebar;
+window.initSidebarHoverAndPin        = initSidebarHoverAndPin;
+
+function initSidebarModules() {
+  initSidebarScrollAffordance();
+  initSidebarHoverAndPin();
+}
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initSidebarScrollAffordance);
+  document.addEventListener('DOMContentLoaded', initSidebarModules);
 } else {
-  initSidebarScrollAffordance();
+  initSidebarModules();
 }

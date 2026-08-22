@@ -12,8 +12,11 @@ function bindEvents() {
     window.electronAPI.windowClose();
   });
 
-  // Sidebar collapse
-  document.getElementById('btn-collapse-sidebar').addEventListener('click', toggleSidebar);
+  // Sidebar pin / collapse toggle
+  const btnPin = document.getElementById('btn-pin-sidebar') || document.getElementById('btn-collapse-sidebar');
+  if (btnPin) {
+    btnPin.addEventListener('click', togglePinSidebar);
+  }
 
   // Add store buttons
   document.getElementById('btn-add-store').addEventListener('click', openAddModal);
@@ -231,6 +234,9 @@ function bindEvents() {
     if (userPopover && userPopover.classList.contains('active')) {
       if (!userPopover.contains(e.target) && !userCard?.contains(e.target)) {
         userPopover.classList.remove('active');
+        if (!sidebarPinned && sidebarEl && !sidebarEl.matches(':hover')) {
+          collapseSidebar(false);
+        }
       }
     }
   });
@@ -935,7 +941,7 @@ function syncAppVersionLabels() {
   const latest = window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function'
     ? window.VERSIONS_REGISTRY.getLatestVersion()
     : null;
-  const ver = latest ? latest.version : '1.0.14';
+  const ver = latest ? latest.version : '1.0.15';
 
   // 1. Tombol Changelog di Settings Modal
   const changelogBtn = document.getElementById('btn-settings-changelog');

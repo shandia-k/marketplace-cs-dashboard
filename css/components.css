@@ -187,11 +187,15 @@
 
 /* Sidebar: hibernated store item */
 .store-item.hibernated {
-  opacity: 0.55;
+  opacity: 0.6;
+}
+
+.store-item.hibernated:hover {
+  opacity: 0.92;
 }
 
 .store-item.hibernated .store-favicon {
-  filter: grayscale(0.6);
+  filter: grayscale(0.5);
   position: relative;
 }
 
@@ -204,6 +208,8 @@
   background: var(--bg-secondary);
   border-radius: 99px;
   padding: 1px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .store-favicon {

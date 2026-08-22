@@ -71,29 +71,26 @@ async function updateStatusBar() {
     `;
   }
 
-  // Calculate generic stats
+  // Calculate accurate tab stats
   const openStoresCount = Object.keys(storeTabs).length;
   let totalTabs = 0;
-  let sleepingTabsCount = 0;
-  
-  const activeTabsList = [];
-  const sleepingTabsList = [];
+  let runningTabsCount = 0;
+  let hibernatedTabsCount = 0;
+  let idleTabsCount = 0; // Tab tersimpan dalam sesi tapi belum pernah dimuat ke RAM
   
   Object.entries(storeTabs).forEach(([storeId, tabs]) => {
     totalTabs += tabs.length;
-    const store = stores.find(s => s.id === storeId);
-    const storeName = store?.name || 'Toko';
     tabs.forEach(tab => {
-      if (webviewMap[tab.id]?.hibernated) {
-        sleepingTabsCount++;
-        sleepingTabsList.push(`${storeName} - ${tab.title || 'Chat'}`);
+      const entry = webviewMap[tab.id];
+      if (entry && entry.webview && !entry.hibernated) {
+        runningTabsCount++;
+      } else if (entry && entry.hibernated) {
+        hibernatedTabsCount++;
       } else {
-        activeTabsList.push(`${storeName} - ${tab.title || 'Chat'}`);
+        idleTabsCount++;
       }
     });
   });
-
-  const activeTabsCount = totalTabs - sleepingTabsCount;
 
   // Session timer
   const elapsedMs = Date.now() - sessionStartTime;
@@ -104,12 +101,18 @@ async function updateStatusBar() {
 
   // Update text values
   document.getElementById('sb-stores-text').textContent = `${openStoresCount} toko dibuka`;
-  document.getElementById('sb-tabs-text').textContent = `${activeTabsCount} tab aktif`;
+  document.getElementById('sb-tabs-text').textContent = `${runningTabsCount} tab aktif`;
   
   const sleepEl = document.getElementById('sb-sleep-text');
-  if (sleepingTabsCount > 0) {
+  if (hibernatedTabsCount > 0 && idleTabsCount > 0) {
     sleepEl.style.display = 'inline-block';
-    sleepEl.innerHTML = `&#x1F343; ${sleepingTabsCount} tidur`;
+    sleepEl.innerHTML = `&#x1F343; ${hibernatedTabsCount} tidur &middot; ${idleTabsCount} idle`;
+  } else if (hibernatedTabsCount > 0) {
+    sleepEl.style.display = 'inline-block';
+    sleepEl.innerHTML = `&#x1F343; ${hibernatedTabsCount} tidur`;
+  } else if (idleTabsCount > 0) {
+    sleepEl.style.display = 'inline-block';
+    sleepEl.innerHTML = `&#x1F343; ${idleTabsCount} idle`;
   } else {
     sleepEl.style.display = 'none';
   }
@@ -123,23 +126,82 @@ async function updateStatusBar() {
 
   // Update Tooltips Content
   // 1. Stores Tooltip
-  const openStoresList = stores.filter(s => storeTabs[s.id]).map(s => s.name);
-  const storesTooltip = openStoresList.length > 0 
-    ? openStoresList.map(s => `<div>• ${escapeHtml(s)}</div>`).join('') 
-    : 'Belum ada toko yang dibuka.';
-  document.getElementById('sb-stores-tooltip').innerHTML = `<strong>Toko Dibuka:</strong><br>${storesTooltip}`;
+  const openStores = stores.filter(s => storeTabs[s.id] && storeTabs[s.id].length > 0);
+  let storesTooltip = `<div class="sb-tooltip-title">Toko Dibuka (${openStores.length})</div>`;
+  if (openStores.length > 0) {
+    storesTooltip += openStores.map(s => {
+      const cfg = MARKETPLACE_CONFIG[s.marketplace] || MARKETPLACE_CONFIG.custom;
+      const count = (storeTabs[s.id] || []).length;
+      return `
+        <div class="sb-tooltip-item" style="padding-left:0;">
+          <span style="font-weight:500; color:var(--text-primary);">• ${escapeHtml(s.name)}</span>
+          <span style="color:var(--text-muted); font-size:10.5px;">${escapeHtml(cfg.label || s.marketplace)} · ${count} tab</span>
+        </div>`;
+    }).join('');
+  } else {
+    storesTooltip += '<div style="color:var(--text-muted)">Belum ada toko yang dibuka.</div>';
+  }
+  document.getElementById('sb-stores-tooltip').innerHTML = storesTooltip;
 
-  // 2. Tabs Tooltip
-  let tabsHtml = '<strong>Tab Aktif:</strong><br>';
-  tabsHtml += activeTabsList.length > 0 ? activeTabsList.map(t => `<div style="color:var(--text-secondary)">• ${escapeHtml(t)}</div>`).join('') : '<div style="color:var(--text-secondary)">Tidak ada</div>';
-  if (sleepingTabsCount > 0) {
-    tabsHtml += '<br><strong>Tab Hibernasi:</strong><br>';
-    tabsHtml += sleepingTabsList.map(t => `<div style="color:#10b981">• ${escapeHtml(t)}</div>`).join('');
+  // 2. Tabs Tooltip (Organized hierarchically by store, showing active vs sleeping vs idle status per tab)
+  const tabStatusSubtitle = [
+    `${runningTabsCount} Aktif`,
+    hibernatedTabsCount > 0 ? `${hibernatedTabsCount} Tidur` : null,
+    idleTabsCount > 0 ? `${idleTabsCount} Idle` : null
+  ].filter(Boolean).join(' · ');
+
+  let tabsHtml = `<div class="sb-tooltip-title">Status Tab (${tabStatusSubtitle})</div>`;
+  if (openStores.length > 0) {
+    tabsHtml += openStores.map(store => {
+      const tabs = storeTabs[store.id] || [];
+      const cfg = MARKETPLACE_CONFIG[store.marketplace] || MARKETPLACE_CONFIG.custom;
+      const itemsHtml = tabs.map(tab => {
+        const entry = webviewMap[tab.id];
+        let statusBadge = '';
+        let itemClass = '';
+
+        if (entry && entry.webview && !entry.hibernated) {
+          statusBadge = '<span style="color:#38bdf8; font-size:10px; font-weight:600;">⚡ Aktif</span>';
+        } else if (entry && entry.hibernated) {
+          statusBadge = '<span style="color:#10b981; font-size:10px; font-weight:600;">🍃 Tidur</span>';
+          itemClass = 'hibernated';
+        } else {
+          statusBadge = '<span style="color:var(--text-muted); font-size:10px;">💤 Idle (0 MB)</span>';
+        }
+
+        return `
+          <div class="sb-tooltip-item ${itemClass}">
+            <span>• ${escapeHtml(tab.title || 'Chat')}</span>
+            ${statusBadge}
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="sb-tooltip-group">
+          <div class="sb-tooltip-group-header">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${cfg.groupColor || '#DF1683'};"></span>
+            <span>${escapeHtml(store.name)}</span>
+            <span style="color:var(--text-muted); font-weight:400; font-size:10.5px;">(${tabs.length} tab)</span>
+          </div>
+          ${itemsHtml}
+        </div>`;
+    }).join('');
+
+    const savedRamText = (hibernatedTabsCount + idleTabsCount) > 0 
+      ? `🍃 ${hibernatedTabsCount + idleTabsCount} Tab Hemat RAM` 
+      : '⚡ Semua Berjalan Aktif';
+
+    tabsHtml += `
+      <div class="sb-tooltip-footer">
+        <span>Total: ${totalTabs} Tab di ${openStores.length} Toko</span>
+        <span>${savedRamText}</span>
+      </div>`;
+  } else {
+    tabsHtml += '<div style="color:var(--text-muted)">Tidak ada tab aktif</div>';
   }
   document.getElementById('sb-tabs-tooltip').innerHTML = tabsHtml;
 
-  // 3. RAM Tooltip
-  // Calculate RAM per tab using data from Chromium Process Metrics
+  // 3. RAM Tooltip (Focus on Memory Health, Top 5 Consumers, and Saved RAM from Hibernation)
   let processMetrics = [];
   try {
     if (window.electronAPI && typeof window.electronAPI.getAppMetricsDetails === 'function') {
@@ -147,54 +209,83 @@ async function updateStatusBar() {
     }
   } catch (e) {}
 
-  const ramList = [];
+  const activeRamList = [];
   Object.entries(storeTabs).forEach(([storeId, tabs]) => {
     const store = stores.find(s => s.id === storeId);
     const storeName = store?.name || 'Toko';
     tabs.forEach(tab => {
       const entry = webviewMap[tab.id];
-      
-      let memMB = 0;
-      if (entry && entry.hibernated) {
-        memMB = 0; // Sleeping takes almost 0 memory in renderer
-      } else {
-        let wcId = entry?.wcId;
-        if (!wcId && entry?.webview && typeof entry.webview.getWebContentsId === 'function') {
-          try {
-            wcId = entry.webview.getWebContentsId();
-            if (entry) entry.wcId = wcId;
-          } catch (e) {}
-        }
+      if (!entry || entry.hibernated) return;
 
-        if (wcId && processMetrics.length > 0) {
-          const metric = processMetrics.find(m => m.wcId === wcId);
-          if (metric && metric.memoryKB) {
-            memMB = metric.memoryKB / 1024;
-            if (entry) entry.memKB = metric.memoryKB;
-          } else if (entry && entry.memKB) {
-            memMB = entry.memKB / 1024;
-          }
+      let memMB = 0;
+      let wcId = entry?.wcId;
+      if (!wcId && entry?.webview && typeof entry.webview.getWebContentsId === 'function') {
+        try {
+          wcId = entry.webview.getWebContentsId();
+          if (entry) entry.wcId = wcId;
+        } catch (e) {}
+      }
+
+      if (wcId && processMetrics.length > 0) {
+        const metric = processMetrics.find(m => m.wcId === wcId);
+        if (metric && metric.memoryKB) {
+          memMB = metric.memoryKB / 1024;
+          if (entry) entry.memKB = metric.memoryKB;
         } else if (entry && entry.memKB) {
           memMB = entry.memKB / 1024;
         }
+      } else if (entry && entry.memKB) {
+        memMB = entry.memKB / 1024;
       }
-      
-      ramList.push({ name: `${storeName} - ${tab.title || 'Chat'}`, mb: memMB, hibernated: entry?.hibernated });
+
+      if (memMB > 0) {
+        activeRamList.push({ name: `${storeName} - ${tab.title || 'Chat'}`, mb: memMB });
+      }
     });
   });
 
-  // Sort highest memory first
-  ramList.sort((a, b) => b.mb - a.mb);
-  
-  let ramHtml = '<strong>Penggunaan RAM:</strong><br>';
-  ramHtml += ramList.length > 0 ? ramList.map(r => {
-    if (r.hibernated) return `<div style="color:#10b981; display:flex; justify-content:space-between; gap: 20px;"><span>• ${escapeHtml(r.name)}</span><span>0 MB (Tidur)</span></div>`;
-    const mbStr = r.mb > 1024 ? `${(r.mb/1024).toFixed(1)} GB` : `${Math.round(r.mb)} MB`;
-    return `<div style="display:flex; justify-content:space-between; gap: 20px;"><span>• ${escapeHtml(r.name)}</span><span>${mbStr}</span></div>`;
-  }).join('') : '<div style="color:var(--text-secondary)">Tidak ada tab</div>';
-  
-  ramHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between;"><strong>Total Aplikasi:</strong><strong>${ramStr}</strong></div>`;
-  
+  // Sort highest memory first & take top 5
+  activeRamList.sort((a, b) => b.mb - a.mb);
+  const topConsumers = activeRamList.slice(0, 5);
+
+  const ramStatusLabel = ramUsageMB >= 2048 
+    ? '<span style="color:#ef4444; font-weight:700;">⚠️ Kritis (> 2.0 GB)</span>' 
+    : (ramUsageMB >= 1024 ? '<span style="color:#fb923c; font-weight:600;">⚡ Wajar (1-2 GB)</span>' : '<span style="color:#22c55e; font-weight:600;">✨ Optimal (< 1 GB)</span>');
+
+  let ramHtml = `
+    <div class="sb-tooltip-title">Analitik Penggunaan RAM</div>
+    <div class="sb-ram-metrics">
+      <div class="sb-ram-metric-row">
+        <span>Total Memori Aplikasi:</span>
+        <strong style="color: ${ramUsageMB >= 2048 ? '#ef4444' : (ramUsageMB >= 1024 ? '#fb923c' : '#22c55e')}">${ramStr}</strong>
+      </div>
+      <div class="sb-ram-metric-row">
+        <span>Status Kesehatan RAM:</span>
+        ${ramStatusLabel}
+      </div>
+      ${(hibernatedTabsCount + idleTabsCount) > 0 ? `
+      <div class="sb-ram-metric-row" style="color:#10b981;">
+        <span>🍃 Tab Hemat RAM:</span>
+        <span>${hibernatedTabsCount + idleTabsCount} Tab (${hibernatedTabsCount} Tidur, ${idleTabsCount} Idle)</span>
+      </div>` : ''}
+    </div>
+    <div class="sb-ram-divider"></div>
+  `;
+
+  if (topConsumers.length > 0) {
+    ramHtml += `<div class="sb-ram-top-title">Top ${topConsumers.length} Konsumen RAM Tertinggi:</div>`;
+    ramHtml += topConsumers.map((r, idx) => {
+      const mbStr = r.mb >= 1024 ? `${(r.mb/1024).toFixed(1)} GB` : `${Math.round(r.mb)} MB`;
+      return `
+        <div class="sb-tooltip-item" style="padding-left: 4px;">
+          <span>${idx + 1}. ${escapeHtml(r.name)}</span>
+          <span style="font-weight: 600; color: ${r.mb > 400 ? '#fb923c' : 'var(--text-primary)'}; font-family: monospace;">${mbStr}</span>
+        </div>`;
+    }).join('');
+  } else {
+    ramHtml += '<div style="color:var(--text-muted); font-size:11px;">Belum ada konsumsi RAM terukur pada tab aktif.</div>';
+  }
+
   document.getElementById('sb-ram-tooltip').innerHTML = ramHtml;
 
   // 4. Update Clipboard History Tooltip

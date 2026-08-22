@@ -243,17 +243,11 @@
   <div class="app-layout" id="app-layout" style="display: none;">
 
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar collapsed" id="sidebar">
 
       <!-- Sidebar Header -->
       <div class="sidebar-header">
-        <button class="btn-collapse-sidebar" id="btn-collapse-sidebar" title="Sembunyikan/Tampilkan Sidebar" aria-label="Toggle Sidebar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <div class="sidebar-search">
+        <div class="sidebar-search" id="sidebar-search-wrap">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" aria-hidden="true" focusable="false">
             <circle cx="11" cy="11" r="8" />
@@ -262,6 +256,12 @@
           <label for="search-input" class="sr-only">Cari toko</label>
           <input type="text" id="search-input" placeholder="Cari toko..." />
         </div>
+        <button class="btn-pin-sidebar" id="btn-pin-sidebar" title="Sematkan Sidebar (Tetap Terbuka)" aria-label="Pin Sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <line x1="12" y1="17" x2="12" y2="22"></line>
+            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+          </svg>
+        </button>
       </div>
 
       <!-- Store Groups -->
@@ -761,7 +761,7 @@
               </button>
               <button type="button" class="btn-secondary" id="btn-settings-changelog" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.14 🚀
+                Info Sistem & Changelog v1.0.15 🚀
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -1315,7 +1315,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.14</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.15</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -1624,7 +1624,7 @@
               <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
               <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
             </div>
-            <span class="cs-toolkit-item-badge" id="toolkit-app-version-badge">v1.0.14</span>
+            <span class="cs-toolkit-item-badge" id="toolkit-app-version-badge">v1.0.15</span>
           </div>
         </div>
       </div>

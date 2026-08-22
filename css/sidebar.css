@@ -1,18 +1,36 @@
 /* ==============
-   SIDEBAR
+   SIDEBAR (Floating Overlay Architecture)
    ============================================= */
 .sidebar {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 56px;
+  min-width: 56px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  position: relative;
   overflow: hidden;
-  will-change: width, min-width;
-  contain: layout;
-  transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), min-width 0.22s cubic-bezier(0.2, 0, 0, 1);
+  z-index: 50;
+  will-change: width, box-shadow;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Expanded Hovered Overlay State (Melayang di atas webview) */
+.sidebar:not(.collapsed),
+.sidebar.expanded {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.5);
+}
+
+/* Pinned State (Terkunci & Menempel berdampingan dengan webview) */
+.sidebar.pinned {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  box-shadow: none;
 }
 
 /* Wave Accent eksklusif hanya di bagian bawah sidebar */
@@ -35,18 +53,19 @@
   min-height: 52px;
   max-height: 52px;
   box-sizing: border-box;
-  padding: 0 6px;
+  padding: 0 8px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
 }
 
-/* Collapse Button */
-.btn-collapse-sidebar {
-  width: 44px;
+/* Pin Sidebar Button */
+.btn-pin-sidebar {
+  width: 36px;
   height: 36px;
-  min-width: 44px;
+  min-width: 36px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-tertiary);
@@ -55,32 +74,100 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   flex-shrink: 0;
 }
 
-.btn-collapse-sidebar svg {
-  transition: transform var(--transition-fast);
+.btn-pin-sidebar svg {
+  transition: transform var(--transition-fast), stroke var(--transition-fast), fill var(--transition-fast);
 }
 
-.btn-collapse-sidebar:hover {
+.btn-pin-sidebar:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-hover);
 }
 
-/* Sidebar Collapsed State (Google Gemini stationary icon layout) */
+.btn-pin-sidebar.pinned,
+.sidebar.pinned .btn-pin-sidebar {
+  background: rgba(223, 22, 131, 0.18);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 0 10px rgba(223, 22, 131, 0.35);
+}
+
+.btn-pin-sidebar.pinned svg path,
+.sidebar.pinned .btn-pin-sidebar svg path {
+  fill: currentColor;
+}
+
+/* Sidebar Search */
+.sidebar-search {
+  flex: 1;
+  height: 36px;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 10px;
+  transition: border-color var(--transition-fast), width var(--transition-fast);
+}
+
+.sidebar-search:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sidebar-search input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 400;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+}
+
+.sidebar-search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Sidebar Collapsed State (Default 56px stationary layout) */
 .sidebar.collapsed {
   width: 56px;
   min-width: 56px;
+  box-shadow: none;
 }
 
 .sidebar.collapsed .sidebar-header {
   padding: 0 6px;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .sidebar.collapsed .sidebar-search {
+  width: 44px;
+  height: 36px;
+  min-width: 44px;
+  padding: 0;
+  justify-content: center;
+  flex: none;
+}
+
+.sidebar.collapsed .sidebar-search input {
+  display: none;
+}
+
+.sidebar.collapsed .btn-pin-sidebar {
   display: none;
 }
 
@@ -147,55 +234,6 @@
 
 .sidebar.collapsed .sidebar-footer {
   padding: 8px 6px;
-}
-
-.sidebar.collapsed .btn-collapse-sidebar {
-  width: 44px;
-  height: 36px;
-  min-width: 44px;
-}
-
-.sidebar.collapsed .btn-collapse-sidebar svg {
-  transform: rotate(180deg);
-}
-
-.sidebar-search {
-  flex: 1;
-  height: 36px;
-  min-width: 0;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0 10px;
-  transition: border-color var(--transition-fast);
-}
-
-.sidebar-search:focus-within {
-  border-color: var(--accent-primary);
-}
-
-.search-icon {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.sidebar-search input {
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 400;
-  font-family: inherit;
-  width: 100%;
-}
-
-.sidebar-search input::placeholder {
-  color: var(--text-muted);
 }
 
 /* Sidebar Content / Store List */

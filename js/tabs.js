@@ -364,12 +364,14 @@ function renderTabBar() {
       <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
       ${syncBadgeHtml}
-      ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
-      <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
-          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
+      <div class="tab-actions">
+        ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
+        <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
+            <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
     </div>`;
   }).join('');
 
