@@ -1,4 +1,3 @@
-// ── Scratchpad Logic ─────────────────────────────────────────────────────────
 const btnScratchpad = document.getElementById('btn-scratchpad');
 const scratchpadWindow = document.getElementById('scratchpad-window');
 const scratchpadHeader = document.getElementById('scratchpad-header');
@@ -8,6 +7,20 @@ const btnScratchpadClose = document.getElementById('btn-scratchpad-close');
 const btnSpLoad = document.getElementById('btn-sp-load');
 const btnSpSave = document.getElementById('btn-sp-save');
 const spTextarea = document.getElementById('scratchpad-textarea');
+
+// Scratchpad Dedicated Search Elements
+const btnSpSearchToggle = document.getElementById('btn-sp-search-toggle');
+const spSearchBar = document.getElementById('scratchpad-search-bar');
+const spSearchInput = document.getElementById('scratchpad-search-input');
+const spSearchCount = document.getElementById('scratchpad-search-count');
+const btnSpSearchPrev = document.getElementById('btn-sp-search-prev');
+const btnSpSearchNext = document.getElementById('btn-sp-search-next');
+const btnSpSearchClose = document.getElementById('btn-sp-search-close');
+
+// Search state
+let spSearchMatches = [];
+let spActiveMatchIndex = -1;
+let spSearchQuery = '';
 
 let isScratchpadDragging = false;
 let spDragOffsetX = 0;
@@ -93,8 +106,14 @@ function renderScratchpadTabs() {
     if (scratchpadTabs.length > 1) {
       const closeBtn = document.createElement('button');
       closeBtn.className = 'scratchpad-tab-close';
-      closeBtn.innerHTML = '&times;';
+      closeBtn.innerHTML = `
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      `;
       closeBtn.title = 'Tutup Tab';
+      closeBtn.setAttribute('aria-label', 'Tutup Tab');
       closeBtn.onclick = (e) => {
         e.stopPropagation();
         closeScratchpadTab(tab.id);
@@ -126,6 +145,13 @@ function switchScratchpadTab(tabId) {
   }
   saveScratchpadState();
   renderScratchpadTabs();
+
+  // Jika search bar sedang aktif saat berganti tab, cari ulang secara otomatis
+  if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput && spSearchInput.value.trim()) {
+    setTimeout(() => {
+      executeScratchpadSearch('current');
+    }, 20);
+  }
 }
 
 function addScratchpadTab(name, content) {
@@ -165,17 +191,259 @@ function closeScratchpadTab(tabId) {
   }
 }
 
-// Update current tab content on input
-spTextarea.addEventListener('input', () => {
+// ── DEDICATED SCRATCHPAD SEARCH ENGINE (CTRL+F) ──────────────────────────────
+function openScratchpadSearch(initialQuery = '') {
+  if (!spSearchBar || !spSearchInput) return;
+  spSearchBar.style.display = 'flex';
+  btnSpSearchToggle?.classList.add('active');
+
+  // Ambil teks yang sedang diseleksi di textarea jika ada
+  let q = initialQuery;
+  if (!q && spTextarea) {
+    const selStart = spTextarea.selectionStart;
+    const selEnd = spTextarea.selectionEnd;
+    if (typeof selStart === 'number' && typeof selEnd === 'number' && selEnd > selStart) {
+      const selected = spTextarea.value.substring(selStart, selEnd).trim();
+      if (selected.length > 0 && selected.length < 60 && !selected.includes('\n')) {
+        q = selected;
+      }
+    }
+  }
+
+  if (q) {
+    spSearchInput.value = q;
+  }
+
+  spSearchInput.focus();
+  spSearchInput.select();
+  executeScratchpadSearch('current');
+}
+
+function escapeSpHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function syncBackdropScroll() {
+  const backdrop = document.getElementById('scratchpad-backdrop');
+  if (backdrop && spTextarea) {
+    backdrop.scrollTop = spTextarea.scrollTop;
+    backdrop.scrollLeft = spTextarea.scrollLeft;
+  }
+}
+
+function renderScratchpadHighlights() {
+  const highlightsEl = document.getElementById('scratchpad-highlights');
+  if (!highlightsEl || !spTextarea) return;
+
+  const text = spTextarea.value;
+  const query = spSearchQuery ? spSearchQuery.trim() : '';
+
+  if (!query || spSearchMatches.length === 0) {
+    highlightsEl.innerHTML = '';
+    return;
+  }
+
+  // Bangun string HTML beranotasi dengan <mark class="sp-search-mark">
+  let html = '';
+  let lastIndex = 0;
+
+  spSearchMatches.forEach((match, idx) => {
+    const isActive = idx === spActiveMatchIndex;
+    const beforeText = text.substring(lastIndex, match.start);
+    const matchText = text.substring(match.start, match.end);
+
+    html += escapeSpHtml(beforeText);
+    html += `<mark class="sp-search-mark${isActive ? ' active' : ''}">${escapeSpHtml(matchText)}</mark>`;
+    lastIndex = match.end;
+  });
+
+  html += escapeSpHtml(text.substring(lastIndex));
+  if (text.endsWith('\n')) {
+    html += '<br>&nbsp;';
+  }
+
+  highlightsEl.innerHTML = html;
+  syncBackdropScroll();
+}
+
+function closeScratchpadSearch() {
+  if (!spSearchBar) return;
+  spSearchBar.style.display = 'none';
+  btnSpSearchToggle?.classList.remove('active');
+  spSearchMatches = [];
+  spActiveMatchIndex = -1;
+  spSearchQuery = '';
+  updateScratchpadSearchCounter(0, 0, '');
+  renderScratchpadHighlights();
+  spTextarea?.focus();
+}
+
+function toggleScratchpadSearch() {
+  if (!spSearchBar) return;
+  if (spSearchBar.style.display === 'none' || !spSearchBar.style.display) {
+    openScratchpadSearch();
+  } else {
+    closeScratchpadSearch();
+  }
+}
+
+function updateScratchpadSearchCounter(current, total, query) {
+  if (!spSearchCount) return;
+  const wrap = spSearchInput?.closest('.sp-search-input-wrap');
+
+  if (!query || query.trim().length === 0) {
+    spSearchCount.textContent = '0/0';
+    spSearchCount.className = 'sp-search-count';
+    wrap?.classList.remove('has-no-matches', 'has-matches');
+    return;
+  }
+
+  if (total === 0) {
+    spSearchCount.textContent = '0/0';
+    spSearchCount.className = 'sp-search-count no-matches';
+    wrap?.classList.add('has-no-matches');
+    wrap?.classList.remove('has-matches');
+  } else {
+    spSearchCount.textContent = `${current}/${total}`;
+    spSearchCount.className = 'sp-search-count has-matches';
+    wrap?.classList.remove('has-no-matches');
+    wrap?.classList.add('has-matches');
+  }
+}
+
+function executeScratchpadSearch(direction = 'next') {
+  if (!spTextarea || !spSearchInput) return;
+  const query = spSearchInput.value;
+  spSearchQuery = query;
+
+  if (!query || query.trim().length === 0) {
+    spSearchMatches = [];
+    spActiveMatchIndex = -1;
+    updateScratchpadSearchCounter(0, 0, '');
+    renderScratchpadHighlights();
+    return;
+  }
+
+  const text = spTextarea.value;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  spSearchMatches = [];
+
+  let pos = 0;
+  while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+    spSearchMatches.push({ start: pos, end: pos + query.length });
+    pos += lowerQuery.length || 1;
+  }
+
+  const total = spSearchMatches.length;
+  if (total === 0) {
+    spActiveMatchIndex = -1;
+    updateScratchpadSearchCounter(0, 0, query);
+    renderScratchpadHighlights();
+    return;
+  }
+
+  if (direction === 'next') {
+    spActiveMatchIndex = (spActiveMatchIndex + 1) % total;
+  } else if (direction === 'prev') {
+    spActiveMatchIndex = (spActiveMatchIndex - 1 + total) % total;
+  } else {
+    // 'current': pilih match terdekat dari kursor saat ini
+    const cursor = spTextarea.selectionStart || 0;
+    let closest = spSearchMatches.findIndex(m => m.start >= cursor);
+    if (closest === -1) closest = 0;
+    spActiveMatchIndex = closest;
+  }
+
+  highlightAndScrollMatch(spActiveMatchIndex);
+  updateScratchpadSearchCounter(spActiveMatchIndex + 1, total, query);
+  renderScratchpadHighlights();
+}
+
+function highlightAndScrollMatch(index) {
+  if (!spTextarea || index < 0 || index >= spSearchMatches.length) return;
+  const match = spSearchMatches[index];
+
+  // Set selection range inside textarea
+  spTextarea.setSelectionRange(match.start, match.end);
+
+  // Auto-scroll ke posisi baris teks dalam textarea
+  const textBefore = spTextarea.value.substring(0, match.start);
+  const lineIndex = textBefore.split('\n').length - 1;
+  const lineHeight = 21; // pixel per baris
+  const targetScrollTop = Math.max(0, (lineIndex - 4) * lineHeight);
+
+  if (typeof spTextarea.scrollTo === 'function') {
+    spTextarea.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+  } else {
+    spTextarea.scrollTop = targetScrollTop;
+  }
+  syncBackdropScroll();
+}
+
+// Sinkronisasi scroll textarea dengan backdrop highlight
+spTextarea?.addEventListener('scroll', syncBackdropScroll);
+
+// Event Listeners Toolbar Pencarian
+btnSpSearchToggle?.addEventListener('click', toggleScratchpadSearch);
+btnSpSearchClose?.addEventListener('click', closeScratchpadSearch);
+btnSpSearchNext?.addEventListener('click', () => executeScratchpadSearch('next'));
+btnSpSearchPrev?.addEventListener('click', () => executeScratchpadSearch('prev'));
+
+spSearchInput?.addEventListener('input', () => executeScratchpadSearch('current'));
+
+spSearchInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      executeScratchpadSearch('prev');
+    } else {
+      executeScratchpadSearch('next');
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    executeScratchpadSearch('next');
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    executeScratchpadSearch('prev');
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    closeScratchpadSearch();
+  }
+});
+
+// Update current tab content on input & refresh search if open
+spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
     saveScratchpadState();
   }
+  if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
+    executeScratchpadSearch('current');
+  }
+});
+
+// Shortcut Ctrl+F / Cmd+F langsung di textarea Scratchpad
+spTextarea?.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    e.stopPropagation();
+    openScratchpadSearch();
+  } else if (e.key === 'Escape' && spSearchBar && spSearchBar.style.display !== 'none') {
+    e.preventDefault();
+    closeScratchpadSearch();
+  }
 });
 
 // Add tab button
-btnAddTab.addEventListener('click', (e) => {
+btnAddTab?.addEventListener('click', (e) => {
   e.stopPropagation();
   addScratchpadTab();
 });
@@ -200,6 +468,7 @@ function openScratchpad() {
 function closeScratchpad() {
   if (!scratchpadWindow) return;
   scratchpadWindow.style.display = 'none';
+  closeScratchpadSearch();
 }
 
 function toggleScratchpad() {
@@ -217,18 +486,23 @@ btnScratchpadClose?.addEventListener('click', closeScratchpad);
 window.openScratchpad = openScratchpad;
 window.closeScratchpad = closeScratchpad;
 window.toggleScratchpad = toggleScratchpad;
+window.openScratchpadSearch = openScratchpadSearch;
+window.closeScratchpadSearch = closeScratchpadSearch;
+window.toggleScratchpadSearch = toggleScratchpadSearch;
 
 // Dragging logic
-scratchpadWindow.addEventListener('mousedown', () => {
+scratchpadWindow?.addEventListener('mousedown', () => {
   // Disable webview pointer events to prevent them from swallowing mouse events 
   // during dragging or resizing the scratchpad.
   document.querySelectorAll('webview').forEach(w => w.style.pointerEvents = 'none');
 });
 
-scratchpadHeader.addEventListener('mousedown', (e) => {
+scratchpadHeader?.addEventListener('mousedown', (e) => {
   // Prevent dragging if clicked on interactive elements
   if (e.target.closest('#btn-scratchpad-close') || 
       e.target.closest('#btn-sp-add-tab') || 
+      e.target.closest('#btn-sp-search-toggle') || 
+      e.target.closest('.btn-sp-search-toggle') || 
       e.target.closest('.btn-add-tab') || 
       e.target.closest('.scratchpad-tab')) return;
   
@@ -351,6 +625,23 @@ document.getElementById('btn-sp-insert-chat')?.addEventListener('click', () => {
     insertTextToActiveChat(content);
   } else {
     showToast('Ketik ke chat tidak tersedia', 'error');
+  }
+});
+
+// Export active tab content directly to Quick Reply Bulk Importer
+document.getElementById('btn-sp-export-qr')?.addEventListener('click', () => {
+  const content = spTextarea ? spTextarea.value : '';
+  if (!content.trim()) {
+    showToast('Catatan masih kosong untuk diekspor', 'error');
+    return;
+  }
+  if (typeof openBulkImportModal === 'function') {
+    openBulkImportModal(content);
+    if (window.AppTelemetry) {
+      window.AppTelemetry.track('scratchpad_exported_to_quickreply');
+    }
+  } else {
+    showToast('Fitur impor template tidak tersedia', 'error');
   }
 });
 

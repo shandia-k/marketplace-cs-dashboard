@@ -935,7 +935,7 @@ function syncAppVersionLabels() {
   const latest = window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function'
     ? window.VERSIONS_REGISTRY.getLatestVersion()
     : null;
-  const ver = latest ? latest.version : '1.0.13';
+  const ver = latest ? latest.version : '1.0.14';
 
   // 1. Tombol Changelog di Settings Modal
   const changelogBtn = document.getElementById('btn-settings-changelog');
@@ -1058,6 +1058,15 @@ function setupFocusAndCrashRecoveryLifecycle() {
       }
     } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
       e.preventDefault();
+      // 1. Jika Scratchpad sedang terbuka, aktifkan search dedicated Scratchpad
+      const spWindow = document.getElementById('scratchpad-window');
+      if (spWindow && spWindow.style.display !== 'none') {
+        if (typeof openScratchpadSearch === 'function') {
+          openScratchpadSearch();
+        }
+        return;
+      }
+      // 2. Jika tidak, buka toolbar search webview reguler
       const sel = (window.getSelection()?.toString() || '').trim();
       if (typeof openFindInPage === 'function') {
         openFindInPage(sel);

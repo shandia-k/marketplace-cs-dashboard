@@ -10,6 +10,7 @@ const sessionService = require('../services/session.service');
 const updaterService = require('../services/updater.service');
 const searchService = require('../services/search.service');
 const systemService = require('../services/system.service');
+const feedbackService = require('../services/feedback.service');
 const contextMenuService = require('../services/context-menu.service');
 const QRCode = require('qrcode');
 
@@ -164,7 +165,40 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('submit-feedback', (event, data) => {
-    return systemService.submitFeedback(data);
+    return feedbackService.createTicket(data);
+  });
+
+  // ── 2-Way Feedback & Interactive Ticketing IPC ─────────────────────────────
+  ipcMain.handle('feedback:get-tickets', () => {
+    return feedbackService.getTickets();
+  });
+
+  ipcMain.handle('feedback:get-ticket', (event, ticketId) => {
+    return feedbackService.getTicketDetails(ticketId);
+  });
+
+  ipcMain.handle('feedback:create-ticket', (event, data) => {
+    return feedbackService.createTicket(data);
+  });
+
+  ipcMain.handle('feedback:add-reply', (event, ticketId, messageData) => {
+    return feedbackService.addReply(ticketId, messageData);
+  });
+
+  ipcMain.handle('feedback:update-status', (event, ticketId, newStatus) => {
+    return feedbackService.updateTicketStatus(ticketId, newStatus);
+  });
+
+  ipcMain.handle('feedback:sync', (event, force) => {
+    return feedbackService.syncTickets(null, Boolean(force));
+  });
+
+  ipcMain.handle('feedback:mark-read', (event, ticketId) => {
+    return feedbackService.markTicketAsRead(ticketId);
+  });
+
+  ipcMain.handle('feedback:get-unread-count', () => {
+    return feedbackService.getUnreadFeedbackCount();
   });
 
   ipcMain.handle('capture-screen', () => {

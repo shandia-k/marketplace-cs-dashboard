@@ -31,10 +31,95 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.13',
+      version: '1.0.14',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.13 🚀',
+      pillTag: 'v1.0.14 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Smart Bulk Template Importer, WhatsApp Chat Stream & Scratchpad Suite',
+      tagline: 'Pembaruan besar v1.0.14: Modal impor massal template pintar (Smart Bulk Importer) dengan auto-categorizer dan integrasi 1-klik dari Scratchpad, pencarian dedicated di dalam catatan (Ctrl+F) dengan backdrop mark oranye ala browser web, sistem percakapan Feedback Hub ramping ala WhatsApp dengan lightbox foto mandiri, dock Tools CS yang dapat di-drag bebas dengan mode auto-collapse transparan saat idle, serta arsitektur Direct Pull Telegram API bebas loop redirect 302.',
+      highlights: [
+        {
+          icon: '📥',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Smart Bulk Template Importer',
+          desc: 'Modal impor massal template pintar dengan parser auto-deteksi pemisah (===, ---, tag [Judul]), auto-categorizer (resi, komplain, produk, sapaan), dan fitur 1-klik tarik dari catatan aktif Scratchpad.'
+        },
+        {
+          icon: '🔍',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Dedicated Scratchpad Search (Ctrl+F)',
+          desc: 'Pencarian kata kunci khusus di dalam catatan dengan backdrop highlighter oranye ala browser web, live match counter, navigasi Enter/Shift+Enter, dan auto-scroll presisi.'
+        },
+        {
+          icon: '💬',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'WhatsApp-Style Thread Stream',
+          desc: 'Gelembung pesan ramping selebar teks dengan jam sejajar, dual-alignment CS (kanan) & Developer (kiri), pemisah tanggal otomatis, dan kartu lampiran gambar besar dengan lightbox.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Draggable Tools CS Dock',
+          desc: 'Tombol terapung Tools CS dapat di-drag bebas ke mana saja dengan auto-collapse transparan (opacity 0.38) saat idle agar tidak menutupi tombol marketplace.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Overhaul Interaksi 2-Arah & WhatsApp Chat Stream',
+          tag: 'Feedback Hub',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            'WhatsApp-Style Fit Bubbles: Gelembung chat adaptif yang menciut pas selebar teks, menghilangkan ruang kosong berlebih pada balasan singkat.',
+            'Dedicated Large Image Cards: Lampiran tangkapan layar tampil di kartu gambar tersendiri berukuran besar (280px × 240px) lengkap dengan timestamp overlay dan lightbox perbesaran layar penuh.',
+            'Pemisah Tanggal Otomatis: Garis pemisah tanggal (e.g. 22 Agu 2026) muncul rapi di tengah timeline saat hari percakapan berganti.',
+            'Dual Alignment Timeline: Pesan CS merapat rapi ke kanan dengan warna hijau lembut dan centang biru pengiriman; balasan developer merapat ke kiri dengan identitas nama dan badge Developer.'
+          ]
+        },
+        {
+          category: 'Draggable CS Productivity Dock & Scratchpad Suite',
+          tag: 'Productivity & UX',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 11, 0.12)',
+          items: [
+            'Smart Bulk Template Importer: Modal impor massal pintar untuk memigrasi puluhan template catatan CS sekaligus dari berbagai format teks (pemisah ===, tag [Judul], atau paragraf) dengan deteksi kategori otomatis (order, komplain, produk, sapaan).',
+            'One-Click Pull dari Catatan: Tombol "Tarik dari Catatan Aktif" di modal dan tombol "Ke Template ⚡" di footer Scratchpad memungkinkan CS mengekspor seluruh template catatan ke Quick Reply dalam 1 klik.',
+            'Dedicated Scratchpad Search (Ctrl+F): Fitur pencarian kata kunci khusus di dalam jendela Scratchpad Catatan dengan shortcut Ctrl+F, live match counter, navigasi Enter/Shift+Enter, dan auto-scroll textarea ke posisi kata.',
+            'Bebas Digeser (Draggable Dock): Tombol Tools CS dapat di-drag & drop ke posisi mana pun di layar sehingga tidak pernah menghalangi tombol kirim chat marketplace / WhatsApp.',
+            'Auto-Collapse & Idle Translucency: Saat idle, tombol menciut menjadi ikon lingkaran ramping dengan transparansi (opacity 0.38) dan langsung membesar kembali saat didekati kursor.',
+            'Smart Popover Direction: Menu speed dial otomatis terbuka ke bawah saat dock berada di bagian atas layar, dan merapat ke kanan saat dock berada di sisi kiri layar.',
+            'Double-Click Reset: Klik ganda pada tombol Tools CS untuk mengembalikan posisi dock seketika ke sudut kanan bawah default.'
+          ]
+        },
+        {
+          category: 'Arsitektur Direct Pull Telegram & Stabilitas GAS',
+          tag: 'Telegram API',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            'Direct Pull Telegram getUpdates: Mengganti webhook eksternal dengan penarikan on-demand langsung dari Google Apps Script, mengeliminasi error HTTP 302 Found.',
+            'Zero Webhook Quota Drain: Bot Telegram tidak lagi memicu trigger eksekusi Apps Script berulang-ulang saat idle, menghemat kuota GAS 100%.',
+            'Auto-Delivery Confirmation: Saat CS membuka modal atau menyegarkan tiket, sistem otomatis mengirimkan konfirmasi pengiriman balik ke Telegram bot.'
+          ]
+        },
+        {
+          category: 'Sistem Pengujian & Anti-Regression Guard',
+          tag: 'Quality Assurance',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Dedicated Regression Tests (REG-009 s/d REG-014): Penambahan katalog pengujian permanen untuk event-driven sync, direct pull Telegram, WhatsApp bubble styling, draggable dock persistence, Scratchpad dedicated search engine, dan Smart Bulk Template Importer parser.',
+            '25-File Multi-Level Test Suite (Level 1–8): Seluruh rangkaian tes multi-layer terverifikasi 100% pass tanpa regresi.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.13',
+      badge: 'Stabil ⚡',
+      badgeColor: '#64748b',
+      pillTag: 'v1.0.13',
       releaseDate: 'Agustus 2026',
       title: 'Native Find in Page Engine, OCR Context Menu Suite & Modular Architecture Refactor',
       tagline: 'Pembaruan besar: Arsitektur pencarian kata instan (Ctrl+F) berbasis single-channel IPC Chromium dengan auto-scroll & navigasi keyboard, menu konteks klik kanan komprehensif (OCR Ekstraksi Teks Gambar Offline, Salin Gambar, Save As), refactoring arsitektur backend modular 8-tier, serta fondasi Anti-Regression Guard Zero-Defect.',

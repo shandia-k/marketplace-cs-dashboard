@@ -1,3 +1,55 @@
+# Dependencies
 node_modules/
+
+# Production & Build Outputs
 dist/
+build/
+out/
+release/
+
+# Environment & Local Secrets
 .env
+.env.local
+.env.*.local
+
+# Backend / Scripts Local
+scripts/google-apps-script/
+
+# Logs & Debug Dumps
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+# IDE & Editor Configs
+.idea/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Temporary & Backup Files
+*.tmp
+*.bak
+*.backup
+*.old
+
+# Test Coverage & Crash Dumps
+coverage/
+.nyc_output/
+crash-dumps/

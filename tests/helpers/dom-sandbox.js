@@ -59,6 +59,26 @@ class MockElement {
   focus() {}
   blur() {}
 
+  addEventListener(type, listener) {
+    if (!this._listeners) this._listeners = new Map();
+    if (!this._listeners.has(type)) this._listeners.set(type, []);
+    this._listeners.get(type).push(listener);
+  }
+
+  removeEventListener(type, listener) {
+    if (!this._listeners || !this._listeners.has(type)) return;
+    const list = this._listeners.get(type);
+    const idx = list.indexOf(listener);
+    if (idx !== -1) list.splice(idx, 1);
+  }
+
+  dispatchEvent(event) {
+    const type = event.type || event;
+    if (this._listeners && this._listeners.has(type)) {
+      this._listeners.get(type).forEach(fn => fn(event));
+    }
+  }
+
   get innerHTML() {
     return this._innerHTML || this.textContent;
   }
@@ -138,6 +158,30 @@ class MockDocument {
       this.elements.set(id, el);
     }
     return this.elements.get(id);
+  }
+
+  querySelector(selector) {
+    if (selector.startsWith('#')) {
+      return this.getElementById(selector.slice(1));
+    }
+    if (selector.startsWith('.')) {
+      const cls = selector.slice(1);
+      for (const el of this.elements.values()) {
+        if (el.classList && el.classList.contains(cls)) return el;
+      }
+    }
+    return null;
+  }
+
+  querySelectorAll(selector) {
+    const results = [];
+    if (selector.startsWith('.')) {
+      const cls = selector.slice(1);
+      for (const el of this.elements.values()) {
+        if (el.classList && el.classList.contains(cls)) results.push(el);
+      }
+    }
+    return results;
   }
 
   registerElement(id, element) {

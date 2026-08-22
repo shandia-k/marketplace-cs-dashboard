@@ -93,7 +93,7 @@ function runNodeTest(files) {
 
     const child = spawn(process.execPath, ['--test', ...files], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, FORCE_COLOR: '1' }
+      env: { ...process.env, FORCE_COLOR: '1', NODE_ENV: 'test' }
     });
 
     let output = '';

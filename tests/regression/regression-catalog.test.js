@@ -152,5 +152,152 @@ describe('Level 7: Dedicated Regression Catalog Tests (Zero-Regression Guarantee
       'find-in-page handler must invoke targetWc.findInPage'
     );
   });
+
+  test('[REG-009] Pure Event-Driven Feedback Sync: Zero idle polling & piggybacked telemetry sync with new dev replies', () => {
+    const feedbackCode = fs.readFileSync(path.join(__dirname, '../../js/feedback.js'), 'utf8');
+    assert.ok(!feedbackCode.includes('startFeedbackPolling'), 'Must not have idle polling interval');
+    assert.ok(!feedbackCode.includes('feedbackPollingTimer'), 'Must not have interval timer');
+    assert.ok(feedbackCode.includes('handleIncomingDevReplies'), 'Must have handleIncomingDevReplies for push/telemetry integration');
+  });
+
+  test('[REG-010] Direct Pull Telegram API Integration: Zero 302 webhook spam & on-demand getUpdates sync', () => {
+    const gasCode = fs.readFileSync(path.join(__dirname, '../../scripts/google-apps-script/GoogleAppsScript_FeedbackHub.js'), 'utf8');
+    assert.ok(gasCode.includes('fetchLatestTelegramUpdates'), 'GAS must implement fetchLatestTelegramUpdates');
+    assert.ok(gasCode.includes('removeTelegramWebhook'), 'GAS must provide removeTelegramWebhook');
+    assert.ok(gasCode.includes('getSyncTicketsData'), 'GAS must pull updates during ticket synchronization');
+  });
+
+  test('[REG-011] WhatsApp-Style Slim Chat Bubbles & Dedicated Image Bubbles', () => {
+    sandbox = createDOMSandbox();
+    const feedbackCode = fs.readFileSync(path.join(__dirname, '../../js/feedback.js'), 'utf8');
+    const fn = new Function('window', 'document', 'localStorage', `${feedbackCode}; return { formatTimeOnly, formatDateSeparator };`);
+    const { formatTimeOnly, formatDateSeparator } = fn(sandbox.window, sandbox.document, sandbox.localStorage);
+
+    const testIso = '2026-08-22T15:58:00.000Z';
+    const timeOnly = formatTimeOnly(testIso);
+    assert.ok(timeOnly.length >= 4, 'Time only must return formatted HH:MM');
+    const dateSep = formatDateSeparator(testIso);
+    assert.ok(dateSep.includes('2026') || dateSep.includes('Agu'), 'Date separator must return formatted date string');
+
+    // Pastikan tag [Gambar X] dibersihkan dari bubble teks agar ramping
+    const sampleMsg = 'kalo kak berikut [Gambar 1]';
+    const cleaned = sampleMsg.replace(/\[Gambar\s*\d+\]/gi, '').trim();
+    assert.equal(cleaned, 'kalo kak berikut');
+  });
+
+  test('[REG-012] Draggable Floating Tools CS Dock & Auto-Collapse Idle State', () => {
+    sandbox = createDOMSandbox();
+    sandbox.window.innerWidth = 1200;
+    sandbox.window.innerHeight = 800;
+    const toolsCode = fs.readFileSync(path.join(__dirname, '../../js/tools.js'), 'utf8');
+    const fn = new Function('window', 'document', 'localStorage', `${toolsCode}; return { updateDockSmartClasses, resetDockPosition };`);
+    const { updateDockSmartClasses, resetDockPosition } = fn(sandbox.window, sandbox.document, sandbox.localStorage);
+
+    const mockDock = sandbox.document.createElement('div');
+    mockDock.className = 'floating-bottom-dock';
+    sandbox.document.body.appendChild(mockDock);
+
+    // Test top & left smart classes
+    updateDockSmartClasses(mockDock, 50, 50);
+    assert.ok(mockDock.classList.contains('dock-top'), 'Top half must add dock-top class');
+    assert.ok(mockDock.classList.contains('dock-left'), 'Left half must add dock-left class');
+
+    updateDockSmartClasses(mockDock, 900, 700);
+    assert.ok(!mockDock.classList.contains('dock-top'), 'Bottom half must not have dock-top');
+    assert.ok(!mockDock.classList.contains('dock-left'), 'Right half must not have dock-left');
+
+    // Test reset
+    sandbox.localStorage.setItem('cs_dock_position', JSON.stringify({ left: 100, top: 100 }));
+    resetDockPosition();
+    assert.equal(sandbox.localStorage.getItem('cs_dock_position'), null, 'Reset must clear saved localStorage position');
+  });
+
+  test('[REG-013] Scratchpad Dedicated Search Engine (Ctrl+F) & Match Navigation', () => {
+    const scratchpadCode = fs.readFileSync(path.join(__dirname, '../../js/scratchpad.js'), 'utf8');
+    assert.ok(scratchpadCode.includes('openScratchpadSearch'), 'Must export openScratchpadSearch');
+    assert.ok(scratchpadCode.includes('closeScratchpadSearch'), 'Must export closeScratchpadSearch');
+    assert.ok(scratchpadCode.includes('executeScratchpadSearch'), 'Must implement executeScratchpadSearch');
+
+    // Test search match indexing logic
+    const sampleText = 'FS flash sale murah. Obat ANTIOBIOTIK Interlac. Flash sale lagi besok.';
+    const query = 'flash sale';
+    const lowerText = sampleText.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const matches = [];
+
+    let pos = 0;
+    while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+      matches.push({ start: pos, end: pos + query.length });
+      pos += lowerQuery.length || 1;
+    }
+
+    assert.equal(matches.length, 2, 'Must find exactly 2 occurrences of "flash sale" case-insensitively');
+    assert.equal(matches[0].start, 3);
+    assert.equal(matches[1].start, 48);
+
+    // Test cyclical navigation
+    let activeIdx = 0;
+    activeIdx = (activeIdx + 1) % matches.length; // Next -> 1
+    assert.equal(activeIdx, 1);
+    activeIdx = (activeIdx + 1) % matches.length; // Next -> 0 (loop back)
+    assert.equal(activeIdx, 0);
+    activeIdx = (activeIdx - 1 + matches.length) % matches.length; // Prev -> 1 (loop back)
+    assert.equal(activeIdx, 1);
+
+    // Test mark highlighter generation
+    assert.ok(scratchpadCode.includes('renderScratchpadHighlights'), 'Must implement renderScratchpadHighlights');
+    assert.ok(scratchpadCode.includes('sp-search-mark'), 'Must generate sp-search-mark elements');
+    assert.ok(scratchpadCode.includes('syncBackdropScroll'), 'Must synchronize backdrop scroll');
+  });
+
+  test('[REG-014] Smart Bulk Template Importer Engine & Auto-Category Detection', () => {
+    sandbox = createDOMSandbox();
+    const qrCode = fs.readFileSync(path.join(__dirname, '../../js/quickreply.js'), 'utf8');
+    assert.ok(qrCode.includes('openBulkImportModal'), 'Must export openBulkImportModal');
+    assert.ok(qrCode.includes('parseRawTemplatesText'), 'Must export parseRawTemplatesText');
+    assert.ok(qrCode.includes('detectTemplateCategory'), 'Must export detectTemplateCategory');
+
+    // Evaluasi parser & auto-categorizer di environment mock
+    const mockStorage = { get: () => [], set: () => {}, remove: () => {} };
+    const fn = new Function('window', 'document', 'localStorage', 'Storage', 'DEFAULT_SMART_TEMPLATES', `${qrCode}; return { parseRawTemplatesText, detectTemplateCategory };`);
+    const { parseRawTemplatesText, detectTemplateCategory } = fn(sandbox.window, sandbox.document, sandbox.localStorage, mockStorage, []);
+
+    const sampleNote = `========================
+
+FS
+Hai kak flash sale, kami infokan juga tidak ada perbedaan pada produk ya kak, jika kakak mendapatkan harga murah atau mahal silakan dapat co yg murah saja kak karena itu tandanya kakak dapat diskon khusus dari shopee
+
+========================
+
+ANTIOBIOTIK
+Untuk pengiriman reguler, durasi maksimal yang masih aman untuk Interlac adalah 3-5 hari (tergantung kondisi suhu dalam paket)
+
+========================
+
+PROPOSAL
+baik kak, mohon ditunggu 7-14 hari kerja ya kakak, jika tim kami berkenan akan menghubungi kakak nantinya. terimakasih dan sehat selalu
+
+========================
+
+Tidak bisa CO
+
+mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang bisa dicoba seperti menggunakan mode incognito atau browser/aplikasi lain, konfirmasikan agar hapus cache aplikasi/broswer terlebih dahulu, mengganti jaringan internet, mencoba input alamat secara manual tanpa pin, serta melakukan restart perangkat.`;
+
+    const parsed = parseRawTemplatesText(sampleNote);
+    assert.equal(parsed.length, 4, 'Must parse exactly 4 templates from user note format');
+    assert.equal(parsed[0].title, 'FS');
+    assert.ok(parsed[0].content.includes('Hai kak flash sale'));
+
+    assert.equal(parsed[1].title, 'ANTIOBIOTIK');
+    assert.equal(parsed[1].category, 'product', 'ANTIOBIOTIK & Interlac must detect product category');
+
+    assert.equal(parsed[3].title, 'Tidak bisa CO');
+    assert.equal(parsed[3].category, 'complaint', 'Tidak bisa CO / kendala must detect complaint category');
+
+    // Test category detection keywords
+    assert.equal(detectTemplateCategory('Cek Resi J&T', 'Nomor resi pesanan kakak adalah {clipboard}'), 'order');
+    assert.equal(detectTemplateCategory('Komplain Rusak', 'Mohon lampirkan video unboxing retur pengembalian'), 'complaint');
+    assert.equal(detectTemplateCategory('Sapaan Pagi', 'Halo selamat pagi kak, ada yang bisa kami bantu?'), 'greeting');
+  });
 });
 

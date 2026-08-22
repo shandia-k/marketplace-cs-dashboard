@@ -84,4 +84,16 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
       assert.equal(typeof exposedApi[method], 'function', `Utility method ${method} must be exposed in electronAPI`);
     });
   });
+
+  test('should contain all 2-Way Feedback and Interactive Ticketing methods', () => {
+    assert.ok(exposedApi.feedback, 'feedback object must be exposed in electronAPI');
+    const feedbackMethods = [
+      'getTickets', 'getTicket', 'createTicket', 'addReply',
+      'updateStatus', 'sync', 'markRead', 'getUnreadCount'
+    ];
+
+    feedbackMethods.forEach(method => {
+      assert.equal(typeof exposedApi.feedback[method], 'function', `Feedback method ${method} must be exposed in electronAPI.feedback`);
+    });
+  });
 });

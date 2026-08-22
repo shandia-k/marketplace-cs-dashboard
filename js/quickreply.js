@@ -556,18 +556,375 @@ async function resetDefaultTemplates() {
   }
 }
 
-// ── Variable Pill Click Inserter (Modal Helper) ──────────────────────────────
-function insertVariableToModalContent(varTag) {
-  const textarea = document.getElementById('tpl-content-input');
-  if (!textarea) return;
+// ── SMART BULK TEMPLATE IMPORTER ENGINE ──────────────────────────────────────
+let parsedBulkTemplates = [];
 
-  const start = textarea.selectionStart || 0;
-  const end = textarea.selectionEnd || 0;
-  const val = textarea.value || '';
+function detectTemplateCategory(title = '', content = '') {
+  const lowerTitle = title.toLowerCase();
+  const combined = (title + ' ' + content).toLowerCase();
 
-  textarea.value = val.substring(0, start) + varTag + val.substring(end);
-  textarea.selectionStart = textarea.selectionEnd = start + varTag.length;
-  textarea.focus();
+  // 1. Cek judul terlebih dahulu (Bobot tertinggi)
+  if (/(stok|ready|produk|antibiotik|obat|vitamin|suplemen|dosis|harga|diskon|promo|flash sale|fs|size|ukuran|warna|varian|expired|kadaluarsa|interlac)/i.test(lowerTitle)) {
+    return 'product';
+  }
+  if (/(komplain|retur|rusak|cacat|kendala|pecah|refund|unboxing|salah kirim|tidak bisa co|gagal|batal|cancel)/i.test(lowerTitle)) {
+    return 'complaint';
+  }
+  if (/(resi|order|pesanan|lacak|ekspedisi|ongkir|kirim|sampai|estimasi|no resi|kurir|pengiriman)/i.test(lowerTitle)) {
+    return 'order';
+  }
+  if (/(sapaan|halo|hai|selamat|pagi|siang|sore|malam|terima kasih|makasih|salam)/i.test(lowerTitle)) {
+    return 'greeting';
+  }
+
+  // 2. Jika judul belum spesifik, cek isi konten
+  if (/(komplain|retur|rusak|cacat|kendala|pecah|refund|pengembalian|unboxing|salah kirim|tidak bisa co|bocor|hilang)/i.test(combined)) {
+    return 'complaint';
+  }
+  if (/(stok|ready|expired|kadaluarsa|aturan pakai|dosis|original|ori|antibiotik|khasiat|interlac)/i.test(combined)) {
+    return 'product';
+  }
+  if (/(resi|order|pesanan|lacak|ekspedisi|ongkir|no resi|j&t|jne|sicepat|spx|anteraja|kurir)/i.test(combined)) {
+    return 'order';
+  }
+  if (/(sapaan|halo|hai|selamat pagi|selamat siang|selamat sore|selamat malam|terima kasih|makasih|salam|senang|kakak|assalamualaikum)/i.test(combined)) {
+    return 'greeting';
+  }
+
+  return 'custom';
+}
+
+function parseRawTemplatesText(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+  const clean = rawText.trim();
+  if (!clean) return [];
+
+  // 1. Cek apakah JSON format
+  if ((clean.startsWith('[') && clean.endsWith(']')) || (clean.startsWith('{') && clean.endsWith('}'))) {
+    try {
+      const parsed = JSON.parse(clean);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      const valid = list.map((item, idx) => ({
+        id: 'bulk-' + Date.now() + '-' + idx,
+        selected: true,
+        title: (item.title || item.name || item.judul || ('Template ' + (idx + 1))).trim(),
+        category: item.category || detectTemplateCategory(item.title || '', item.content || item.text || item.pesan || ''),
+        content: (item.content || item.text || item.pesan || '').trim()
+      })).filter(t => t.title && t.content);
+      if (valid.length > 0) return valid;
+    } catch (e) {}
+  }
+
+  const results = [];
+
+  // 2. Pemisah garis karakter panjang: ===, ---, ___, ***, ###
+  const sepRegex = /(?:^|\n)\s*(?:={3,}|-{3,}|_{3,}|\*{3,}|#{3,})\s*(?:\n|$)/g;
+  if (sepRegex.test(clean)) {
+    const rawBlocks = clean.split(/(?:^|\n)\s*(?:={3,}|-{3,}|_{3,}|\*{3,}|#{3,})\s*(?:\n|$)/);
+    rawBlocks.forEach((block, idx) => {
+      const trimmedBlock = block.trim();
+      if (!trimmedBlock) return;
+
+      const lines = trimmedBlock.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) return;
+
+      let title = lines[0];
+      let content = lines.slice(1).join('\n').trim();
+
+      if (!content) {
+        if (title.length > 40) {
+          content = title;
+          title = title.substring(0, 30) + '...';
+        } else {
+          content = title;
+        }
+      }
+
+      title = title.replace(/^\[+|\]+$/g, '').replace(/^#+\s*/, '').trim();
+
+      results.push({
+        id: 'bulk-' + Date.now() + '-' + idx,
+        selected: true,
+        title: title || ('Template ' + (idx + 1)),
+        category: detectTemplateCategory(title, content),
+        content
+      });
+    });
+
+    if (results.length > 0) return results;
+  }
+
+  // 3. Pemisah tag: [Judul] atau ### Judul
+  const tagMatches = [...clean.matchAll(/(?:^|\n)\s*(?:\[([^\]\n]+)\]|#{1,3}\s*([^\n]+))\s*\n([\s\S]*?)(?=(?:\n\s*(?:\[[^\]\n]+\]|#{1,3}\s*[^\n]+))|$)/g)];
+  if (tagMatches.length > 0) {
+    tagMatches.forEach((m, idx) => {
+      const title = (m[1] || m[2] || ('Template ' + (idx + 1))).trim();
+      const content = (m[3] || '').trim();
+      if (title && content) {
+        results.push({
+          id: 'bulk-' + Date.now() + '-' + idx,
+          selected: true,
+          title,
+          category: detectTemplateCategory(title, content),
+          content
+        });
+      }
+    });
+
+    if (results.length > 0) return results;
+  }
+
+  // 4. Pemisah paragraf kosong (Double Linebreaks)
+  const paraBlocks = clean.split(/\n\s*\n+/);
+  paraBlocks.forEach((para, idx) => {
+    const trimmed = para.trim();
+    if (!trimmed) return;
+
+    const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    let title = lines[0];
+    let content = lines.slice(1).join('\n').trim();
+
+    if (!content) {
+      if (title.length > 40) {
+        content = title;
+        title = title.substring(0, 30) + '...';
+      } else {
+        content = title;
+      }
+    }
+
+    title = title.replace(/^\[+|\]+$/g, '').replace(/^#+\s*/, '').trim();
+
+    results.push({
+      id: 'bulk-' + Date.now() + '-' + idx,
+      selected: true,
+      title: title || ('Template ' + (idx + 1)),
+      category: detectTemplateCategory(title, content),
+      content
+    });
+  });
+
+  return results;
+}
+
+function openBulkImportModal(initialText = '') {
+  closeQuickReplyDrawer();
+  const overlay = document.getElementById('modal-bulk-template-overlay');
+  if (!overlay) return;
+
+  overlay.classList.add('active');
+  parsedBulkTemplates = [];
+
+  const input = document.getElementById('bulk-tpl-input');
+  const previewSec = document.getElementById('bulk-preview-section');
+  const confirmBtn = document.getElementById('btn-bulk-modal-confirm');
+  const confirmBtnText = document.getElementById('bulk-confirm-btn-text');
+
+  if (input) {
+    if (typeof initialText === 'string' && initialText.trim().length > 0) {
+      input.value = initialText.trim();
+      setTimeout(() => executeBulkParse(), 100);
+    } else {
+      input.value = '';
+      if (previewSec) previewSec.style.display = 'none';
+      if (confirmBtn) confirmBtn.disabled = true;
+      if (confirmBtnText) confirmBtnText.textContent = 'Impor 0 Template';
+      setTimeout(() => input.focus(), 150);
+    }
+  }
+}
+
+function closeBulkImportModal(reopenDrawer = true) {
+  const overlay = document.getElementById('modal-bulk-template-overlay');
+  if (overlay) overlay.classList.remove('active');
+  parsedBulkTemplates = [];
+  if (reopenDrawer) {
+    setTimeout(() => openQuickReplyDrawer(), 100);
+  }
+}
+
+function executeBulkParse() {
+  const input = document.getElementById('bulk-tpl-input');
+  const previewSec = document.getElementById('bulk-preview-section');
+  if (!input) return;
+
+  const raw = input.value.trim();
+  if (!raw) {
+    showToast('Silakan tempel atau muat teks template terlebih dahulu', 'error');
+    return;
+  }
+
+  parsedBulkTemplates = parseRawTemplatesText(raw);
+
+  if (parsedBulkTemplates.length === 0) {
+    if (previewSec) previewSec.style.display = 'none';
+    showToast('Tidak ada template yang berhasil diekstrak. Periksa format teks Anda.', 'error');
+    return;
+  }
+
+  if (previewSec) previewSec.style.display = 'flex';
+  renderBulkPreviewList();
+  showToast(`✨ ${parsedBulkTemplates.length} template berhasil dianalisis & siap diimpor!`, 'success');
+}
+
+function renderBulkPreviewList() {
+  const container = document.getElementById('bulk-items-container');
+  const countBadge = document.getElementById('bulk-count-badge');
+  const confirmBtn = document.getElementById('btn-bulk-modal-confirm');
+  const confirmBtnText = document.getElementById('bulk-confirm-btn-text');
+  const selectAllCb = document.getElementById('bulk-select-all');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  const selectedCount = parsedBulkTemplates.filter(t => t.selected).length;
+  const totalCount = parsedBulkTemplates.length;
+
+  if (countBadge) {
+    countBadge.textContent = `${totalCount} Template Terdeteksi (${selectedCount} Dipilih)`;
+  }
+
+  if (confirmBtn && confirmBtnText) {
+    confirmBtn.disabled = selectedCount === 0;
+    confirmBtnText.textContent = `Impor ${selectedCount} Template Terpilih`;
+  }
+
+  if (selectAllCb) {
+    selectAllCb.checked = selectedCount === totalCount && totalCount > 0;
+    selectAllCb.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+  }
+
+  parsedBulkTemplates.forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'bulk-card-item' + (item.selected ? '' : ' disabled');
+    card.dataset.id = item.id;
+
+    card.innerHTML = `
+      <input type="checkbox" class="bulk-card-checkbox" data-index="${index}" ${item.selected ? 'checked' : ''}>
+      <div class="bulk-card-body">
+        <div class="bulk-card-top">
+          <input type="text" class="bulk-item-title-input" data-index="${index}" value="${escapeHtml(item.title)}" placeholder="Judul Template">
+          <select class="bulk-item-cat-select" data-index="${index}">
+            <option value="greeting" ${item.category === 'greeting' ? 'selected' : ''}>Sapaan & Ramah Tamah</option>
+            <option value="order" ${item.category === 'order' ? 'selected' : ''}>Pesanan & Resi</option>
+            <option value="complaint" ${item.category === 'complaint' ? 'selected' : ''}>Komplain & Retur</option>
+            <option value="product" ${item.category === 'product' ? 'selected' : ''}>Informasi Produk</option>
+            <option value="custom" ${item.category === 'custom' ? 'selected' : ''}>Kustom / Lainnya</option>
+          </select>
+        </div>
+        <div class="bulk-item-content-preview" contenteditable="true" data-index="${index}">${escapeHtml(item.content)}</div>
+      </div>
+      <button type="button" class="bulk-card-delete-btn" data-index="${index}" title="Hapus dari daftar impor">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    `;
+
+    // Event listeners per card
+    const cb = card.querySelector('.bulk-card-checkbox');
+    cb.addEventListener('change', (e) => {
+      item.selected = e.target.checked;
+      renderBulkPreviewList();
+    });
+
+    const titleInput = card.querySelector('.bulk-item-title-input');
+    titleInput.addEventListener('input', (e) => {
+      item.title = e.target.value;
+    });
+
+    const catSelect = card.querySelector('.bulk-item-cat-select');
+    catSelect.addEventListener('change', (e) => {
+      item.category = e.target.value;
+    });
+
+    const contentPreview = card.querySelector('.bulk-item-content-preview');
+    contentPreview.addEventListener('input', (e) => {
+      item.content = e.target.innerText;
+    });
+
+    const delBtn = card.querySelector('.bulk-card-delete-btn');
+    delBtn.addEventListener('click', () => {
+      parsedBulkTemplates.splice(index, 1);
+      renderBulkPreviewList();
+    });
+
+    container.appendChild(card);
+  });
+}
+
+function confirmBulkImport() {
+  const selected = parsedBulkTemplates.filter(t => t.selected && t.title.trim() && t.content.trim());
+  if (selected.length === 0) {
+    showToast('Pilih setidaknya 1 template untuk diimpor', 'error');
+    return;
+  }
+
+  const mode = document.querySelector('input[name="bulk-import-mode"]:checked')?.value || 'append';
+
+  const newTemplates = selected.map(item => ({
+    id: 'tpl-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+    title: item.title.trim(),
+    category: item.category || 'custom',
+    content: item.content.trim()
+  }));
+
+  if (mode === 'overwrite') {
+    smartTemplates = newTemplates;
+  } else {
+    // Append mode
+    smartTemplates.push(...newTemplates);
+  }
+
+  saveSmartTemplates();
+  renderQuickReplyList();
+  broadcastTemplatesToWebviews();
+  closeBulkImportModal(true);
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('quick_reply_bulk_imported', { count: newTemplates.length, mode });
+  }
+
+  showToast(`🎉 Berhasil mengimpor ${newTemplates.length} template ke Quick Reply!`, 'success');
+}
+
+function pasteBulkSampleTemplate() {
+  const input = document.getElementById('bulk-tpl-input');
+  if (!input) return;
+
+  input.value = `========================
+FS
+Hai kak flash sale, kami infokan juga tidak ada perbedaan pada produk ya kak, jika kakak mendapatkan harga murah atau mahal silakan dapat co yg murah saja kak karena itu tandanya kakak dapat diskon khusus dari shopee
+
+========================
+ANTIOBIOTIK
+Untuk pengiriman reguler, durasi maksimal yang masih aman untuk Interlac adalah 3-5 hari (tergantung kondisi suhu dalam paket)
+
+========================
+PROPOSAL
+baik kak, mohon ditunggu 7-14 hari kerja ya kakak, jika tim kami berkenan akan menghubungi kakak nantinya. terimakasih dan sehat selalu
+
+========================
+Tidak bisa CO
+mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang bisa dicoba seperti menggunakan mode incognito atau browser/aplikasi lain, konfirmasikan agar hapus cache aplikasi/broswer terlebih dahulu, mengganti jaringan internet, mencoba input alamat secara manual tanpa pin, serta melakukan restart perangkat.`;
+
+  executeBulkParse();
+}
+
+function handleBulkPullFromScratchpad() {
+  const spTextarea = document.getElementById('scratchpad-textarea');
+  const input = document.getElementById('bulk-tpl-input');
+  if (!spTextarea || !input) return;
+
+  const content = spTextarea.value.trim();
+  if (!content) {
+    showToast('Catatan di Scratchpad masih kosong', 'error');
+    return;
+  }
+
+  input.value = content;
+  executeBulkParse();
+  showToast('Teks dari catatan aktif berhasil ditarik ✓', 'success');
 }
 
 // ── Bind Quick Reply Events ──────────────────────────────────────────────────
@@ -640,11 +997,12 @@ function bindQuickReplyEvents() {
     });
   });
 
-  // Add Template button
+  // Add Template & Bulk Import buttons
   document.getElementById('btn-qr-add-template')?.addEventListener('click', openAddTemplateModal);
+  document.getElementById('btn-qr-bulk-import')?.addEventListener('click', () => openBulkImportModal());
   document.getElementById('btn-qr-reset-default')?.addEventListener('click', resetDefaultTemplates);
 
-  // Modal events
+  // Modal Single Template events
   document.getElementById('modal-tpl-close')?.addEventListener('click', () => closeTemplateModal(true));
   document.getElementById('btn-tpl-modal-cancel')?.addEventListener('click', () => closeTemplateModal(true));
   document.getElementById('modal-template-overlay')?.addEventListener('click', (e) => {
@@ -653,6 +1011,43 @@ function bindQuickReplyEvents() {
     }
   });
   document.getElementById('btn-tpl-modal-save')?.addEventListener('click', saveTemplateFromModal);
+
+  // Modal Bulk Import events
+  document.getElementById('modal-bulk-tpl-close')?.addEventListener('click', () => closeBulkImportModal(true));
+  document.getElementById('btn-bulk-modal-cancel')?.addEventListener('click', () => closeBulkImportModal(true));
+  document.getElementById('modal-bulk-template-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-bulk-template-overlay') {
+      closeBulkImportModal(true);
+    }
+  });
+  document.getElementById('btn-bulk-parse')?.addEventListener('click', executeBulkParse);
+  document.getElementById('btn-bulk-modal-confirm')?.addEventListener('click', confirmBulkImport);
+  document.getElementById('btn-bulk-pull-scratchpad')?.addEventListener('click', handleBulkPullFromScratchpad);
+  document.getElementById('btn-bulk-paste-sample')?.addEventListener('click', pasteBulkSampleTemplate);
+  
+  document.getElementById('btn-bulk-upload-file')?.addEventListener('click', () => {
+    document.getElementById('bulk-file-input')?.click();
+  });
+  document.getElementById('bulk-file-input')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (re) => {
+      const text = re.target?.result;
+      if (text && typeof text === 'string') {
+        const input = document.getElementById('bulk-tpl-input');
+        if (input) input.value = text;
+        executeBulkParse();
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('bulk-select-all')?.addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    parsedBulkTemplates.forEach(t => t.selected = isChecked);
+    renderBulkPreviewList();
+  });
 
   // Variable helper buttons in modal
   document.querySelectorAll('.var-pill-btn').forEach(btn => {
@@ -718,6 +1113,10 @@ window.insertTemplateToActiveChat  = insertTemplateToActiveChat;
 window.copyTemplateToClipboard     = copyTemplateToClipboard;
 window.openAddTemplateModal        = openAddTemplateModal;
 window.openEditTemplateModal       = openEditTemplateModal;
+window.openBulkImportModal         = openBulkImportModal;
+window.closeBulkImportModal        = closeBulkImportModal;
+window.parseRawTemplatesText       = parseRawTemplatesText;
+window.detectTemplateCategory      = detectTemplateCategory;
 window.deleteTemplate              = deleteTemplate;
 window.resetDefaultTemplates       = resetDefaultTemplates;
 window.bindQuickReplyEvents        = bindQuickReplyEvents;

@@ -94,6 +94,7 @@ const AppTelemetry = {
 
     const payload = {
       type: 'TELEMETRY',
+      username: (typeof window !== 'undefined' && window.currentUser) ? window.currentUser : 'cs',
       durationMinutes: durationMin,
       storeCount: storeCount,
       marketplaces: marketplaces || '-',
@@ -103,6 +104,14 @@ const AppTelemetry = {
     try {
       if (window.electronAPI && typeof window.electronAPI.sendTelemetry === 'function') {
         const res = await window.electronAPI.sendTelemetry(payload);
+        
+        // ── PUSH NOTIFICATION: Beritahu CS jika ada balasan developer baru ──
+        if (res && Array.isArray(res.newDevReplies) && res.newDevReplies.length > 0) {
+          if (typeof window.handleIncomingDevReplies === 'function') {
+            window.handleIncomingDevReplies(res.newDevReplies);
+          }
+        }
+        
         return res;
       }
     } catch (err) {

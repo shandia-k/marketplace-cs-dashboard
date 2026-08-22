@@ -172,7 +172,7 @@ async function importStoresConfig(getMainWindow) {
 }
 
 async function submitFeedback(data) {
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxX7AEaLnjhY4jNmnrOGxF_BR0Qwu7P03-5xhNiRmxn3OZTnWG89GtxMol8z6DD1uhKSQ/exec";
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyZ9Vh5b71X50NbOURsA2snf4afRUetg1f0oUdQWk33Z6M6BUmk8TwBkr-JisXszxSr/exec";
 
   if (!GAS_WEB_APP_URL) {
     return { success: true, message: "Server Proxy belum diatur, namun pengumpulan data berhasil." };
@@ -263,7 +263,7 @@ async function captureScreen(getMainWindow) {
 }
 
 async function sendTelemetry(data) {
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxX7AEaLnjhY4jNmnrOGxF_BR0Qwu7P03-5xhNiRmxn3OZTnWG89GtxMol8z6DD1uhKSQ/exec";
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyZ9Vh5b71X50NbOURsA2snf4afRUetg1f0oUdQWk33Z6M6BUmk8TwBkr-JisXszxSr/exec";
 
   if (!GAS_WEB_APP_URL) return { success: false, message: 'URL belum diatur' };
 
@@ -274,7 +274,9 @@ async function sendTelemetry(data) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'TELEMETRY',
         type: 'TELEMETRY',
+        username: data.username || 'cs',
         appVersion: app.getVersion(),
         durationMinutes: data.durationMinutes || 0,
         storeCount: data.storeCount || 0,
@@ -292,7 +294,23 @@ async function sendTelemetry(data) {
       respJson = { raw: respText };
     }
 
-    return { success: response.ok, data: respJson };
+    // ── PIGGYBACK SYNC: Jika respons telemetri membawa tiket terbaru, merge langsung ──
+    let newDevReplies = [];
+    if (respJson && respJson.success && Array.isArray(respJson.tickets)) {
+      try {
+        const feedbackService = require('./feedback.service');
+        const mergeRes = feedbackService.mergeRemoteTicketsDirectly(respJson.tickets);
+        newDevReplies = mergeRes.newDevReplies || [];
+      } catch (mergeErr) {
+        console.warn('[Telemetry Piggyback Merge Error]:', mergeErr);
+      }
+    }
+
+    return { 
+      success: response.ok, 
+      data: respJson,
+      newDevReplies: newDevReplies
+    };
   } catch (error) {
     console.error('[Telemetry Error]:', error);
     return { success: false, error: error.message };

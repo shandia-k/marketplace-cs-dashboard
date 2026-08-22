@@ -464,6 +464,146 @@ function closeToolkitMenu() {
   toggleToolkitMenu(false);
 }
 
+// ── DRAGGABLE FLOATING DOCK & POSITION PERSISTENCE ───────────────────────────
+let isDockDragging = false;
+let dockDragStartX = 0;
+let dockDragStartY = 0;
+let dockInitialLeft = 0;
+let dockInitialTop = 0;
+let dockMoved = false;
+
+function getFloatingDockEl() {
+  return document.getElementById('floating-bottom-dock') || (typeof document.querySelector === 'function' ? document.querySelector('.floating-bottom-dock') : null);
+}
+
+function initDraggableDock() {
+  const dock = getFloatingDockEl();
+  const fab = document.getElementById('btn-cs-toolkit-fab');
+  if (!dock || !fab) return;
+
+  // 1. Muat posisi tersimpan dari localStorage jika pernah digeser
+  const savedPos = localStorage.getItem('cs_dock_position');
+  if (savedPos) {
+    try {
+      const pos = JSON.parse(savedPos);
+      if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+        const maxLeft = Math.max(10, (window.innerWidth || 1200) - (dock.offsetWidth || 120) - 10);
+        const maxTop = Math.max(10, (window.innerHeight || 800) - (dock.offsetHeight || 50) - 10);
+        const clampLeft = Math.min(Math.max(10, pos.left), maxLeft);
+        const clampTop = Math.min(Math.max(10, pos.top), maxTop);
+
+        dock.style.left = `${clampLeft}px`;
+        dock.style.top = `${clampTop}px`;
+        dock.style.right = 'auto';
+        dock.style.bottom = 'auto';
+        updateDockSmartClasses(dock, clampLeft, clampTop);
+      }
+    } catch (e) {
+      console.warn('Failed restoring dock position:', e);
+    }
+  }
+
+  // 2. Mouse Drag Handlers pada tombol Tools CS
+  fab.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Hanya tombol kiri mouse
+
+    isDockDragging = true;
+    dockMoved = false;
+    dockDragStartX = e.clientX;
+    dockDragStartY = e.clientY;
+
+    const rect = dock.getBoundingClientRect ? dock.getBoundingClientRect() : { left: 0, top: 0 };
+    dockInitialLeft = rect.left;
+    dockInitialTop = rect.top;
+
+    document.addEventListener('mousemove', onDockMouseMove);
+    document.addEventListener('mouseup', onDockMouseUp);
+  });
+
+  // 3. Double-Click untuk reset kembali ke posisi default (kanan bawah)
+  fab.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resetDockPosition();
+  });
+}
+
+function onDockMouseMove(e) {
+  if (!isDockDragging) return;
+  const dock = getFloatingDockEl();
+  if (!dock) return;
+
+  const dx = e.clientX - dockDragStartX;
+  const dy = e.clientY - dockDragStartY;
+
+  // Ambang batas 4px untuk membedakan antara klik biasa dan drag
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+    dockMoved = true;
+    dock.classList.add('is-dragging');
+  }
+
+  if (dockMoved) {
+    let newLeft = dockInitialLeft + dx;
+    let newTop = dockInitialTop + dy;
+
+    // Batasi dalam batas layar
+    const maxLeft = Math.max(10, (window.innerWidth || 1200) - (dock.offsetWidth || 120) - 10);
+    const maxTop = Math.max(10, (window.innerHeight || 800) - (dock.offsetHeight || 50) - 10);
+
+    newLeft = Math.min(Math.max(10, newLeft), maxLeft);
+    newTop = Math.min(Math.max(10, newTop), maxTop);
+
+    dock.style.left = `${newLeft}px`;
+    dock.style.top = `${newTop}px`;
+    dock.style.right = 'auto';
+    dock.style.bottom = 'auto';
+
+    updateDockSmartClasses(dock, newLeft, newTop);
+  }
+}
+
+function onDockMouseUp() {
+  if (!isDockDragging) return;
+  isDockDragging = false;
+
+  const dock = getFloatingDockEl();
+  document.removeEventListener('mousemove', onDockMouseMove);
+  document.removeEventListener('mouseup', onDockMouseUp);
+
+  if (dock) {
+    dock.classList.remove('is-dragging');
+    if (dockMoved) {
+      const rect = dock.getBoundingClientRect ? dock.getBoundingClientRect() : { left: 0, top: 0 };
+      localStorage.setItem('cs_dock_position', JSON.stringify({ left: rect.left, top: rect.top }));
+    }
+  }
+}
+
+function updateDockSmartClasses(dock, left, top) {
+  const vh = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
+  const vw = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1200;
+  const isTopHalf = top < (vh * 0.45);
+  const isLeftHalf = left < (vw * 0.5);
+
+  dock.classList.toggle('dock-top', isTopHalf);
+  dock.classList.toggle('dock-left', isLeftHalf);
+}
+
+function resetDockPosition() {
+  const dock = getFloatingDockEl();
+  if (!dock) return;
+  localStorage.removeItem('cs_dock_position');
+  dock.style.left = '';
+  dock.style.top = '';
+  dock.style.right = '';
+  dock.style.bottom = '';
+  dock.classList.remove('dock-top', 'dock-left');
+  if (typeof showToast === 'function') {
+    showToast('Posisi Tools CS dikembalikan ke kanan bawah', '');
+  }
+}
+window.resetDockPosition = resetDockPosition;
+
 function bindToolkitFab() {
   const fab = document.getElementById('btn-cs-toolkit-fab');
   const backdrop = document.getElementById('cs-toolkit-backdrop');
@@ -472,6 +612,8 @@ function bindToolkitFab() {
     fab.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      // Jangan buka menu popover jika user baru saja melakukan drag
+      if (dockMoved) return;
       toggleToolkitMenu();
     };
   }
@@ -481,6 +623,8 @@ function bindToolkitFab() {
       closeToolkitMenu();
     };
   }
+
+  initDraggableDock();
 }
 
 // ── BIND TOOLS EVENTS ────────────────────────────────────────────────────────

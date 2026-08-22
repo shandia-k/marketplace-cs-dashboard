@@ -102,4 +102,59 @@ describe('Level 5: Renderer Modal & Confirmation Dialog Tests', () => {
     const result = await dialogPromise;
     assert.equal(result, true);
   });
+
+  test('should open, switch tabs, minimize and close Feedback modal without errors', async () => {
+    sandbox.window.addEventListener = (ev, fn) => {};
+    sandbox.window.removeEventListener = (ev, fn) => {};
+    sandbox.window.electronAPI = {
+      feedback: {
+        getTickets: async () => [],
+        getTicket: async () => ({ success: true, ticket: {} }),
+        sync: async () => ({ success: true }),
+        getUnreadCount: async () => 0
+      }
+    };
+
+    const feedbackModal = new MockElement('div', 'feedback-modal');
+    const dockPill = new MockElement('div', 'feedback-dock-pill');
+    const tabBtnHistory = new MockElement('button', 'tab-btn-feedback-history');
+    const tabBtnNew = new MockElement('button', 'tab-btn-feedback-new');
+    const panelHistory = new MockElement('div', 'feedback-panel-history');
+    const panelNew = new MockElement('div', 'feedback-panel-new');
+    const titleEl = new MockElement('div', 'feedback-modal-title');
+    const fMsg = new MockElement('textarea', 'feedback-message');
+    const fType = new MockElement('select', 'feedback-type');
+
+    sandbox.document.registerElement('feedback-modal', feedbackModal);
+    sandbox.document.registerElement('feedback-dock-pill', dockPill);
+    sandbox.document.registerElement('tab-btn-feedback-history', tabBtnHistory);
+    sandbox.document.registerElement('tab-btn-feedback-new', tabBtnNew);
+    sandbox.document.registerElement('feedback-panel-history', panelHistory);
+    sandbox.document.registerElement('feedback-panel-new', panelNew);
+    sandbox.document.registerElement('feedback-modal-title', titleEl);
+    sandbox.document.registerElement('feedback-message', fMsg);
+    sandbox.document.registerElement('feedback-type', fType);
+
+    const feedbackCode = fs.readFileSync(path.join(__dirname, '../../../js/feedback.js'), 'utf8');
+    const fn = new Function('window', 'document', 'localStorage', 'getEl', 'escapeHtml', 'formatDateDisplay', feedbackCode);
+    fn(sandbox.window, sandbox.document, sandbox.localStorage, (id) => sandbox.document.getElementById(id), (s) => s, (d) => d);
+
+    // Open modal
+    sandbox.window.openFeedbackModal();
+    assert.equal(feedbackModal.classList.contains('active'), true, 'Feedback modal must be active when opened');
+
+    // Switch to history tab
+    sandbox.window.switchFeedbackTab('history');
+    assert.equal(panelHistory.classList.contains('active'), true);
+    assert.equal(panelNew.classList.contains('active'), false);
+
+    // Switch to new tab
+    sandbox.window.switchFeedbackTab('new');
+    assert.equal(panelNew.classList.contains('active'), true);
+    assert.equal(panelHistory.classList.contains('active'), false);
+
+    // Close modal
+    sandbox.window.closeFeedbackModal();
+    assert.equal(feedbackModal.classList.contains('active'), false, 'Feedback modal must be inactive when closed');
+  });
 });

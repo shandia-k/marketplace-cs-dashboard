@@ -1,31 +1,32 @@
 /**
  * js/feedback.js
- * Enhanced Feedback Modal, Canvas Image Compression, Screen Capture, & Attachment System
+ * Comprehensive 2-Way Feedback, Interactive Ticketing, Canvas Compression, & Threading System
  */
 
-const feedbackModal = document.getElementById('feedback-modal');
-const btnFeedbackClose = document.getElementById('btn-feedback-close');
-const btnFeedbackCancel = document.getElementById('btn-feedback-cancel');
-const btnFeedbackSubmit = document.getElementById('btn-feedback-submit');
-const btnFeedbackMinimize = document.getElementById('btn-feedback-minimize');
-const btnFeedbackMinFooter = document.getElementById('btn-feedback-min-footer');
-const feedbackType = document.getElementById('feedback-type');
-const feedbackMessage = document.getElementById('feedback-message');
-const feedbackCharCount = document.getElementById('feedback-char-count');
-const feedbackDockPill = document.getElementById('feedback-dock-pill');
-const btnFeedbackDockRestore = document.getElementById('btn-feedback-dock-restore');
-const btnFeedbackDockDiscard = document.getElementById('btn-feedback-dock-discard');
-const feedbackFileInput = document.getElementById('feedback-file-input');
-const btnFeedbackUploadFile = document.getElementById('btn-feedback-upload-file');
-const btnFeedbackCaptureScreen = document.getElementById('btn-feedback-capture-screen');
-const feedbackDropzone = document.getElementById('feedback-dropzone');
-
+// ── State Management ────────────────────────────────────────────────────────
 let feedbackDraft = {
   type: 'bug',
   message: '',
   images: [] // Array of { id, name, tag, base64, mimeType, width, height, sizeFormatted }
 };
+
+let replyDraft = {
+  images: [] // Array of { id, name, base64, mimeType, sizeFormatted }
+};
+
+let allFeedbackTickets = [];
+let activeSelectedTicketId = null;
+let currentActiveTab = 'history'; // 'history' | 'new'
 let isFeedbackMinimized = false;
+
+// ── On-Demand Sync State (Zero Idle Quota) ───────────────────────────────────
+let lastSyncCallTime = 0;
+const CLIENT_SYNC_MIN_INTERVAL_MS = 15 * 1000; // Minimal 15 detik antar on-demand sync
+
+// Helper query
+function getEl(id) {
+  return document.getElementById(id);
+}
 
 // ── Kompresi Gambar Klien (Canvas Compression - Robust Multi-Engine) ───────
 async function compressImageFile(fileOrBlob, maxWidth = 1280, maxHeight = 1280, quality = 0.8) {
@@ -133,10 +134,10 @@ async function compressImageFile(fileOrBlob, maxWidth = 1280, maxHeight = 1280, 
   });
 }
 
-// ── Tambah Gambar ke Daftar Lampiran & Sisipkan Tag Otomatis ────────────────
+// ── Tambah Gambar ke Draf Form Laporan Baru ─────────────────────────────────
 async function addFeedbackImage(fileOrBlob, customName = null) {
   if (feedbackDraft.images.length >= 4) {
-    showToast('Maksimal 4 gambar lampiran per laporan!', 'error');
+    if (typeof showToast === 'function') showToast('Maksimal 4 gambar lampiran per laporan!', 'error');
     return;
   }
 
@@ -156,24 +157,22 @@ async function addFeedbackImage(fileOrBlob, customName = null) {
     };
 
     feedbackDraft.images.push(imgObj);
-
-    // Auto-insert tag ke textarea pada posisi kursor
     insertTagToFeedbackTextarea(imgTag);
-
     renderFeedbackThumbnails();
     updateFeedbackDockPill();
-    showToast(`📷 ${imgTag} berhasil dilampirkan (${compressed.sizeFormatted}) ✓`, 'success');
+    if (typeof showToast === 'function') showToast(`📷 ${imgTag} berhasil dilampirkan (${compressed.sizeFormatted}) ✓`, 'success');
   } catch (err) {
-    showToast('Gagal memproses gambar: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('Gagal memproses gambar: ' + err.message, 'error');
   }
 }
 
-// ── Sisipkan Tag [Gambar X] ke Posisi Kursor Textarea ──────────────────────
+// ── Sisipkan Tag [Gambar X] ke Posisi Kursor Textarea Form Baru ─────────────
 function insertTagToFeedbackTextarea(tag) {
-  if (!feedbackMessage) return;
-  const val = feedbackMessage.value;
-  const start = feedbackMessage.selectionStart || val.length;
-  const end = feedbackMessage.selectionEnd || val.length;
+  const fMsg = getEl('feedback-message');
+  if (!fMsg) return;
+  const val = fMsg.value;
+  const start = fMsg.selectionStart || val.length;
+  const end = fMsg.selectionEnd || val.length;
 
   const before = val.substring(0, start);
   const after = val.substring(end);
@@ -181,20 +180,19 @@ function insertTagToFeedbackTextarea(tag) {
   const needsTrailingSpace = after.length > 0 && !after.startsWith(' ') && !after.startsWith('\n');
 
   const insertText = (needsLeadingSpace ? ' ' : '') + tag + (needsTrailingSpace ? ' ' : ' ');
-  feedbackMessage.value = before + insertText + after;
+  fMsg.value = before + insertText + after;
 
   const newCursorPos = start + insertText.length;
-  feedbackMessage.selectionStart = feedbackMessage.selectionEnd = newCursorPos;
-  feedbackMessage.focus();
-
+  fMsg.selectionStart = fMsg.selectionEnd = newCursorPos;
+  fMsg.focus();
   updateFeedbackCharCount();
 }
 window.insertTagToFeedbackTextarea = insertTagToFeedbackTextarea;
 
-// ── Render Thumbnail Lampiran Gambar ─────────────────────────────────────────
+// ── Render Thumbnail Lampiran Draf Baru ─────────────────────────────────────
 function renderFeedbackThumbnails() {
-  const grid = document.getElementById('feedback-thumbnails-grid');
-  const counter = document.getElementById('feedback-img-counter');
+  const grid = getEl('feedback-thumbnails-grid');
+  const counter = getEl('feedback-img-counter');
   if (counter) {
     counter.textContent = `${feedbackDraft.images.length} / 4 Gambar`;
   }
@@ -210,9 +208,9 @@ function renderFeedbackThumbnails() {
     img.tag = tag;
     return `
       <div class="feedback-thumb-card" data-img-id="${img.id}">
-        <img src="${img.base64}" class="feedback-thumb-preview" alt="${tag}" title="Klik untuk melihat perbesaran" onclick="previewFeedbackImage('${img.id}')">
+        <img src="${img.base64}" class="feedback-thumb-preview" alt="${tag}" title="Klik untuk melihat perbesaran" onclick="previewFeedbackImageBase64('${img.base64}', '${tag}')">
         <div class="feedback-thumb-footer">
-          <span class="feedback-thumb-tag" title="Klik untuk menyisipkan tag ${tag} ke posisi kursor teks" onclick="insertTagToFeedbackTextarea('${tag}')">${tag}</span>
+          <span class="feedback-thumb-tag" title="Klik untuk menyisipkan tag ${tag}" onclick="insertTagToFeedbackTextarea('${tag}')">${tag}</span>
           <button type="button" class="btn-thumb-remove" title="Hapus gambar ini" onclick="removeFeedbackImage('${img.id}')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -225,18 +223,27 @@ function renderFeedbackThumbnails() {
   }).join('');
 }
 
-// ── Lightbox Preview Perbesaran Gambar ───────────────────────────────────────
-function previewFeedbackImage(imgId) {
-  const img = feedbackDraft.images.find(i => i.id === imgId);
-  if (!img) return;
+function removeFeedbackImage(imgId) {
+  const idx = feedbackDraft.images.findIndex(i => i.id === imgId);
+  if (idx !== -1) {
+    const removed = feedbackDraft.images.splice(idx, 1)[0];
+    renderFeedbackThumbnails();
+    updateFeedbackDockPill();
+    if (typeof showToast === 'function') showToast(`Lampiran ${removed.tag || 'gambar'} dihapus`, '');
+  }
+}
+window.removeFeedbackImage = removeFeedbackImage;
 
+// ── Lightbox Preview Perbesaran Gambar ───────────────────────────────────────
+function previewFeedbackImageBase64(base64Src, title = 'Lampiran Gambar') {
+  if (!base64Src) return;
   let lightbox = document.getElementById('feedback-img-lightbox');
   if (!lightbox) {
     lightbox = document.createElement('div');
     lightbox.id = 'feedback-img-lightbox';
     lightbox.style.cssText = `
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.88); backdrop-filter: blur(8px);
       z-index: 100002; display: flex; align-items: center; justify-content: center;
       flex-direction: column; cursor: pointer; padding: 24px; box-sizing: border-box;
     `;
@@ -246,38 +253,28 @@ function previewFeedbackImage(imgId) {
 
   lightbox.innerHTML = `
     <div style="position: relative; max-width: 90vw; max-height: 85vh;" onclick="event.stopPropagation();">
-      <img src="${img.base64}" style="max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 16px 40px rgba(0,0,0,0.8); border: 1.5px solid var(--accent-primary, #df1683); display: block; margin: 0 auto;">
+      <img src="${base64Src}" style="max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 16px 40px rgba(0,0,0,0.8); border: 1.5px solid var(--accent-primary, #df1683); display: block; margin: 0 auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; color: #ffffff; font-size: 13px; font-weight: 600;">
-        <span>${img.tag} &middot; ${img.sizeFormatted} (${img.width}x${img.height}px)</span>
+        <span>📷 ${escapeHtml(title)}</span>
         <button style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family:inherit;" onclick="document.getElementById('feedback-img-lightbox').style.display='none';">Tutup</button>
       </div>
     </div>
   `;
   lightbox.style.display = 'flex';
 }
-window.previewFeedbackImage = previewFeedbackImage;
-
-// ── Hapus Lampiran Gambar ───────────────────────────────────────────────────
-function removeFeedbackImage(imgId) {
-  const idx = feedbackDraft.images.findIndex(i => i.id === imgId);
-  if (idx !== -1) {
-    const removed = feedbackDraft.images.splice(idx, 1)[0];
-    renderFeedbackThumbnails();
-    updateFeedbackDockPill();
-    showToast(`Lampiran ${removed.tag || 'gambar'} dihapus`, '');
-  }
-}
-window.removeFeedbackImage = removeFeedbackImage;
+window.previewFeedbackImageBase64 = previewFeedbackImageBase64;
 
 // ── Tangkap Layar Dashboard Otomatis (One-Click Screen Capture) ─────────────
 async function handleCaptureDashboardScreen() {
   if (feedbackDraft.images.length >= 4) {
-    showToast('Maksimal 4 gambar lampiran!', 'error');
+    if (typeof showToast === 'function') showToast('Maksimal 4 gambar lampiran!', 'error');
     return;
   }
 
-  if (feedbackModal) feedbackModal.style.opacity = '0';
-  if (feedbackDockPill) feedbackDockPill.style.opacity = '0';
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  if (modal) modal.style.opacity = '0';
+  if (dockPill) dockPill.style.opacity = '0';
 
   await new Promise(r => setTimeout(r, 90));
 
@@ -298,13 +295,13 @@ async function handleCaptureDashboardScreen() {
         throw new Error(res?.error || 'Gagal menangkap layar');
       }
     } else {
-      showToast('Fitur tangkap layar otomatis tidak didukung', 'error');
+      if (typeof showToast === 'function') showToast('Fitur tangkap layar otomatis tidak didukung', 'error');
     }
   } catch (err) {
-    showToast('Gagal tangkap layar: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('Gagal tangkap layar: ' + err.message, 'error');
   } finally {
-    if (feedbackModal) feedbackModal.style.opacity = '1';
-    if (feedbackDockPill) feedbackDockPill.style.opacity = '1';
+    if (modal) modal.style.opacity = '1';
+    if (dockPill) dockPill.style.opacity = '1';
   }
 }
 
@@ -312,13 +309,20 @@ async function handleCaptureDashboardScreen() {
 async function handleFeedbackPaste(e) {
   if (!e.clipboardData) return;
 
+  const replyInput = getEl('feedback-reply-text');
+  const isReplyFocus = (document.activeElement === replyInput);
+
   if (e.clipboardData.files && e.clipboardData.files.length > 0) {
     for (let i = 0; i < e.clipboardData.files.length; i++) {
       const file = e.clipboardData.files[i];
       if (file && file.type && file.type.startsWith('image/')) {
         e.preventDefault();
         e.stopPropagation();
-        await addFeedbackImage(file, file.name || `screenshot_paste_${feedbackDraft.images.length + 1}.jpg`);
+        if (isReplyFocus || currentActiveTab === 'history') {
+          await addReplyImage(file, file.name);
+        } else {
+          await addFeedbackImage(file, file.name);
+        }
         return;
       }
     }
@@ -332,7 +336,11 @@ async function handleFeedbackPaste(e) {
         if (file) {
           e.preventDefault();
           e.stopPropagation();
-          await addFeedbackImage(file, `screenshot_paste_${feedbackDraft.images.length + 1}.jpg`);
+          if (isReplyFocus || currentActiveTab === 'history') {
+            await addReplyImage(file, `screenshot_reply_${replyDraft.images.length + 1}.jpg`);
+          } else {
+            await addFeedbackImage(file, `screenshot_paste_${feedbackDraft.images.length + 1}.jpg`);
+          }
           return;
         }
       }
@@ -340,19 +348,548 @@ async function handleFeedbackPaste(e) {
   }
 }
 
-// ── Update Counter Karakter & Draf ──────────────────────────────────────────
+// ── Lampiran Gambar pada Balasan Thread (Reply) ──────────────────────────────
+async function addReplyImage(fileOrBlob, customName = null) {
+  if (replyDraft.images.length >= 4) {
+    if (typeof showToast === 'function') showToast('Maksimal 4 gambar pada satu balasan!', 'error');
+    return;
+  }
+
+  try {
+    const compressed = await compressImageFile(fileOrBlob);
+    const nextIdx = replyDraft.images.length + 1;
+    const imgObj = {
+      id: Date.now() + Math.random().toString(36).substring(2, 6),
+      name: customName || `balasan_img_${nextIdx}.jpg`,
+      tag: `[Gambar ${nextIdx}]`,
+      base64: compressed.base64,
+      mimeType: compressed.mimeType,
+      sizeFormatted: compressed.sizeFormatted
+    };
+
+    replyDraft.images.push(imgObj);
+    renderReplyThumbnails();
+    if (typeof showToast === 'function') showToast(`📷 Lampiran balasan ditambahkan (${compressed.sizeFormatted})`, 'success');
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Gagal memproses gambar balasan: ' + err.message, 'error');
+  }
+}
+
+function renderReplyThumbnails() {
+  const grid = getEl('feedback-reply-thumbnails');
+  if (!grid) return;
+  if (replyDraft.images.length === 0) {
+    grid.innerHTML = '';
+    grid.style.display = 'none';
+    return;
+  }
+
+  grid.style.display = 'flex';
+  grid.innerHTML = replyDraft.images.map((img) => `
+    <div style="position: relative; display: inline-flex; align-items: center; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 3px 6px; gap: 6px; border: 1px solid var(--border-color);">
+      <img src="${img.base64}" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="previewFeedbackImageBase64('${img.base64}', '${img.name}')">
+      <span style="font-size: 11px; color: var(--text-secondary); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${img.name}</span>
+      <button type="button" style="background:none; border:none; color: #ef4444; cursor: pointer; padding: 2px;" onclick="removeReplyImage('${img.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeReplyImage(imgId) {
+  const idx = replyDraft.images.findIndex(i => i.id === imgId);
+  if (idx !== -1) {
+    replyDraft.images.splice(idx, 1);
+    renderReplyThumbnails();
+  }
+}
+window.removeReplyImage = removeReplyImage;
+
+// ── Tab Switching: Riwayat vs Buat Laporan Baru ─────────────────────────────
+function switchFeedbackTab(tabName) {
+  currentActiveTab = tabName;
+
+  const tabBtnHistory = getEl('tab-btn-feedback-history');
+  const tabBtnNew = getEl('tab-btn-feedback-new');
+  const panelHistory = getEl('feedback-panel-history');
+  const panelNew = getEl('feedback-panel-new');
+
+  if (tabBtnHistory) tabBtnHistory.classList.toggle('active', tabName === 'history');
+  if (tabBtnNew) tabBtnNew.classList.toggle('active', tabName === 'new');
+  if (panelHistory) panelHistory.classList.toggle('active', tabName === 'history');
+  if (panelNew) panelNew.classList.toggle('active', tabName === 'new');
+
+  const titleEl = getEl('feedback-modal-title');
+  if (titleEl) {
+    titleEl.textContent = tabName === 'history' ? 'Pusat Bantuan & Riwayat Tiket' : 'Buat Laporan Bug / Saran Baru';
+  }
+
+  if (tabName === 'history') {
+    loadFeedbackTickets(activeSelectedTicketId);
+    triggerOnDemandFeedbackSync(false);
+  } else {
+    const fMsg = getEl('feedback-message');
+    if (fMsg) setTimeout(() => fMsg.focus(), 100);
+  }
+}
+window.switchFeedbackTab = switchFeedbackTab;
+
+// ── Helper Escape HTML & Formatting ─────────────────────────────────────────
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatDateDisplay(isoString) {
+  if (!isoString) return '-';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return isoString;
+  }
+}
+
+function formatTimeOnly(isoString) {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+function formatDateSeparator(isoString) {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (e) {
+    return '';
+  }
+}
+
+function getStatusBadgeHtml(status) {
+  const map = {
+    open: { label: '🟡 Menunggu Review', cls: 'status-open' },
+    in_progress: { label: '🔵 Sedang Dikerjakan', cls: 'status-in_progress' },
+    need_info: { label: '🟣 Butuh Info', cls: 'status-need_info' },
+    resolved: { label: '🟢 Selesai', cls: 'status-resolved' },
+    closed: { label: '⚫ Ditutup', cls: 'status-closed' }
+  };
+  const conf = map[status] || { label: status, cls: 'status-open' };
+  return `<span class="status-pill ${conf.cls}">${conf.label}</span>`;
+}
+
+function getTypeBadge(type) {
+  const t = String(type || '').toLowerCase();
+  if (t === 'bug') return '🐛 Bug';
+  if (t === 'saran') return '💡 Saran';
+  return '❓ Pertanyaan';
+}
+
+// ── Muat Daftar Tiket dari IPC ──────────────────────────────────────────────
+async function loadFeedbackTickets(selectTicketId = null, isBackgroundRefresh = false) {
+  try {
+    if (!window.electronAPI || !window.electronAPI.feedback) return;
+    const tickets = await window.electronAPI.feedback.getTickets();
+    allFeedbackTickets = Array.isArray(tickets) ? tickets : [];
+    filterFeedbackTickets(selectTicketId, isBackgroundRefresh);
+    refreshUnreadBadges();
+  } catch (err) {
+    console.error('Error loading feedback tickets:', err);
+  }
+}
+window.loadFeedbackTickets = loadFeedbackTickets;
+
+// ── Filter & Render Sidebar Tiket ───────────────────────────────────────────
+function filterFeedbackTickets(selectTicketId = null, isBackgroundRefresh = false) {
+  const searchInput = getEl('feedback-search-input');
+  const statusFilterSelect = getEl('feedback-status-filter');
+  const threadEmptyView = getEl('feedback-thread-empty');
+  const threadContentView = getEl('feedback-thread-content');
+
+  const searchVal = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const statusFilter = statusFilterSelect ? statusFilterSelect.value : 'all';
+
+  const filtered = allFeedbackTickets.filter(t => {
+    // Filter status
+    if (statusFilter !== 'all' && t.status !== statusFilter) {
+      return false;
+    }
+    // Filter pencarian teks
+    if (searchVal) {
+      const matchId = (t.id || '').toLowerCase().includes(searchVal);
+      const matchTitle = (t.title || '').toLowerCase().includes(searchVal);
+      const matchMsg = Array.isArray(t.messages) && t.messages.some(m => (m.content || '').toLowerCase().includes(searchVal));
+      return matchId || matchTitle || matchMsg;
+    }
+    return true;
+  });
+
+  renderTicketSidebarList(filtered);
+
+  // Jika belum ada tiket aktif yang dipilih, pilih yang pertama jika tersedia
+  if (filtered.length > 0) {
+    const targetId = selectTicketId || activeSelectedTicketId || filtered[0].id;
+    const exists = filtered.some(t => t.id === targetId);
+    selectFeedbackTicket(exists ? targetId : filtered[0].id, isBackgroundRefresh);
+  } else {
+    activeSelectedTicketId = null;
+    if (threadEmptyView) threadEmptyView.style.display = 'flex';
+    if (threadContentView) threadContentView.style.display = 'none';
+  }
+}
+window.filterFeedbackTickets = filterFeedbackTickets;
+
+function renderTicketSidebarList(tickets) {
+  const ticketListContainer = getEl('feedback-ticket-list');
+  if (!ticketListContainer) return;
+
+  if (tickets.length === 0) {
+    ticketListContainer.innerHTML = `
+      <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 11.5px;">
+        Tidak ada riwayat laporan ditemukan.
+      </div>
+    `;
+    return;
+  }
+
+  ticketListContainer.innerHTML = tickets.map(t => {
+    const isActive = t.id === activeSelectedTicketId;
+    const lastMsg = (Array.isArray(t.messages) && t.messages.length > 0)
+      ? t.messages[t.messages.length - 1].content
+      : '';
+    const hasUnread = Number(t.unreadCount) > 0;
+
+    return `
+      <div class="feedback-ticket-card ${isActive ? 'active' : ''}" onclick="selectFeedbackTicket('${t.id}')">
+        <div class="ticket-card-header">
+          <span class="ticket-card-id">#${escapeHtml(t.id)}</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${getStatusBadgeHtml(t.status)}
+            ${hasUnread ? `<span class="ticket-unread-dot" title="${t.unreadCount} balasan baru"></span>` : ''}
+          </div>
+        </div>
+        <div class="ticket-card-title">${escapeHtml(t.title || 'Laporan Baru')}</div>
+        <div class="ticket-card-snippet">${escapeHtml(lastMsg)}</div>
+        <div class="ticket-card-footer">
+          <span>${getTypeBadge(t.type)}</span>
+          <span>${formatDateDisplay(t.updatedAt || t.createdAt)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Pilih Tiket & Tampilkan Thread Percakapan ────────────────────────────────
+async function selectFeedbackTicket(ticketId, isBackgroundRefresh = false) {
+  const isSwitchingTicket = (activeSelectedTicketId !== ticketId);
+  activeSelectedTicketId = ticketId;
+
+  const threadEmptyView = getEl('feedback-thread-empty');
+  const threadContentView = getEl('feedback-thread-content');
+  const threadTicketId = getEl('thread-ticket-id');
+  const threadTicketTitle = getEl('thread-ticket-title');
+  const threadTicketType = getEl('thread-ticket-type');
+  const threadTicketStatus = getEl('thread-ticket-status');
+  const threadTicketMeta = getEl('thread-ticket-meta');
+  const btnToggleResolve = getEl('btn-toggle-resolve-ticket');
+  const replyTextInput = getEl('feedback-reply-text');
+
+  // Update styling list
+  const cards = document.querySelectorAll('.feedback-ticket-card');
+  cards.forEach(c => {
+    const isThis = c.innerHTML.includes(`#${ticketId}`);
+    c.classList.toggle('active', isThis);
+  });
+
+  if (threadEmptyView) threadEmptyView.style.display = 'none';
+  if (threadContentView) threadContentView.style.display = 'flex';
+
+  try {
+    const res = await window.electronAPI.feedback.getTicket(ticketId);
+    if (!res || !res.success || !res.ticket) {
+      if (typeof showToast === 'function') showToast('Gagal memuat detail tiket', 'error');
+      return;
+    }
+
+    const t = res.ticket;
+
+    // Tandai sudah dibaca
+    if (t.unreadCount > 0) {
+      await window.electronAPI.feedback.markRead(ticketId);
+      t.unreadCount = 0;
+      refreshUnreadBadges();
+    }
+
+    // Update Header Thread
+    if (threadTicketId) threadTicketId.textContent = `#${t.id}`;
+    if (threadTicketTitle) threadTicketTitle.textContent = t.title || 'Laporan Baru';
+    if (threadTicketType) threadTicketType.textContent = getTypeBadge(t.type);
+    if (threadTicketStatus) {
+      threadTicketStatus.innerHTML = getStatusBadgeHtml(t.status);
+    }
+    if (threadTicketMeta) {
+      const rep = t.reporter?.displayName || t.reporter?.username || 'CS';
+      threadTicketMeta.innerHTML = `Dilaporkan oleh <b>${escapeHtml(rep)}</b> &middot; Dibuat ${formatDateDisplay(t.createdAt)}`;
+    }
+
+    // Update Tombol Selesai / Buka Kembali
+    if (btnToggleResolve) {
+      const isResolved = t.status === 'resolved' || t.status === 'closed';
+      btnToggleResolve.textContent = isResolved ? '↩ Buka Kembali Tiket' : '✓ Tandai Selesai';
+      btnToggleResolve.style.borderColor = isResolved ? 'var(--accent-primary)' : 'var(--border-color)';
+    }
+
+    // Render Stream Percakapan
+    renderThreadStream(t, isBackgroundRefresh);
+
+    // HANYA reset Reply Input jika user berpindah ke tiket lain secara manual
+    if (isSwitchingTicket && !isBackgroundRefresh) {
+      if (replyTextInput) replyTextInput.value = '';
+      replyDraft.images = [];
+      renderReplyThumbnails();
+    }
+
+  } catch (err) {
+    console.error('Error selecting ticket:', err);
+  }
+}
+window.selectFeedbackTicket = selectFeedbackTicket;
+
+// ── Render Thread Percakapan (WhatsApp-Style Chat Bubbles) ──────────────────
+function renderThreadStream(ticket, isBackgroundRefresh = false) {
+  const threadStream = getEl('feedback-thread-stream');
+  if (!threadStream) return;
+  const messages = Array.isArray(ticket.messages) ? ticket.messages : [];
+
+  // Jika background refresh dan jumlah pesan tidak berubah, hindari menimpa DOM agar tidak mengganggu scroll / input
+  const existingBubbles = threadStream.querySelectorAll('.thread-msg-bubble');
+  if (isBackgroundRefresh && existingBubbles.length === messages.length) {
+    return;
+  }
+
+  // Saring pesan log sistem duplikat berurutan agar timeline bersih
+  const displayMessages = messages.filter((msg, idx) => {
+    if (msg.sender?.role === 'system') {
+      const prev = messages[idx - 1];
+      if (prev && prev.sender?.role === 'system' && prev.content === msg.content) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  let lastDateStr = '';
+  const htmlParts = [];
+
+  displayMessages.forEach(msg => {
+    const msgDateStr = formatDateSeparator(msg.timestamp);
+    if (msgDateStr && msgDateStr !== lastDateStr) {
+      lastDateStr = msgDateStr;
+      htmlParts.push(`
+        <div class="thread-date-separator">
+          <span>${escapeHtml(msgDateStr)}</span>
+        </div>
+      `);
+    }
+
+    const role = msg.sender?.role || 'user';
+    const isDev = role === 'developer' || role === 'superadmin' || msg.isDevReply === true;
+    const isSystem = role === 'system';
+    const timeStr = formatTimeOnly(msg.timestamp);
+
+    if (isSystem) {
+      htmlParts.push(`
+        <div class="thread-msg-bubble from-system">
+          <div class="thread-system-pill">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>${escapeHtml(msg.content)}</span>
+            <span class="system-time">&middot; ${timeStr}</span>
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    const bubbleClass = isDev ? 'from-dev' : 'from-user';
+    const senderName = msg.sender?.displayName || msg.sender?.username || (isDev ? 'Developer' : 'CS');
+
+    // 1. Render Dedicated Image Bubbles (WhatsApp Style) jika ada lampiran gambar
+    if (Array.isArray(msg.images) && msg.images.length > 0) {
+      msg.images.forEach(img => {
+        const imgSrc = img.base64 || img.url;
+        const imgName = img.name || 'Lampiran Gambar';
+        htmlParts.push(`
+          <div class="thread-msg-bubble ${bubbleClass} is-image-bubble">
+            <div class="thread-img-card" onclick="previewFeedbackImageBase64('${imgSrc}', '${escapeHtml(imgName)}')">
+              <img src="${imgSrc}" class="thread-msg-img-large" alt="${escapeHtml(imgName)}" title="${escapeHtml(imgName)} (Klik untuk melihat ukuran penuh)">
+              <span class="thread-img-time">${timeStr}</span>
+            </div>
+          </div>
+        `);
+      });
+    }
+
+    // 2. Bersihkan tag gambar jika ada di dalam teks
+    const rawContent = String(msg.content || '').trim();
+    const cleanContent = rawContent.replace(/\[Gambar\s*\d+\]/gi, '').trim();
+
+    // 3. Render Text Bubble (Hanya jika ada teks yang tersisa)
+    if (cleanContent) {
+      const devHeaderHtml = isDev ? `
+        <div class="thread-sender-name">
+          <span>${escapeHtml(senderName)}</span>
+          <span class="thread-dev-tag">Developer</span>
+        </div>
+      ` : '';
+
+      const checkmarkHtml = !isDev ? `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#53bdeb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      ` : '';
+
+      htmlParts.push(`
+        <div class="thread-msg-bubble ${bubbleClass}">
+          <div class="thread-msg-card">
+            ${devHeaderHtml}
+            <div class="thread-msg-text">${escapeHtml(cleanContent)}</div>
+            <span class="thread-msg-time">${timeStr}${checkmarkHtml}</span>
+          </div>
+        </div>
+      `);
+    }
+  });
+
+  threadStream.innerHTML = htmlParts.join('');
+
+  // Scroll otomatis ke paling bawah
+  setTimeout(() => {
+    threadStream.scrollTop = threadStream.scrollHeight;
+  }, 40);
+}
+
+// ── Kirim Balasan pada Tiket ────────────────────────────────────────────────
+async function submitTicketReply() {
+  if (!activeSelectedTicketId) return;
+
+  const replyTextInput = getEl('feedback-reply-text');
+  const content = replyTextInput ? replyTextInput.value.trim() : '';
+  if (!content && replyDraft.images.length === 0) {
+    if (typeof showToast === 'function') showToast('Ketik pesan balasan atau lampirkan gambar!', 'error');
+    return;
+  }
+
+  const btnSend = getEl('btn-send-ticket-reply');
+  if (btnSend) btnSend.disabled = true;
+
+  try {
+    const res = await window.electronAPI.feedback.addReply(activeSelectedTicketId, {
+      content: content,
+      images: replyDraft.images
+    });
+
+    if (res && res.success) {
+      if (replyTextInput) replyTextInput.value = '';
+      replyDraft.images = [];
+      renderReplyThumbnails();
+      await selectFeedbackTicket(activeSelectedTicketId);
+      if (typeof showToast === 'function') showToast('Balasan berhasil dikirim ke developer ✓', 'success');
+    } else {
+      throw new Error(res?.error || 'Gagal mengirim balasan');
+    }
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Error: ' + err.message, 'error');
+  } finally {
+    if (btnSend) btnSend.disabled = false;
+  }
+}
+window.submitTicketReply = submitTicketReply;
+
+// ── Toggle Status Selesai / Buka Kembali ─────────────────────────────────────
+async function toggleTicketResolveState() {
+  if (!activeSelectedTicketId) return;
+  const currentTicket = allFeedbackTickets.find(t => t.id === activeSelectedTicketId);
+  if (!currentTicket) return;
+
+  const isResolved = currentTicket.status === 'resolved' || currentTicket.status === 'closed';
+  const targetStatus = isResolved ? 'in_progress' : 'resolved';
+
+  try {
+    const res = await window.electronAPI.feedback.updateStatus(activeSelectedTicketId, targetStatus);
+    if (res && res.success) {
+      await loadFeedbackTickets(activeSelectedTicketId);
+      if (typeof showToast === 'function') {
+        showToast(isResolved ? 'Tiket dibuka kembali 🔄' : 'Tiket ditandai selesai (Resolved) ✓', 'success');
+      }
+    }
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Gagal memperbarui status: ' + err.message, 'error');
+  }
+}
+window.toggleTicketResolveState = toggleTicketResolveState;
+
+// ── Perbarui Counter Unread Badges ──────────────────────────────────────────
+async function refreshUnreadBadges() {
+  try {
+    if (!window.electronAPI || !window.electronAPI.feedback) return;
+    const count = await window.electronAPI.feedback.getUnreadCount();
+    const num = Number(count) || 0;
+
+    const unreadTabBadge = getEl('feedback-tab-unread-count');
+    const toolkitFeedbackBadge = getEl('toolkit-feedback-badge');
+
+    if (unreadTabBadge) {
+      unreadTabBadge.textContent = num;
+      unreadTabBadge.style.display = num > 0 ? 'inline-block' : 'none';
+    }
+
+    if (toolkitFeedbackBadge) {
+      toolkitFeedbackBadge.textContent = num;
+      toolkitFeedbackBadge.style.display = num > 0 ? 'inline-block' : 'none';
+    }
+  } catch (err) {
+    console.warn('Failed to refresh unread badges:', err);
+  }
+}
+window.refreshUnreadBadges = refreshUnreadBadges;
+
+// ── Update Counter Karakter & Draf Form Baru ────────────────────────────────
 function updateFeedbackCharCount() {
-  if (!feedbackMessage || !feedbackCharCount) return;
-  const len = feedbackMessage.value.length;
-  feedbackCharCount.textContent = `${len} / 5000`;
-  feedbackCharCount.style.color = len > 4500 ? '#ef4444' : 'var(--text-muted)';
-  feedbackDraft.message = feedbackMessage.value;
+  const fMsg = getEl('feedback-message');
+  const fChar = getEl('feedback-char-count');
+  if (!fMsg || !fChar) return;
+  const len = fMsg.value.length;
+  fChar.textContent = `${len} / 5000`;
+  fChar.style.color = len > 4500 ? '#ef4444' : 'var(--text-muted)';
+  feedbackDraft.message = fMsg.value;
 }
 
 // ── Update Floating Dock Pill Text ──────────────────────────────────────────
 function updateFeedbackDockPill() {
-  const dockTitle = document.getElementById('feedback-dock-title');
-  const dockSub = document.getElementById('feedback-dock-sub');
+  const dockTitle = getEl('feedback-dock-title');
+  const dockSub = getEl('feedback-dock-sub');
   if (dockTitle) {
     const typeLabel = feedbackDraft.type === 'bug' ? 'Draf Bug' : (feedbackDraft.type === 'saran' ? 'Draf Saran' : 'Draf Laporan');
     dockTitle.textContent = typeLabel;
@@ -364,6 +901,71 @@ function updateFeedbackDockPill() {
   }
 }
 
+// ── On-Demand Cloud Sync Function ───────────────────────────────────────────
+/**
+ * Eksekusi On-Demand Sync dengan proteksi cooldown 15 detik
+ * Sinkronisasi HANYA dipanggil saat CS membuka tab/modal atau menekan tombol segarkan.
+ * TIDAK ADA interval timer background, sehingga kuota GAS 0 saat dashboard idle.
+ */
+async function triggerOnDemandFeedbackSync(force = false) {
+  const now = Date.now();
+  if (!force && (now - lastSyncCallTime < CLIENT_SYNC_MIN_INTERVAL_MS)) {
+    await loadFeedbackTickets(activeSelectedTicketId);
+    refreshUnreadBadges();
+    return;
+  }
+
+  lastSyncCallTime = now;
+  try {
+    if (window.electronAPI && window.electronAPI.feedback) {
+      await window.electronAPI.feedback.sync(force);
+      await loadFeedbackTickets(activeSelectedTicketId);
+      refreshUnreadBadges();
+    }
+  } catch (err) {
+    console.warn('[Feedback Hub] On-demand sync notice:', err);
+  }
+}
+window.triggerOnDemandFeedbackSync = triggerOnDemandFeedbackSync;
+
+/**
+ * Menangani notifikasi balasan developer baru yang dipiggyback via update telemetri berkala (30 menit)
+ * Memberikan push alert visual (Toast) + Sound Chime + Update Unread Badge
+ */
+function handleIncomingDevReplies(replies) {
+  if (!Array.isArray(replies) || replies.length === 0) return;
+
+  // 1. Perbarui angka badge merah di menu Tools CS & tab Riwayat
+  refreshUnreadBadges();
+
+  // 2. Jika modal sedang terbuka, perbarui tampilan tiket aktif & sidebar
+  const modal = getEl('feedback-modal');
+  if (modal && modal.classList.contains('active')) {
+    loadFeedbackTickets(activeSelectedTicketId, true);
+  }
+
+  // 3. Tampilkan Toast Notifikasi Interaktif
+  const firstReply = replies[0];
+  const devName = firstReply.message?.sender?.displayName || 'Developer';
+  const snippet = firstReply.message?.content
+    ? (firstReply.message.content.length > 55 ? firstReply.message.content.substring(0, 52) + '...' : firstReply.message.content)
+    : 'Mengirim lampiran gambar';
+
+  if (typeof showToast === 'function') {
+    showToast(`📬 ${devName} membalas tiket #${firstReply.ticketId}: "${snippet}"`, 'info');
+  }
+
+  // 4. Mainkan audio chime notifikasi jika tersedia
+  try {
+    if (typeof playNotificationSound === 'function') {
+      playNotificationSound();
+    }
+  } catch (e) {
+    // Abaikan jika audio tidak tersedia
+  }
+}
+window.handleIncomingDevReplies = handleIncomingDevReplies;
+
 // ── Buka, Minimize, Restore & Discard Modal Feedback ─────────────────────────
 function openFeedbackModal() {
   if (isFeedbackMinimized) {
@@ -371,53 +973,66 @@ function openFeedbackModal() {
     return;
   }
 
-  if (feedbackModal) {
-    feedbackModal.classList.add('active');
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  if (modal) {
+    modal.classList.add('active');
     document.body.classList.remove('has-minimized-feedback');
-    if (feedbackDockPill) feedbackDockPill.style.display = 'none';
+    if (dockPill) dockPill.style.display = 'none';
 
-    if (feedbackMessage) {
-      feedbackMessage.value = feedbackDraft.message || '';
-      setTimeout(() => { feedbackMessage.focus(); }, 120);
-    }
-    if (feedbackType && feedbackDraft.type) {
-      feedbackType.value = feedbackDraft.type;
-    }
-    renderFeedbackThumbnails();
-    updateFeedbackCharCount();
+    // Buka tab Riwayat jika sudah ada tiket, atau form Baru jika belum pernah ada
+    const initialTab = (allFeedbackTickets && allFeedbackTickets.length > 0) ? 'history' : 'new';
+    switchFeedbackTab(initialTab);
+    loadFeedbackTickets();
+
+    // Trigger On-Demand Cloud Sync (Throttled & Non-blocking)
+    triggerOnDemandFeedbackSync(false);
   }
 }
 
 function minimizeFeedbackModal() {
-  if (!feedbackModal) return;
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  const fMsg = getEl('feedback-message');
+  const fType = getEl('feedback-type');
+
+  if (!modal) return;
   isFeedbackMinimized = true;
   document.body.classList.add('has-minimized-feedback');
-  feedbackModal.classList.remove('active');
+  modal.classList.remove('active');
 
-  if (feedbackMessage) feedbackDraft.message = feedbackMessage.value;
-  if (feedbackType) feedbackDraft.type = feedbackType.value;
+  if (fMsg) feedbackDraft.message = fMsg.value;
+  if (fType) feedbackDraft.type = fType.value;
 
   updateFeedbackDockPill();
-  if (feedbackDockPill) {
-    feedbackDockPill.style.display = 'flex';
+  if (dockPill) {
+    dockPill.style.display = 'flex';
   }
 
-  showToast('📝 Form laporan diminimize ke pojok kanan bawah. Anda bebas mengambil screenshot.', '');
+  if (typeof showToast === 'function') {
+    showToast('📝 Form laporan diminimize ke pojok kanan bawah. Anda bebas mengambil screenshot.', '');
+  }
 }
 
 function restoreFeedbackModal() {
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  const fMsg = getEl('feedback-message');
+  const fType = getEl('feedback-type');
+
   isFeedbackMinimized = false;
   document.body.classList.remove('has-minimized-feedback');
-  if (feedbackDockPill) feedbackDockPill.style.display = 'none';
+  if (dockPill) dockPill.style.display = 'none';
 
-  if (feedbackModal) {
-    feedbackModal.classList.add('active');
-    if (feedbackMessage) {
-      feedbackMessage.value = feedbackDraft.message || '';
-      feedbackMessage.focus();
+  if (modal) {
+    modal.classList.add('active');
+    switchFeedbackTab('new');
+    if (fMsg) {
+      fMsg.value = feedbackDraft.message || '';
+      fMsg.focus();
     }
-    if (feedbackType && feedbackDraft.type) {
-      feedbackType.value = feedbackDraft.type;
+    if (fType && feedbackDraft.type) {
+      fType.value = feedbackDraft.type;
     }
     renderFeedbackThumbnails();
     updateFeedbackCharCount();
@@ -425,20 +1040,28 @@ function restoreFeedbackModal() {
 }
 
 function closeFeedbackModal() {
-  const hasContent = (feedbackMessage && feedbackMessage.value.trim().length > 0) || feedbackDraft.images.length > 0;
-  if (hasContent && !isFeedbackMinimized) {
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  const fMsg = getEl('feedback-message');
+
+  const hasContent = (fMsg && fMsg.value.trim().length > 0) || feedbackDraft.images.length > 0;
+  if (hasContent && !isFeedbackMinimized && currentActiveTab === 'new') {
     minimizeFeedbackModal();
     return;
   }
 
-  if (feedbackModal) {
-    feedbackModal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
   }
   document.body.classList.remove('has-minimized-feedback');
-  if (feedbackDockPill) feedbackDockPill.style.display = 'none';
+  if (dockPill) dockPill.style.display = 'none';
 }
 
 function resetFeedbackDraft(showCancelToast = false) {
+  const modal = getEl('feedback-modal');
+  const dockPill = getEl('feedback-dock-pill');
+  const fMsg = getEl('feedback-message');
+
   feedbackDraft = {
     type: 'bug',
     message: '',
@@ -446,11 +1069,11 @@ function resetFeedbackDraft(showCancelToast = false) {
   };
   isFeedbackMinimized = false;
   document.body.classList.remove('has-minimized-feedback');
-  if (feedbackDockPill) feedbackDockPill.style.display = 'none';
-  if (feedbackModal) feedbackModal.classList.remove('active');
-  if (feedbackMessage) feedbackMessage.value = '';
+  if (dockPill) dockPill.style.display = 'none';
+  if (modal) modal.classList.remove('active');
+  if (fMsg) fMsg.value = '';
   renderFeedbackThumbnails();
-  if (showCancelToast) {
+  if (showCancelToast && typeof showToast === 'function') {
     showToast('Draf feedback dibatalkan', '');
   }
 }
@@ -466,137 +1089,73 @@ window.restoreFeedbackModal = restoreFeedbackModal;
 window.discardFeedbackDraft = discardFeedbackDraft;
 window.resetFeedbackDraft = resetFeedbackDraft;
 
-// ── Bind Feedback Event Listeners ───────────────────────────────────────────
-document.addEventListener('click', (e) => {
-  if (e.target.closest('#btn-feedback')) {
-    openFeedbackModal();
-  } else if (e.target === feedbackModal) {
-    closeFeedbackModal();
+// ── Submit Feedback Form Baru ───────────────────────────────────────────────
+async function handleNewFeedbackSubmit() {
+  const fMsg = getEl('feedback-message');
+  const fType = getEl('feedback-type');
+  const btnSubmit = getEl('btn-feedback-submit');
+
+  const msg = fMsg ? fMsg.value.trim() : '';
+  if (!msg && feedbackDraft.images.length === 0) {
+    if (typeof showToast === 'function') showToast('Harap isi deskripsi laporan atau lampirkan screenshot!', 'error');
+    return;
   }
-});
 
-if (btnFeedbackClose) btnFeedbackClose.addEventListener('click', closeFeedbackModal);
-if (btnFeedbackCancel) btnFeedbackCancel.addEventListener('click', discardFeedbackDraft);
-if (btnFeedbackMinimize) btnFeedbackMinimize.addEventListener('click', minimizeFeedbackModal);
-if (btnFeedbackMinFooter) btnFeedbackMinFooter.addEventListener('click', minimizeFeedbackModal);
-
-if (btnFeedbackDockRestore) btnFeedbackDockRestore.addEventListener('click', restoreFeedbackModal);
-if (btnFeedbackDockDiscard) btnFeedbackDockDiscard.addEventListener('click', (e) => {
-  e.stopPropagation();
-  discardFeedbackDraft();
-});
-
-if (feedbackMessage) {
-  feedbackMessage.addEventListener('input', updateFeedbackCharCount);
-  feedbackMessage.addEventListener('paste', handleFeedbackPaste);
-}
-
-if (feedbackModal) {
-  feedbackModal.addEventListener('paste', handleFeedbackPaste);
-}
-
-if (btnFeedbackCaptureScreen) {
-  btnFeedbackCaptureScreen.addEventListener('click', handleCaptureDashboardScreen);
-}
-
-if (btnFeedbackUploadFile && feedbackFileInput) {
-  btnFeedbackUploadFile.addEventListener('click', () => {
-    feedbackFileInput.click();
-  });
-
-  feedbackFileInput.addEventListener('change', async (e) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        if (feedbackDraft.images.length >= 4) break;
-        await addFeedbackImage(files[i], files[i].name);
-      }
-      feedbackFileInput.value = '';
-    }
-  });
-}
-
-if (feedbackDropzone) {
-  feedbackDropzone.addEventListener('click', () => {
-    if (feedbackFileInput) feedbackFileInput.click();
-  });
-
-  feedbackDropzone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    feedbackDropzone.classList.add('drag-over');
-  });
-
-  feedbackDropzone.addEventListener('dragleave', () => {
-    feedbackDropzone.classList.remove('drag-over');
-  });
-
-  feedbackDropzone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    feedbackDropzone.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        if (files[i].type.startsWith('image/')) {
-          if (feedbackDraft.images.length >= 4) break;
-          await addFeedbackImage(files[i], files[i].name);
-        }
-      }
-    }
-  });
-}
-
-// ── Submit Feedback Handler (Teks & Gambar Base64) ──────────────────────────
-if (btnFeedbackSubmit) {
-  btnFeedbackSubmit.addEventListener('click', async () => {
-    const msg = feedbackMessage ? feedbackMessage.value.trim() : '';
-    if (!msg && feedbackDraft.images.length === 0) {
-      showToast('Harap isi deskripsi laporan atau lampirkan screenshot!', 'error');
-      return;
-    }
-
-    btnFeedbackSubmit.disabled = true;
-    btnFeedbackSubmit.innerHTML = `
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = `
       <span class="spinner-small" style="display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; margin-right:6px;"></span>
       Mengirim Laporan...
     `;
+  }
 
-    const currentStores = (typeof stores !== 'undefined' && Array.isArray(stores) && stores.length > 0)
-      ? stores
-      : (typeof getOrderedStores === 'function' ? getOrderedStores() : (window.stores || []));
+  const currentStores = (typeof stores !== 'undefined' && Array.isArray(stores) && stores.length > 0)
+    ? stores
+    : (typeof getOrderedStores === 'function' ? getOrderedStores() : (window.stores || []));
 
-    const safeConfig = currentStores.map(s => ({
-      name: s.name || 'Toko',
-      marketplace: s.marketplace || 'custom'
-    }));
+  const safeConfig = currentStores.map(s => ({
+    name: s.name || 'Toko',
+    marketplace: s.marketplace || 'custom'
+  }));
 
-    const imagesPayload = feedbackDraft.images.map(img => ({
-      name: img.name,
-      base64: img.base64,
-      mimeType: img.mimeType
-    }));
+  const imagesPayload = feedbackDraft.images.map(img => ({
+    name: img.name,
+    base64: img.base64,
+    mimeType: img.mimeType,
+    sizeFormatted: img.sizeFormatted
+  }));
 
-    try {
-      const response = await window.electronAPI.submitFeedback({
-        type: feedbackType ? feedbackType.value : 'bug',
-        message: msg || `[Laporan berisi ${imagesPayload.length} lampiran gambar]`,
-        storesConfig: safeConfig,
-        images: imagesPayload
-      });
+  try {
+    const response = await window.electronAPI.feedback.createTicket({
+      type: fType ? fType.value : 'bug',
+      message: msg || `[Laporan berisi ${imagesPayload.length} lampiran gambar]`,
+      storesConfig: safeConfig,
+      images: imagesPayload
+    });
 
-      if (response && response.success) {
-        if (window.AppTelemetry) {
-          window.AppTelemetry.track('feedback_submitted');
-        }
-        resetFeedbackDraft(false);
-        showToast('Laporan bug & screenshot berhasil dikirim ke tim pengembang! Terima kasih.', 'success');
-      } else {
-        throw new Error((response && response.error) || 'Gagal terhubung ke server proxy');
+    if (response && response.success) {
+      if (window.AppTelemetry) {
+        window.AppTelemetry.track('feedback_submitted');
       }
-    } catch (err) {
-      showToast('Gagal mengirim feedback: ' + err.message, 'error');
-    } finally {
-      btnFeedbackSubmit.disabled = false;
-      btnFeedbackSubmit.innerHTML = `
+      const createdTicketId = response.ticket?.id;
+      resetFeedbackDraft(false);
+
+      // Beralih ke tab Riwayat dan langsung pilih tiket yang baru dibuat
+      switchFeedbackTab('history');
+      await loadFeedbackTickets(createdTicketId);
+
+      if (typeof showToast === 'function') {
+        showToast(`Laporan #${createdTicketId} berhasil dikirim ke tim pengembang!`, 'success');
+      }
+    } else {
+      throw new Error((response && response.error) || 'Gagal mengirim laporan');
+    }
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Gagal mengirim feedback: ' + err.message, 'error');
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -604,5 +1163,162 @@ if (btnFeedbackSubmit) {
         Kirim Feedback
       `;
     }
+  }
+}
+
+// ── Sinkronisasi Manual Cepat ───────────────────────────────────────────────
+async function syncFeedbackNow() {
+  const btn = getEl('btn-feedback-sync');
+  if (btn) {
+    btn.style.opacity = '0.5';
+    btn.disabled = true;
+  }
+  try {
+    await triggerOnDemandFeedbackSync(true);
+    if (typeof showToast === 'function') showToast('Data tiket berhasil disinkronkan ✓', 'success');
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Gagal sinkron: ' + e.message, 'error');
+  } finally {
+    if (btn) {
+      btn.style.opacity = '1';
+      btn.disabled = false;
+    }
+  }
+}
+window.syncFeedbackNow = syncFeedbackNow;
+
+// ── Bind Event Listeners ────────────────────────────────────────────────────
+function initFeedbackEventListeners() {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-feedback') || e.target.closest('#tool-item-feedback')) {
+      openFeedbackModal();
+    } else if (e.target.id === 'feedback-modal') {
+      closeFeedbackModal();
+    }
   });
+
+  const btnClose = getEl('btn-feedback-close');
+  if (btnClose) btnClose.addEventListener('click', closeFeedbackModal);
+
+  const btnCancel = getEl('btn-feedback-cancel');
+  if (btnCancel) btnCancel.addEventListener('click', discardFeedbackDraft);
+
+  const btnMin = getEl('btn-feedback-minimize');
+  if (btnMin) btnMin.addEventListener('click', minimizeFeedbackModal);
+
+  const btnMinFooter = getEl('btn-feedback-min-footer');
+  if (btnMinFooter) btnMinFooter.addEventListener('click', minimizeFeedbackModal);
+
+  const btnDockRestore = getEl('btn-feedback-dock-restore');
+  if (btnDockRestore) btnDockRestore.addEventListener('click', restoreFeedbackModal);
+
+  const btnDockDiscard = getEl('btn-feedback-dock-discard');
+  if (btnDockDiscard) btnDockDiscard.addEventListener('click', (e) => {
+    e.stopPropagation();
+    discardFeedbackDraft();
+  });
+
+  const btnSubmit = getEl('btn-feedback-submit');
+  if (btnSubmit) btnSubmit.addEventListener('click', handleNewFeedbackSubmit);
+
+  const fMsg = getEl('feedback-message');
+  if (fMsg) {
+    fMsg.addEventListener('input', updateFeedbackCharCount);
+    fMsg.addEventListener('paste', handleFeedbackPaste);
+  }
+
+  const replyInput = getEl('feedback-reply-text');
+  if (replyInput) {
+    replyInput.addEventListener('paste', handleFeedbackPaste);
+    replyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        submitTicketReply();
+      }
+    });
+  }
+
+  const fModal = getEl('feedback-modal');
+  if (fModal) {
+    fModal.addEventListener('paste', handleFeedbackPaste);
+  }
+
+  const btnCapture = getEl('btn-feedback-capture-screen');
+  if (btnCapture) {
+    btnCapture.addEventListener('click', handleCaptureDashboardScreen);
+  }
+
+  const btnUpload = getEl('btn-feedback-upload-file');
+  const fileInput = getEl('feedback-file-input');
+  if (btnUpload && fileInput) {
+    btnUpload.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          if (feedbackDraft.images.length >= 4) break;
+          await addFeedbackImage(files[i], files[i].name);
+        }
+        fileInput.value = '';
+      }
+    });
+  }
+
+  const btnReplyAttach = getEl('btn-reply-attach-img');
+  const replyFileInput = getEl('feedback-reply-file-input');
+  if (btnReplyAttach && replyFileInput) {
+    btnReplyAttach.addEventListener('click', () => replyFileInput.click());
+    replyFileInput.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          if (replyDraft.images.length >= 4) break;
+          await addReplyImage(files[i], files[i].name);
+        }
+        replyFileInput.value = '';
+      }
+    });
+  }
+
+  const dropzone = getEl('feedback-dropzone');
+  if (dropzone) {
+    dropzone.addEventListener('click', () => {
+      if (fileInput) fileInput.click();
+    });
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('drag-over');
+    });
+
+    dropzone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          if (files[i].type.startsWith('image/')) {
+            if (feedbackDraft.images.length >= 4) break;
+            await addFeedbackImage(files[i], files[i].name);
+          }
+        }
+      }
+    });
+  }
+  // Catat aktivitas di modal untuk menjaga polling tetap aktif saat user aktif
+}
+
+// Inisialisasi awal
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initFeedbackEventListeners();
+    refreshUnreadBadges();
+  });
+} else {
+  initFeedbackEventListeners();
+  refreshUnreadBadges();
 }

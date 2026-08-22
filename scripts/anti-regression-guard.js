@@ -39,7 +39,7 @@ try {
   const testRunner = spawnSync(process.execPath, [path.join(rootDir, 'tests', 'run-all-tests.js')], {
     cwd: rootDir,
     stdio: 'inherit',
-    env: { ...process.env, FORCE_COLOR: '1' }
+    env: { ...process.env, FORCE_COLOR: '1', NODE_ENV: 'test' }
   });
 
   if (testRunner.status !== 0) {

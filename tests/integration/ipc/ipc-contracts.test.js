@@ -75,12 +75,24 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
       }
       if (mod === '../services/updater.service') {
         return {
-          getAppVersion: () => '1.0.13',
+          getAppVersion: () => '1.0.14',
           checkForUpdates: () => {}
         };
       }
       if (mod === '../services/search.service') {
         return { searchWebUrls: () => [] };
+      }
+      if (mod === '../services/feedback.service') {
+        return {
+          getTickets: () => [],
+          getTicketDetails: () => ({ success: true }),
+          createTicket: () => ({ success: true }),
+          addReply: () => ({ success: true }),
+          updateTicketStatus: () => ({ success: true }),
+          syncTickets: () => ({ success: true }),
+          markTicketAsRead: () => ({ success: true }),
+          getUnreadFeedbackCount: () => 0
+        };
       }
       if (mod === '../services/system.service') {
         return {
@@ -112,20 +124,21 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
   });
 
   test('should register all expected IPC handlers without collisions', () => {
-    assert.ok(registeredHandlers.size >= 25, `Expected at least 25 IPC handlers, found ${registeredHandlers.size}`);
+    assert.ok(registeredHandlers.size >= 25, `Expected at least 25 registered handlers, got ${registeredHandlers.size}`);
   });
 
   test('should verify essential handle channels are registered', () => {
     const essentialChannels = [
-      'get-stores', 'save-stores', 'get-app-path', 'get-app-memory-mb',
-      'get-users', 'get-user-profile', 'create-user', 'login-user',
-      'logout-user', 'reset-user-password', 'change-password',
-      'get-cache-size', 'clear-safe-cache', 'get-app-version',
-      'search-urls', 'read-clipboard', 'write-clipboard'
+      'get-stores', 'save-stores', 'login-user', 'logout-user',
+      'verify-user-pin', 'get-users', 'get-user-profile', 'create-user',
+      'submit-feedback', 'capture-screen', 'send-telemetry',
+      'feedback:get-tickets', 'feedback:get-ticket', 'feedback:create-ticket',
+      'feedback:add-reply', 'feedback:update-status', 'feedback:sync',
+      'feedback:mark-read', 'feedback:get-unread-count'
     ];
 
-    essentialChannels.forEach(ch => {
-      assert.ok(registeredHandlers.has(ch), `IPC handler for "${ch}" must be registered`);
+    essentialChannels.forEach(channel => {
+      assert.ok(registeredHandlers.has(channel), `Essential IPC channel [${channel}] must be registered`);
     });
   });
 

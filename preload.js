@@ -9,6 +9,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
   getAppMetricsDetails: () => ipcRenderer.invoke('get-app-metrics-details'),
   submitFeedback: (data) => ipcRenderer.invoke('submit-feedback', data),
+  
+  // 2-Way Interactive Feedback & Ticketing
+  feedback: {
+    getTickets: () => ipcRenderer.invoke('feedback:get-tickets'),
+    getTicket: (ticketId) => ipcRenderer.invoke('feedback:get-ticket', ticketId),
+    createTicket: (data) => ipcRenderer.invoke('feedback:create-ticket', data),
+    addReply: (ticketId, messageData) => ipcRenderer.invoke('feedback:add-reply', ticketId, messageData),
+    updateStatus: (ticketId, newStatus) => ipcRenderer.invoke('feedback:update-status', ticketId, newStatus),
+    sync: (force = false) => ipcRenderer.invoke('feedback:sync', force),
+    markRead: (ticketId) => ipcRenderer.invoke('feedback:mark-read', ticketId),
+    getUnreadCount: () => ipcRenderer.invoke('feedback:get-unread-count')
+  },
   captureScreen: () => ipcRenderer.invoke('capture-screen'),
   sendTelemetry: (data) => ipcRenderer.invoke('send-telemetry', data),
   getUsers: () => ipcRenderer.invoke('get-users'),

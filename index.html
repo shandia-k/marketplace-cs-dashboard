@@ -761,7 +761,7 @@
               </button>
               <button type="button" class="btn-secondary" id="btn-settings-changelog" onclick="if (typeof window.showOnboardingWelcome === 'function') { document.getElementById('settings-overlay').classList.remove('active'); window.showOnboardingWelcome(); }" style="padding: 6px 12px; font-size: 12px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Info Sistem & Changelog v1.0.13 🚀
+                Info Sistem & Changelog v1.0.14 🚀
               </button>
               <button type="button" class="btn-secondary" onclick="if (typeof window.resetOnboardingChecklist === 'function') { window.resetOnboardingChecklist(); }" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted);" title="Reset progres tugas checklist onboarding">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -982,17 +982,57 @@
       <div class="scratchpad-tabs" id="scratchpad-tabs" role="tablist">
         <!-- Tabs will be rendered here -->
       </div>
-      <button class="btn-add-tab" id="btn-sp-add-tab" title="Tambah Tab" aria-label="Tambah Tab Catatan Baru">+</button>
-      <button class="scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize" aria-label="Tutup Catatan">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" aria-hidden="true" focusable="false">
-          <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="scratchpad-header-actions">
+        <button class="scratchpad-header-btn btn-add-tab" id="btn-sp-add-tab" title="Tambah Tab" aria-label="Tambah Tab Catatan Baru">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+        <button class="scratchpad-header-btn btn-sp-search-toggle" id="btn-sp-search-toggle" title="Cari di Catatan (Ctrl+F)" aria-label="Cari di Catatan">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <button class="scratchpad-header-btn scratchpad-close" id="btn-scratchpad-close" title="Tutup / Minimize" aria-label="Tutup Catatan">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="scratchpad-body">
+
+    <!-- Dedicated Scratchpad Search Toolbar -->
+    <div class="scratchpad-search-bar" id="scratchpad-search-bar" style="display: none;" role="search" aria-label="Cari di Catatan">
+      <div class="sp-search-input-wrap">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" class="sp-search-icon">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="scratchpad-search-input" placeholder="Cari kata di catatan... (Enter / Shift+Enter)" autocomplete="off" spellcheck="false">
+        <span class="sp-search-count" id="scratchpad-search-count">0/0</span>
+      </div>
+      <div class="sp-search-actions">
+        <button class="btn-sp-search-nav" id="btn-sp-search-prev" title="Sebelumnya (Shift+Enter / ↑)" aria-label="Sebelumnya">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+        <button class="btn-sp-search-nav" id="btn-sp-search-next" title="Berikutnya (Enter / ↓)" aria-label="Berikutnya">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <button class="btn-sp-search-close" id="btn-sp-search-close" title="Tutup Pencarian (Esc)" aria-label="Tutup Pencarian">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="scratchpad-body" id="scratchpad-body">
+      <div class="scratchpad-backdrop" id="scratchpad-backdrop">
+        <div class="scratchpad-highlights" id="scratchpad-highlights"></div>
+      </div>
       <label for="scratchpad-textarea" class="sr-only">Area Teks Catatan</label>
-      <textarea id="scratchpad-textarea" placeholder="Paste data dari notepad, word, atau excel di sini..."></textarea>
+      <textarea id="scratchpad-textarea" placeholder="Paste data dari notepad, word, atau excel di sini..." autocomplete="off" spellcheck="false"></textarea>
     </div>
     <div class="scratchpad-footer">
       <div class="scratchpad-footer-left">
@@ -1008,6 +1048,15 @@
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
           </svg>
           Ketik
+        </button>
+        <button class="btn-sp-action" id="btn-sp-export-qr" title="Ekspor seluruh template di tab ini ke Quick Reply (Impor Massal)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          Ke Template
         </button>
       </div>
       <div class="scratchpad-footer-right">
@@ -1033,13 +1082,13 @@
     </div>
   </div>
 
-  <!-- Feedback Modal -->
+  <!-- Feedback & Ticketing Modal -->
   <div class="modal-overlay" id="feedback-modal">
     <div class="modal feedback-modal-container" role="dialog" aria-labelledby="feedback-modal-title" aria-modal="true">
-      <div class="modal-header">
+      <div class="modal-header feedback-modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">💡</span>
-          <h3 id="feedback-modal-title">Lapor Bug / Feedback</h3>
+          <h3 id="feedback-modal-title">Pusat Bantuan & Feedback</h3>
         </div>
         <div class="modal-header-actions" style="display: flex; align-items: center; gap: 4px;">
           <button class="btn-icon modal-min-btn" id="btn-feedback-minimize" title="Minimize Draf Laporan (─)" aria-label="Minimize Form">
@@ -1054,87 +1103,189 @@
           </button>
         </div>
       </div>
-      <div class="modal-body feedback-modal-body">
-        <div class="modal-card" style="padding: 10px 14px; margin-bottom: 12px; background: rgba(223, 22, 131, 0.06); border: 1px solid rgba(223, 22, 131, 0.18); border-radius: 8px;">
-          <p class="settings-hint" style="margin: 0; font-size: 12px; color: var(--text-secondary);">
-            💡 <strong>Tips:</strong> Anda dapat menempelkan screenshot langsung dengan <strong>Ctrl+V</strong>. Sistem otomatis menandai <code>[Gambar 1]</code>, <code>[Gambar 2]</code> untuk perbandingan tampilan bug vs tampilan seharusnya.
-          </p>
-        </div>
 
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="feedback-type">Jenis Laporan</label>
-          <select id="feedback-type">
-            <option value="bug">🐛 Lapor Bug (Error / Tampilan Rusak / Macet)</option>
-            <option value="saran">💡 Saran Fitur Baru</option>
-            <option value="tanya">❓ Pertanyaan / Kendala Lainnya</option>
-          </select>
-        </div>
+      <!-- Navigation Tabs: Riwayat & Percakapan vs Buat Laporan Baru -->
+      <div class="feedback-tabs-nav">
+        <button type="button" class="feedback-tab-btn active" id="tab-btn-feedback-history" onclick="switchFeedbackTab('history')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Riwayat & Percakapan
+          <span class="feedback-tab-unread-pill" id="feedback-tab-unread-count" style="display: none;">0</span>
+        </button>
+        <button type="button" class="feedback-tab-btn" id="tab-btn-feedback-new" onclick="switchFeedbackTab('new')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Buat Laporan Baru
+        </button>
+      </div>
 
-        <div class="form-group" style="margin-bottom: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label for="feedback-message" style="margin: 0;">Deskripsi Laporan</label>
-            <span style="font-size: 11px; color: var(--text-muted);" id="feedback-char-count">0 / 5000</span>
-          </div>
-          <textarea id="feedback-message" rows="4" placeholder="Contoh:&#10;halo, ada bug bikin tampilannya seperti ini [Gambar 1], padahal seharusnya seperti ini [Gambar 2] kalau dibuka di browser lain. terima kasih"></textarea>
-        </div>
-
-        <!-- Screenshot / Image Attachment Actions & Dropzone -->
-        <div class="feedback-attach-section">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0;">
-              📷 Lampiran Screenshot / Gambar <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">(Maks 4 gambar)</span>
-            </label>
-            <span id="feedback-img-counter" style="font-size: 11px; color: var(--accent-primary); font-weight: 600;">0 / 4 Gambar</span>
-          </div>
-
-          <div class="feedback-attach-toolbar">
-            <button type="button" class="btn-attach-action" id="btn-feedback-capture-screen" title="Ambil screenshot tampilan dashboard saat ini">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-              </svg>
-              Tangkap Layar Dashboard
-            </button>
-            <button type="button" class="btn-attach-action" id="btn-feedback-upload-file" title="Pilih file gambar dari komputer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              Upload Gambar
-            </button>
-            <input type="file" id="feedback-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display: none;">
-          </div>
-
-          <!-- Paste Dropzone Area -->
-          <div class="feedback-dropzone" id="feedback-dropzone">
-            <div class="feedback-dropzone-icon">📋</div>
-            <div class="feedback-dropzone-text">
-              Tekan <strong>Ctrl + V</strong> di mana saja untuk menempelkan screenshot clipboard atau klik di sini
+      <!-- TAB 1: RIWAYAT & PERCAKAPAN (MASTER-DETAIL WORKSPACE) -->
+      <div class="feedback-tab-panel active" id="feedback-panel-history">
+        <div class="feedback-master-detail">
+          <!-- Left Sidebar: Ticket List & Search -->
+          <div class="feedback-sidebar">
+            <div class="feedback-sidebar-toolbar">
+              <div class="feedback-search-row">
+                <div class="feedback-search-input-wrap">
+                  <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <input type="text" id="feedback-search-input" placeholder="Cari tiket / masalah..." oninput="filterFeedbackTickets()">
+                </div>
+                <button type="button" class="btn-feedback-refresh" id="btn-feedback-sync" onclick="syncFeedbackNow()" title="Segarkan data tiket">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+              </div>
+              <div class="feedback-filter-row">
+                <select id="feedback-status-filter" onchange="filterFeedbackTickets()">
+                  <option value="all">Semua Status</option>
+                  <option value="open">🟡 Menunggu Review</option>
+                  <option value="in_progress">🔵 Sedang Dikerjakan</option>
+                  <option value="need_info">🟣 Butuh Info</option>
+                  <option value="resolved">🟢 Selesai (Resolved)</option>
+                </select>
+              </div>
+            </div>
+            <div class="feedback-ticket-list" id="feedback-ticket-list">
+              <!-- Rendered dynamically by js/feedback.js -->
             </div>
           </div>
 
-          <!-- Attachments Thumbnail List -->
-          <div class="feedback-thumbnails-grid" id="feedback-thumbnails-grid"></div>
+          <!-- Right Pane: Active Ticket Conversation Thread -->
+          <div class="feedback-thread-pane" id="feedback-thread-pane">
+            <div class="feedback-thread-empty" id="feedback-thread-empty">
+              <div style="font-size: 34px; margin-bottom: 8px;">📬</div>
+              <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px; color: var(--text-primary);">Pilih Tiket Laporan di Sebelah Kiri</div>
+              <div style="font-size: 11.5px; color: var(--text-muted); max-width: 320px; line-height: 1.4;">Klik salah satu laporan untuk melihat riwayat pesan, tanggapan developer, atau mengirim balasan lanjutan.</div>
+            </div>
+
+            <div class="feedback-thread-content" id="feedback-thread-content" style="display: none;">
+              <!-- Header Tiket -->
+              <div class="feedback-thread-header">
+                <div class="feedback-thread-header-info">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="feedback-thread-id-pill" id="thread-ticket-id">#TKT-0000</span>
+                    <span class="status-pill status-open" id="thread-ticket-status">Open</span>
+                    <span id="thread-ticket-type" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">🐛 Bug</span>
+                  </div>
+                  <h4 class="feedback-thread-title" id="thread-ticket-title">Judul Laporan</h4>
+                  <div class="feedback-thread-meta" id="thread-ticket-meta">Oleh CS &middot; Tanggal</div>
+                </div>
+                <div class="feedback-thread-actions">
+                  <button type="button" class="btn-thread-action" id="btn-toggle-resolve-ticket" onclick="toggleTicketResolveState()" title="Tandai tiket ini sudah selesai atau buka kembali">
+                    ✓ Tandai Selesai
+                  </button>
+                </div>
+              </div>
+
+              <!-- Message Stream Timeline -->
+              <div class="feedback-thread-stream" id="feedback-thread-stream">
+                <!-- Chat bubbles rendered dynamically -->
+              </div>
+
+              <!-- Reply Input Box -->
+              <div class="feedback-reply-box" id="feedback-reply-box">
+                <div class="feedback-reply-input-wrap">
+                  <textarea id="feedback-reply-text" rows="2" placeholder="Ketik balasan ke developer... (tekan Ctrl+V untuk menempelkan screenshot)"></textarea>
+                  <div class="feedback-reply-actions">
+                    <button type="button" class="btn-icon-reply" id="btn-reply-attach-img" title="Lampirkan Gambar">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    </button>
+                    <input type="file" id="feedback-reply-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display: none;">
+                    <button type="button" class="btn-primary btn-reply-send" id="btn-send-ticket-reply" onclick="submitTicketReply()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Kirim
+                    </button>
+                  </div>
+                </div>
+                <!-- Reply Attachment Thumbnails -->
+                <div class="feedback-reply-thumbnails" id="feedback-reply-thumbnails" style="display: none;"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-        <button class="btn-secondary" id="btn-feedback-cancel">Batal</button>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-secondary" id="btn-feedback-min-footer" title="Minimize modal agar dapat mengambil screenshot di aplikasi">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Minimize (Ambil Screenshot)
-          </button>
-          <button class="btn-primary" id="btn-feedback-submit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-            Kirim Feedback
-          </button>
+      <!-- TAB 2: BUAT LAPORAN BARU -->
+      <div class="feedback-tab-panel" id="feedback-panel-new">
+        <div class="modal-body feedback-modal-body">
+          <div class="modal-card" style="padding: 10px 14px; margin-bottom: 12px; background: rgba(223, 22, 131, 0.06); border: 1px solid rgba(223, 22, 131, 0.18); border-radius: 8px;">
+            <p class="settings-hint" style="margin: 0; font-size: 12px; color: var(--text-secondary);">
+              💡 <strong>Tips:</strong> Anda dapat menempelkan screenshot langsung dengan <strong>Ctrl+V</strong>. Sistem otomatis menandai <code>[Gambar 1]</code>, <code>[Gambar 2]</code> untuk perbandingan tampilan bug vs tampilan seharusnya.
+            </p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="feedback-type">Jenis Laporan</label>
+            <select id="feedback-type">
+              <option value="bug">🐛 Lapor Bug (Error / Tampilan Rusak / Macet)</option>
+              <option value="saran">💡 Saran Fitur Baru</option>
+              <option value="tanya">❓ Pertanyaan / Kendala Lainnya</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label for="feedback-message" style="margin: 0;">Deskripsi Laporan</label>
+              <span style="font-size: 11px; color: var(--text-muted);" id="feedback-char-count">0 / 5000</span>
+            </div>
+            <textarea id="feedback-message" rows="4" placeholder="Contoh:&#10;halo, ada bug bikin tampilannya seperti ini [Gambar 1], padahal seharusnya seperti ini [Gambar 2] kalau dibuka di browser lain. terima kasih"></textarea>
+          </div>
+
+          <!-- Screenshot / Image Attachment Actions & Dropzone -->
+          <div class="feedback-attach-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0;">
+                📷 Lampiran Screenshot / Gambar <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">(Maks 4 gambar)</span>
+              </label>
+              <span id="feedback-img-counter" style="font-size: 11px; color: var(--accent-primary); font-weight: 600;">0 / 4 Gambar</span>
+            </div>
+
+            <div class="feedback-attach-toolbar">
+              <button type="button" class="btn-attach-action" id="btn-feedback-capture-screen" title="Ambil screenshot tampilan dashboard saat ini">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Tangkap Layar Dashboard
+              </button>
+              <button type="button" class="btn-attach-action" id="btn-feedback-upload-file" title="Pilih file gambar dari komputer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Upload Gambar
+              </button>
+              <input type="file" id="feedback-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display: none;">
+            </div>
+
+            <!-- Paste Dropzone Area -->
+            <div class="feedback-dropzone" id="feedback-dropzone">
+              <div class="feedback-dropzone-icon">📋</div>
+              <div class="feedback-dropzone-text">
+                Tekan <strong>Ctrl + V</strong> di mana saja untuk menempelkan screenshot clipboard atau klik di sini
+              </div>
+            </div>
+
+            <!-- Attachments Thumbnail List -->
+            <div class="feedback-thumbnails-grid" id="feedback-thumbnails-grid"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button class="btn-secondary" id="btn-feedback-cancel">Batal</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" id="btn-feedback-min-footer" title="Minimize modal agar dapat mengambil screenshot di aplikasi">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Minimize (Ambil Screenshot)
+            </button>
+            <button class="btn-primary" id="btn-feedback-submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              Kirim Feedback
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1164,7 +1315,7 @@
           <h4 id="updater-status-title">Memeriksa Pembaruan...</h4>
           <p id="updater-status-desc">Menghubungkan ke server untuk mencari versi terbaru.</p>
           <div class="updater-version-info">
-            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.13</span>
+            <span class="updater-version-badge" id="updater-current-version">Versi saat ini: v1.0.14</span>
             <span class="updater-version-badge badge-new" id="updater-target-version" style="display:none;"></span>
           </div>
         </div>
@@ -1461,6 +1612,7 @@
               <div class="cs-toolkit-item-name">Feedback & Bantuan</div>
               <div class="cs-toolkit-item-desc">Kirim saran pengembangan atau laporkan bug</div>
             </div>
+            <span class="cs-toolkit-item-badge" id="toolkit-feedback-badge" style="display: none; background: #ef4444; color: #fff; font-weight: 700; border-radius: 10px; padding: 2px 7px; font-size: 10px;">0</span>
           </div>
 
           <!-- 7. Onboarding & Tour Guide -->
@@ -1472,7 +1624,7 @@
               <div class="cs-toolkit-item-name">Panduan & Tur Aplikasi</div>
               <div class="cs-toolkit-item-desc">Jalankan ulang tur interaktif atau checklist tugas</div>
             </div>
-            <span class="cs-toolkit-item-badge" id="toolkit-app-version-badge">v1.0.13</span>
+            <span class="cs-toolkit-item-badge" id="toolkit-app-version-badge">v1.0.14</span>
           </div>
         </div>
       </div>
@@ -1579,16 +1731,113 @@
     <!-- Footer Actions -->
     <div class="qr-drawer-footer">
       <button class="btn-secondary" id="btn-qr-reset-default" title="Kembalikan template ke bawaan">
-        Reset Bawaan
+        Reset
+      </button>
+      <button class="btn-secondary" id="btn-qr-bulk-import" title="Impor puluhan template sekaligus dari Catatan / Scratchpad / File">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Impor Massal
       </button>
       <button class="btn-primary" id="btn-qr-add-template">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <path d="M12 5v14M5 12h14"/>
         </svg>
-        Tambah Template
+        Tambah
       </button>
     </div>
   </aside>
+
+  <!-- Modal: Bulk Import Smart Templates (Impor Massal) -->
+  <div class="modal-overlay" id="modal-bulk-template-overlay">
+    <div class="modal modal-wide bulk-template-modal" role="dialog" aria-labelledby="modal-bulk-tpl-title" aria-modal="true">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size: 19px;">📥</span>
+          <h3 id="modal-bulk-tpl-title">Impor Massal Template Smart Reply</h3>
+        </div>
+        <button class="modal-close" id="modal-bulk-tpl-close" aria-label="Tutup Modal Impor">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body bulk-modal-body">
+        <!-- Quick Action Bar -->
+        <div class="bulk-quick-toolbar">
+          <button type="button" class="btn-bulk-tool primary" id="btn-bulk-pull-scratchpad" title="Tarik teks dari tab catatan Scratchpad yang sedang aktif">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Tarik dari Catatan Aktif
+          </button>
+          <button type="button" class="btn-bulk-tool" id="btn-bulk-upload-file" title="Muat file teks .txt atau .json">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Muat dari File
+          </button>
+          <button type="button" class="btn-bulk-tool" id="btn-bulk-paste-sample" title="Tempel contoh format catatan template">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Isi Contoh Format
+          </button>
+          <input type="file" id="bulk-file-input" accept=".txt,.json,.csv" style="display: none;">
+        </div>
+
+        <!-- Raw Text Input Area -->
+        <div class="bulk-input-section">
+          <label for="bulk-tpl-input" class="bulk-section-label">
+            <span>Tempel Teks Catatan / Template di Sini:</span>
+            <span class="bulk-hint-pill">Mendukung pemisah ===, ---, [Judul], atau baris ganda</span>
+          </label>
+          <textarea id="bulk-tpl-input" rows="5" placeholder="Tempel catatan Anda di sini... Contoh:&#10;========================&#10;FS&#10;Hai kak flash sale, kami infokan juga tidak ada perbedaan pada produk ya kak...&#10;&#10;========================&#10;ANTIOBIOTIK&#10;Untuk pengiriman reguler, durasi maksimal yang masih aman..."></textarea>
+          
+          <div class="bulk-parse-bar">
+            <button type="button" class="btn-primary btn-bulk-parse" id="btn-bulk-parse">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Analisis & Ekstrak Template
+            </button>
+            <span class="bulk-parse-hint" id="bulk-parse-hint">Sistem akan memecah judul, isi, dan mendeteksi kategori otomatis.</span>
+          </div>
+        </div>
+
+        <!-- Interactive Preview Section -->
+        <div class="bulk-preview-section" id="bulk-preview-section" style="display: none;">
+          <div class="bulk-preview-header">
+            <div class="bulk-preview-meta">
+              <span class="bulk-count-badge" id="bulk-count-badge">0 Template Ditemukan</span>
+              <label class="bulk-select-all-wrap">
+                <input type="checkbox" id="bulk-select-all" checked>
+                <span>Pilih Semua</span>
+              </label>
+            </div>
+
+            <!-- Import Mode Options -->
+            <div class="bulk-mode-options">
+              <label class="bulk-radio-label">
+                <input type="radio" name="bulk-import-mode" value="append" checked>
+                <span>Tambahkan ke yang ada (Append)</span>
+              </label>
+              <label class="bulk-radio-label">
+                <input type="radio" name="bulk-import-mode" value="overwrite">
+                <span>Gantikan semua (Overwrite)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Parsed Items Grid / List -->
+          <div class="bulk-items-container" id="bulk-items-container">
+            <!-- Diisi secara dinamis oleh renderBulkPreviewList() -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bulk-modal-footer">
+        <button type="button" class="btn-secondary" id="btn-bulk-modal-cancel">Batal</button>
+        <button type="button" class="btn-primary" id="btn-bulk-modal-confirm" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="bulk-confirm-btn-text">Impor 0 Template</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Add/Edit Smart Template -->
   <div class="modal-overlay" id="modal-template-overlay">

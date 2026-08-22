@@ -264,7 +264,7 @@
 
 
 /* ==========================================================================
-   UNIFIED FLOATING BOTTOM-RIGHT DOCK SYSTEM
+   UNIFIED FLOATING BOTTOM-RIGHT DOCK SYSTEM (DRAGGABLE & AUTO-COLLAPSE)
    Coordinating Tools CS FAB, Minimized Feedback Pill & Onboarding Checklist
    ========================================================================== */
 .floating-bottom-dock {
@@ -275,10 +275,29 @@
   display: flex;
   flex-direction: row-reverse; /* Paling kanan: Tools CS, Tengah: Feedback Pill, Kiri: Checklist */
   align-items: flex-end;
-  gap: 12px;
+  gap: 10px;
   pointer-events: none;
   max-width: calc(100vw - 44px);
-  transition: all var(--transition-fast, 0.2s cubic-bezier(0.16, 1, 0.3, 1));
+  /* Idle translucent state: 38% opacity so webview content underneath is visible */
+  opacity: 0.38;
+  backdrop-filter: blur(2px);
+  transition: opacity 0.28s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+/* Hover or Active State: Full 100% Opacity */
+.floating-bottom-dock:hover,
+.floating-bottom-dock:focus-within,
+.floating-bottom-dock.is-dragging,
+.floating-bottom-dock:has(.cs-toolkit-fab-container.open),
+.floating-bottom-dock:has(.feedback-dock-pill:hover) {
+  opacity: 1;
+  backdrop-filter: none;
+}
+
+.floating-bottom-dock.is-dragging {
+  cursor: grabbing !important;
+  user-select: none;
+  transition: none !important; /* Tanpa delay animasi saat mouse menyeret */
 }
 
 .floating-bottom-dock > * {
@@ -288,7 +307,7 @@
 body.has-quickreply-open .floating-bottom-dock,
 body:has(.quickreply-drawer.active) .floating-bottom-dock,
 body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
-  opacity: 0.15;
+  opacity: 0.12;
   pointer-events: none;
   transition: opacity 0.2s ease;
 }
@@ -305,32 +324,55 @@ body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
   pointer-events: auto;
 }
 
+/* Slim Mini Auto-Collapse Pill Button */
 .btn-cs-toolkit-fab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 0;
+  padding: 8px 10px;
   border-radius: 50px;
   background: var(--accent-gradient, linear-gradient(135deg, #df1683, #e57200));
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(223, 22, 131, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: all var(--transition-fast);
+  cursor: grab;
+  box-shadow: 0 4px 16px rgba(223, 22, 131, 0.35), 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
-.btn-cs-toolkit-fab:hover {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 8px 24px rgba(223, 22, 131, 0.6), 0 3px 8px rgba(0, 0, 0, 0.25);
-  filter: brightness(1.08);
+.btn-cs-toolkit-fab:active {
+  cursor: grabbing;
 }
 
-.btn-cs-toolkit-fab:active {
-  transform: translateY(0) scale(0.97);
+/* Text Label Collapses in Idle, Expands on Hover */
+.fab-label {
+  max-width: 0;
+  opacity: 0;
+  margin-left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  transition: max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin-left 0.2s ease;
+}
+
+.floating-bottom-dock:hover .fab-label,
+.cs-toolkit-fab-container.open .fab-label,
+.btn-cs-toolkit-fab:hover .fab-label {
+  max-width: 80px;
+  opacity: 1;
+  margin-left: 6px;
+}
+
+.floating-bottom-dock:hover .btn-cs-toolkit-fab,
+.cs-toolkit-fab-container.open .btn-cs-toolkit-fab,
+.btn-cs-toolkit-fab:hover {
+  padding: 9px 15px;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 24px rgba(223, 22, 131, 0.55), 0 3px 8px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.06);
 }
 
 .btn-cs-toolkit-fab.active {
@@ -340,18 +382,14 @@ body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
 
 .icon-fab-main {
   transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  flex-shrink: 0;
 }
 
 .btn-cs-toolkit-fab.active .icon-fab-main {
   transform: rotate(45deg);
 }
 
-.fab-label {
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-}
-
-/* Toolkit Speed Dial Popover Menu */
+/* Smart Popover Menu Placement (Up/Down/Left/Right) */
 .cs-toolkit-menu {
   position: absolute;
   bottom: calc(100% + 12px);
@@ -372,10 +410,29 @@ body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
   z-index: 9982;
 }
 
+/* Popover opens DOWN when dock is dragged to the top */
+.floating-bottom-dock.dock-top .cs-toolkit-menu {
+  bottom: auto;
+  top: calc(100% + 12px);
+  transform: translateY(-12px) scale(0.94);
+  transform-origin: top right;
+}
+
+/* Popover opens to the RIGHT when dock is dragged to the left */
+.floating-bottom-dock.dock-left .cs-toolkit-menu {
+  right: auto;
+  left: 0;
+  transform-origin: bottom left;
+}
+
+.floating-bottom-dock.dock-top.dock-left .cs-toolkit-menu {
+  transform-origin: top left;
+}
+
 .cs-toolkit-fab-container.open .cs-toolkit-menu {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) !important;
 }
 
 .cs-toolkit-backdrop {
@@ -709,38 +766,164 @@ body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
   text-overflow: clip;
 }
 .scratchpad-tab-close {
-  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: transparent;
   border: none;
-  color: inherit;
-  font-size: 14px;
+  color: var(--text-muted);
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.65;
   padding: 0;
-  line-height: 1;
-  transition: opacity var(--transition-fast);
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
 }
+
 .scratchpad-tab-close:hover {
   opacity: 1;
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
 }
-.btn-add-tab, #btn-sp-add-tab {
-  background: none;
-  border: none;
+
+.scratchpad-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.scratchpad-header-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
 }
-.btn-add-tab:hover, #btn-sp-add-tab:hover {
+
+.scratchpad-header-btn:hover {
   background: var(--bg-hover);
+  border-color: var(--border-color);
   color: var(--text-primary);
 }
-.scratchpad-close {
+
+.scratchpad-header-btn.btn-sp-search-toggle.active,
+.btn-sp-search-toggle.active {
+  background: rgba(223, 22, 131, 0.15);
+  border-color: rgba(223, 22, 131, 0.35);
+  color: var(--accent-primary, #df1683);
+}
+
+.scratchpad-header-btn.scratchpad-close:hover,
+.scratchpad-close:hover,
+#btn-scratchpad-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Dedicated Scratchpad Search Toolbar */
+.scratchpad-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sp-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  background: var(--bg-card, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 3px 8px;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sp-search-input-wrap:focus-within {
+  border-color: var(--accent-primary, #df1683);
+  box-shadow: 0 0 0 2px rgba(223, 22, 131, 0.18);
+}
+
+.sp-search-input-wrap.has-no-matches {
+  border-color: #ef4444 !important;
+}
+
+.sp-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+#scratchpad-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+#scratchpad-search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.75;
+  font-size: 11px;
+}
+
+.sp-search-count {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.sp-search-count.has-matches {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.sp-search-count.no-matches {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.sp-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.btn-sp-search-nav,
+.btn-sp-search-close {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -752,35 +935,107 @@ body:has(.modal-overlay.active:not(#feedback-modal)) .floating-bottom-dock {
   justify-content: center;
   transition: all var(--transition-fast);
 }
-.scratchpad-close:hover {
+
+.btn-sp-search-nav:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
+.btn-sp-search-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
 .scratchpad-body {
+  position: relative;
   padding: 12px;
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-#scratchpad-textarea {
-  flex: 1;
+
+.scratchpad-backdrop {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 8px;
+  z-index: 1;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.scratchpad-highlights {
+  padding: 10px 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: transparent;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+#scratchpad-textarea {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--text-primary);
+  caret-color: var(--text-primary);
   font-family: 'Outfit', sans-serif;
   font-size: 13.5px;
   font-weight: 400;
   line-height: 1.6;
   resize: none;
   outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  box-sizing: border-box;
 }
+
 #scratchpad-textarea:focus {
+  outline: none;
+}
+
+.scratchpad-body:focus-within .scratchpad-backdrop {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(223, 22, 131, 0.15);
+}
+
+/* Match Mark Styling (Web Browser Find-in-Page Style) */
+mark.sp-search-mark {
+  background-color: rgba(255, 180, 0, 0.4);
+  color: transparent;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 180, 0, 0.55);
+}
+
+mark.sp-search-mark.active {
+  background-color: #ff9800;
+  box-shadow: 0 0 0 2px #ff6d00, 0 0 10px rgba(255, 152, 0, 0.7);
+  border-radius: 2px;
+}
+
+[data-theme="dark"] mark.sp-search-mark {
+  background-color: rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.5);
+}
+
+[data-theme="dark"] mark.sp-search-mark.active {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 2px #d97706, 0 0 10px rgba(245, 158, 11, 0.7);
 }
 
 .scratchpad-footer {
