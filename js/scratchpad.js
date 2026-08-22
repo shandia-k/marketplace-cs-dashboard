@@ -418,16 +418,32 @@ spSearchInput?.addEventListener('keydown', (e) => {
   }
 });
 
+const debouncedSaveScratchpadState = typeof window !== 'undefined' && window.debounce
+  ? window.debounce(saveScratchpadState, 500)
+  : function() {
+      let timeout;
+      return function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => saveScratchpadState(), 500);
+      }
+    }();
+
 // Update current tab content on input & refresh search if open
 spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
+    // Read DOM immediately, but debounce the expensive I/O operation
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
     executeScratchpadSearch('current');
   }
+});
+
+// Ensure any pending state is saved synchronously before unload to prevent data loss
+window.addEventListener('beforeunload', () => {
+  saveScratchpadState();
 });
 
 // Shortcut Ctrl+F / Cmd+F langsung di textarea Scratchpad

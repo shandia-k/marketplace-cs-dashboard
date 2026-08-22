@@ -1,0 +1,3 @@
+## 2025-01-20 - [Avoid synchronous I/O blocking during fast input events]
+**Learning:** Saving state to localStorage via `JSON.stringify` on every keystroke in `scratchpad.js` (e.g. inside `input` listener) blocks the main thread.
+**Action:** Debounce expensive operations that are bound to frequent UI events, reading state synchronously from DOM immediately and delegating write ops to debounce queue. Use `beforeunload` to flush.
