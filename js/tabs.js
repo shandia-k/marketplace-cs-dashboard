@@ -292,6 +292,15 @@ function ensureTabBarShell() {
       isMouseDownOnAddr = false;
     }
   });
+
+  // Enable smooth horizontal scrolling on mouse wheel
+  const tabItemsContainer = document.getElementById('tab-items-container');
+  tabItemsContainer?.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      tabItemsContainer.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  }, { passive: false });
 }
 
 function renderTabBar() {
@@ -333,10 +342,8 @@ function renderTabBar() {
 
   tabItemsContainer.setAttribute('aria-label', `Daftar tab toko ${escapeHtml(store.name)}`);
 
-  const leafIcon = '&#x1F343;';
   const tabsHtml = tabs.map(tab => {
     const entry = webviewMap[tab.id];
-    const isHibernated = entry?.hibernated;
     const isSyncing = entry?.isSyncing;
     const syncProgress = entry?.syncProgress;
     const isCurTab = tab.id === curTabId;
@@ -357,15 +364,14 @@ function renderTabBar() {
     const hasPercent = typeof syncProgress === 'number' && !isNaN(syncProgress) && syncProgress >= 0;
     const tabTooltip = isSyncing 
       ? (hasPercent ? `Sedang menyinkronkan chat (${syncProgress}%)` : 'Sedang menyinkronkan chat...') 
-      : (isHibernated ? escapeHtml(tab.title) + ' (Tidur)' : escapeHtml(tab.title));
+      : escapeHtml(tab.title);
 
     return `
-    <div class="tab-item ${isCurTab ? 'active' : ''} ${isHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}" role="tab" aria-selected="${isCurTab ? 'true' : 'false'}" aria-label="${tabTooltip}">
-      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${isHibernated ? leafIcon : escapeHtml(initials.substring(0, 2))}</div>
+    <div class="tab-item ${isCurTab ? 'active' : ''} ${isSyncing ? 'syncing' : ''}" data-tab-id="${tab.id}" title="${tabTooltip}" role="tab" aria-selected="${isCurTab ? 'true' : 'false'}" aria-label="${tabTooltip}">
+      <div class="tab-favicon-mini ${cfg.faviconClass}" ${bgStyle} aria-hidden="true">${escapeHtml(initials.substring(0, 2))}</div>
       <span class="tab-title">${escapeHtml(tab.title)}</span>
       ${syncBadgeHtml}
       <div class="tab-actions">
-        ${!isHibernated && !isCurTab && !isSyncing ? `<button class="tab-hibernate-btn" data-tab-id="${tab.id}" title="Hibernasi tab ini" aria-label="Hibernasi tab ${escapeHtml(tab.title)} untuk hemat RAM">&#x1F343;</button>` : ''}
         <button class="tab-close" data-tab-id="${tab.id}" title="Tutup tab" aria-label="Tutup tab ${escapeHtml(tab.title)}">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
             <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -393,7 +399,7 @@ function renderTabBar() {
   // Bind tab click (not close)
   tabItemsContainer.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', e => {
-      if (!e.target.closest('.tab-close') && !e.target.closest('.tab-hibernate-btn') && !e.target.closest('.tab-sync-badge')) {
+      if (!e.target.closest('.tab-close') && !e.target.closest('.tab-sync-badge')) {
         switchTab(activeStoreId, el.dataset.tabId);
       }
     });
@@ -405,22 +411,6 @@ function renderTabBar() {
       e.stopPropagation();
       if (typeof openWaSyncEduModal === 'function') {
         openWaSyncEduModal();
-      }
-    });
-  });
-
-  // Bind hibernate buttons
-  tabItemsContainer.querySelectorAll('.tab-hibernate-btn').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      const storeId = Object.keys(storeTabs).find(sid =>
-        storeTabs[sid].some(t => t.id === el.dataset.tabId)
-      );
-      if (storeId) {
-        hibernateTab(storeId, el.dataset.tabId);
-        if (window.AppTelemetry) {
-          window.AppTelemetry.track('tab_hibernated_manual');
-        }
       }
     });
   });
@@ -617,7 +607,7 @@ function switchTab(storeId, tabId) {
     closeFindInPage({ skipFocus: true });
   }
 
-  // Hide previous active webview (skip if hibernated)
+  // Hide previous active webview
   const prevTabId = activeTabMap[storeId];
   if (prevTabId && webviewMap[prevTabId] && !webviewMap[prevTabId].hibernated) {
     webviewMap[prevTabId].webview?.classList.remove('visible');
@@ -650,11 +640,17 @@ function showTab(storeId, tabId) {
 
   if (entry?.hibernated) {
     if (entry.webview && !isCrashedOrDead) {
-      // Soft wake: webview is still in DOM and healthy, unhide it
+      // Soft wake (Dual-Layer State Retention): webview tetap di DOM, unhide seketika (<30ms)
       entry.webview.style.display = '';
       entry.webview.classList.add('visible');
-      if (entry.loading) entry.loading.style.display = '';
+      if (entry.loading) {
+        entry.loading.classList.add('hidden');
+        entry.loading.style.display = 'none';
+      }
       entry.hibernated = false;
+      if (typeof entry.webview.setAudioMuted === 'function') {
+        try { entry.webview.setAudioMuted(false); } catch (e) { }
+      }
       renderTabBar();
       renderSidebar(getFilteredStores());
       return;
@@ -666,6 +662,7 @@ function showTab(storeId, tabId) {
         delete webviewMap[tabId];
       }
       createWebview(store, tab);
+      if (typeof manageHotWebviewPool === 'function') manageHotWebviewPool();
       renderTabBar();
       renderSidebar(getFilteredStores());
       return;

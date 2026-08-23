@@ -107,4 +107,48 @@ describe('Level 1: Context Menu & Image Processing Logic Tests', () => {
     });
   });
 
+  describe('suggestPageFilename', () => {
+    test('should clean page title and append correct extension', () => {
+      const pdfName = contextMenuService.suggestPageFilename('Cetak Dokumen Resi SPX #12345', '.pdf');
+      assert.ok(pdfName.endsWith('.pdf'));
+      assert.ok(!pdfName.includes('#'));
+      assert.ok(pdfName.includes('Cetak_Dokumen_Resi_SPX'));
+
+      const jpgName = contextMenuService.suggestPageFilename('Invoice Pesanan [Lazada]', '.jpg');
+      assert.ok(jpgName.endsWith('.jpg'));
+      assert.ok(!jpgName.includes('[') && !jpgName.includes(']'));
+    });
+
+    test('should provide safe timestamp fallback when title is missing or empty', () => {
+      const fallbackPdf = contextMenuService.suggestPageFilename('', '.pdf');
+      assert.ok(fallbackPdf.startsWith('halaman_'));
+      assert.ok(fallbackPdf.endsWith('.pdf'));
+
+      const fallbackJpg = contextMenuService.suggestPageFilename(null, 'jpg');
+      assert.ok(fallbackJpg.startsWith('halaman_'));
+      assert.ok(fallbackJpg.endsWith('.jpg'));
+    });
+  });
+
+  describe('Page Export & Print Service Contracts', () => {
+    test('should safely handle destroyed or null contents in savePageAsPdf', async () => {
+      // Must not throw error
+      await contextMenuService.savePageAsPdf(null, null);
+      await contextMenuService.savePageAsPdf({ isDestroyed: () => true }, null);
+    });
+
+    test('should safely handle destroyed or null contents in savePageAsJpg', async () => {
+      // Must not throw error
+      await contextMenuService.savePageAsJpg(null, null);
+      await contextMenuService.savePageAsJpg({ isDestroyed: () => true }, null);
+    });
+
+    test('should safely handle destroyed or null contents in printPage', () => {
+      // Must not throw error
+      contextMenuService.printPage(null, null);
+      contextMenuService.printPage({ isDestroyed: () => true }, null);
+    });
+  });
+
 });
+

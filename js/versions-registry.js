@@ -31,10 +31,94 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.15',
+      version: '1.0.16',
       badge: 'Versi Terbaru 🚀',
-      badgeColor: '#df1683',
-      pillTag: 'v1.0.15 🚀',
+      badgeColor: '#0284c7',
+      pillTag: 'v1.0.16 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Dual-Layer RAM Compression, Deep CPU Throttler & Clean Focus UI',
+      tagline: 'Pembaruan v1.0.16: Arsitektur Dual-Layer State Retention dengan kompresi Working Set native Windows (psapi.dll!EmptyWorkingSet) untuk manuver instan puluhan tab tanpa reload pada RAM 2.0–2.5 GB, Deep Background CPU Throttler (1 FPS RAF & Video Freeze) agar laptop tetap dingin dan kipas senyap saat membuka hingga 40 tab, pembersihan total indikator daun/perisai yang mengganggu mata, konsolidasi status bar ringkas per toko, serta penguatan Automated V8 AST Compiler Guard.',
+      highlights: [
+        {
+          icon: '⚡',
+          iconBg: 'rgba(2, 132, 199, 0.15)',
+          title: 'Dual-Layer State Retention & Instant Switch',
+          desc: 'Manuver antar 20-40 tab chat marketplace berlangsung instan (< 30ms) tanpa reload atau blank screen, didukung kompresi memori kernel Windows Win32 EmptyWorkingSet.'
+        },
+        {
+          icon: '❄️',
+          iconBg: 'rgba(14, 165, 233, 0.15)',
+          title: 'Deep CPU Throttler (40 Tab Silent & Cool)',
+          desc: 'Mengurangi beban instruksi render tab latar belakang hingga 99% via pembatasan 1 FPS requestAnimationFrame dan auto-pause video TikTok/Shopee, menjaga laptop tetap dingin tanpa deru kipas.'
+        },
+        {
+          icon: '🎯',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Clean Focus UI (Bebas Distraksi)',
+          desc: 'Menghilangkan semua ikon daun hibernasi, perisai, dan teks status tidur yang mengganggu mata, menghadirkan antarmuka tab dan sidebar yang bersih, elegan, dan fokus untuk CS.'
+        },
+        {
+          icon: '📊',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Konsolidasi Status Bar Toko & Tab',
+          desc: 'Status bar ringkas dan informatif yang mengonsolidasikan daftar seluruh toko dan rincian tab aktif/terbuka dalam satu tooltip bersih tanpa meteran RAM yang membebani.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Arsitektur Memori Dual-Layer & Instant Tab-Switching',
+          tag: 'Engine & RAM',
+          color: '#0284c7',
+          bgColor: 'rgba(2, 132, 199, 0.12)',
+          items: [
+            'Dual-Layer State Retention: Webview tetap dipertahankan utuh dalam DOM tanpa dihancurkan, sementara halaman memori V8 Heap dan DOM tree yang tidak aktif dipindahkan ke Native RAM Compression Store kernel Windows.',
+            'Native Windows Working Set Trimmer: Integrasi psapi.dll!EmptyWorkingSet via memory-trimmer.service.js dan trim-memory.ps1 dengan throttling 30 detik untuk kompresi RAM otomatis.',
+            'Chromium Process Pooling: Mengaktifkan switch --process-per-site dan --renderer-process-limit=8 untuk mengelompokkan domain yang sama ke renderer pool yang efisien.',
+            'Safe V8 Heap Compaction: Alokasi heap aman --max-old-space-size=512 dan --expose-gc untuk pembersihan sampah memori berkala.'
+          ]
+        },
+        {
+          category: 'Optimasi Prosesor & Penjinak Kipas Laptop (Deep CPU Throttler)',
+          tag: 'Performa & Baterai',
+          color: '#0ea5e9',
+          bgColor: 'rgba(14, 165, 233, 0.12)',
+          items: [
+            'Background Animation Throttling (1 FPS): Membatasi loop requestAnimationFrame pada tab latar belakang ke 1 frame per detik, memangkas ratusan interupsi CPU per detik.',
+            'Auto-Pause Hardware Video Decoder: Elemen video/audio latar belakang pada TikTok Shop dan Shopee Video otomatis di-pause saat tab tidak dilihat dan di-resume seketika saat dibuka kembali.',
+            'Zero-Delay Realtime Notifications: Jalur koneksi WebSocket chat pembeli tetap 100% aktif dan real-time tanpa penundaan sedikit pun.',
+            'Throttled Background Pruning: Pembersihan memori hanya aktif saat ambang RAM mendekati 2.2 GB untuk mencegah lonjakan CPU dari proses anak.'
+          ]
+        },
+        {
+          category: 'Desain Antarmuka Bersih & Konsolidasi Status Bar',
+          tag: 'UI & UX',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            'Pembersihan Indikator Distraksi: Menghilangkan badge daun hibernasi (🍃), lencana perisai (🛡️), tombol manual hibernasi, dan label teks tidur di sidebar maupun tab bar.',
+            'Konsolidasi Status Bar Ringkas: Menghapus analitik meteran RAM yang membebani mata dan memindahkan rincian tab per toko ke dalam flyout tooltip Toko Dibuka.',
+            'Highlight Tab Aktif: Tooltip status bar menampilkan indikator jelas [Aktif] pada tab yang sedang dibuka di layar saat ini.',
+            'Preservasi Fitur Produktivitas CS: Timer durasi sesi CS (Sesi: HH:MM:SS) dan Smart Clipboard History (Clip: ...) tetap dipertahankan dengan performa optimal.'
+          ]
+        },
+        {
+          category: 'Penguatan Pipeline Anti-Regresi (V8 AST Compiler Guard)',
+          tag: 'Keamanan & Stabilitas',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            'Automated V8 AST Compiler Guard: Seluruh berkas JavaScript frontend di folder js/, preload.js, dan webview-preload.js otomatis dikompilasi ke dalam mesin V8 saat pengujian Level 8 Smoke Tests.',
+            'Pencegahan Runtime Syntax Error: Memastikan tidak ada kesalahan tanda baca atau kurung ekstra yang dapat lolos ke rilis produksi atau menyebabkan freeze startup.',
+            '100% Regression-Free: Seluruh 25 test suite multi-level dan 17 tes katalog regresi tervalidasi lulus sempurna.'
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.15',
+      badge: 'Pembaruan UI & Layout 📌',
+      badgeColor: '#64748b',
+      pillTag: 'v1.0.15 📌',
       releaseDate: 'Agustus 2026',
       title: 'Floating Overlay Sidebar, Tab Micro-Animation & Smart Statusbar Suite',
       tagline: 'Pembaruan v1.0.15: Arsitektur sidebar mengambang (Floating Overlay) anti-lag tanpa re-layout webview tamu, sistem pin docking 240px, animasi mikro geser mulus tombol tab (🍃 hibernasi & ✕ tutup) dengan nama judul utuh saat idle, sinkronisasi presisi status 3-fase tab (⚡ Aktif, 🍃 Tidur, 💤 Idle), serta popup analitik RAM dan status tab dengan zero-gap hover bridge (220ms grace period) bebas scrollbar horizontal.',

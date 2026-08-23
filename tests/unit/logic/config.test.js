@@ -61,6 +61,7 @@ describe('Level 1: Configuration Tests (js/config.js & constants.js)', () => {
     assert.equal(typeof sandbox.window.RAM_THRESHOLD_MB, 'number');
     assert.ok(sandbox.window.RAM_THRESHOLD_MB >= 1024, 'Threshold should be at least 1GB');
     assert.ok(sandbox.window.RAM_CHECK_INTERVAL_MS >= 1000, 'Interval should be at least 1s');
+    assert.ok(typeof sandbox.window.HOT_WEBVIEW_POOL_LIMIT === 'number' && sandbox.window.HOT_WEBVIEW_POOL_LIMIT >= 3, 'Hot webview pool limit must be at least 3');
   });
 
   test('should define valid User-Agent constants in src/main/config/constants.js', () => {

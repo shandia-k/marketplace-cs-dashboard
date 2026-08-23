@@ -9,9 +9,11 @@ let appPath       = ''; // Path ke direktori app (untuk webview preload)
 // storeTabs:    storeId → [{ id, title, url, zoom }]
 // activeTabMap: storeId → tabId
 // webviewMap:   tabId   → { webview: el, loading: el, hibernated: bool, hasDraft: bool }
-const storeTabs   = {};
+// tabSnapshots: tabId   → base64 preview snapshot dataUrl (0ms Ghost Tab Illusion)
+const storeTabs    = {};
 const activeTabMap = {};
-const webviewMap  = {};
+const webviewMap   = {};
+const tabSnapshots = {};
 
 // Unread messages tracking: storeId → total unread count
 const unreadMap = {};

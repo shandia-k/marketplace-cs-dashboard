@@ -832,23 +832,17 @@
               <div>
                 <h4>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                   </svg>
-                  Hibernasi Tab Toko
+                  Optimasi & Kompresi Memori RAM
                 </h4>
-                <p class="settings-hint" style="margin: 4px 0 0;">Tidurkan seluruh tab toko yang sedang tidak aktif untuk menghemat RAM (toko berstatus 🛡️ tetap aktif).</p>
+                <p class="settings-hint" style="margin: 4px 0 0;">Memangkas memori idle dan memindahkan alokasi tidak aktif ke Windows RAM Compression Store. <strong>Sesi login toko 100% aman</strong>.</p>
               </div>
-              <button class="btn-icon-text" id="btn-hibernate-all" onclick="hibernateAll()" title="Hibernasi semua tab (kecuali yang dilindungi)">
+              <button class="btn-icon-text" id="btn-hibernate-all" onclick="if (window.electronAPI && window.electronAPI.pruneBackgroundMemory) { window.electronAPI.pruneBackgroundMemory().then(() => showToast('Memori RAM berhasil dioptimalkan ✓', 'success')); }" title="Pangkas & Optimalkan RAM Sekarang">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                 </svg>
-                Hibernasi Semua Tab
+                Optimalkan RAM Sekarang
               </button>
             </div>
           </div>

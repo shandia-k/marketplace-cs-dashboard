@@ -70,7 +70,8 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
           clearSafeCache: async () => true,
           clearStoreCache: async () => true,
           deepCleanStore: async () => true,
-          deepCleanAll: async () => true
+          deepCleanAll: async () => true,
+          pruneBackgroundMemory: async () => ({ success: true })
         };
       }
       if (mod === '../services/updater.service') {

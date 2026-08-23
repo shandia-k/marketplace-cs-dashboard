@@ -137,7 +137,7 @@ app.on('web-contents-created', (event, contents) => {
 
 // ── App Lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
-  sessionService.setupSessionStealthGuard(session.defaultSession);
+  sessionService.setupSessionStealthGuard(session.defaultSession, getMainWindow);
   createWindow();
 
   // Setup auto updater setelah window dibuat

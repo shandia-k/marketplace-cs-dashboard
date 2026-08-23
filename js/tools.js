@@ -856,7 +856,9 @@ function openFindInPage(initialText = '') {
   const input = document.getElementById('find-in-page-input');
   if (!bar || !input) return;
 
-  const wv = typeof getActiveWebview === 'function' ? getActiveWebview() : null;
+  const wv = (typeof getActiveWebview === 'function' ? getActiveWebview() : null) ||
+             document.querySelector('webview.store-webview.visible') ||
+             document.querySelector('webview.visible');
   if (!wv) return; // Hanya buka toolbar jika ada webview aktif
 
   bar.style.display = 'flex';

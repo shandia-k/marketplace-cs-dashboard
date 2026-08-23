@@ -76,7 +76,7 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
       'windowMinimize', 'windowMaximize', 'windowClose', 'flashWindow',
       'loadScratchpadFile', 'saveScratchpadFile', 'readClipboard', 'writeClipboard',
       'onClipboardChanged', 'getCacheSize', 'clearSafeCache', 'clearStoreCache',
-      'deepCleanStore', 'deepCleanAll', 'getAppVersion', 'checkForUpdates',
+      'deepCleanStore', 'deepCleanAll', 'pruneBackgroundMemory', 'getAppVersion', 'checkForUpdates',
       'restartToUpdate', 'onUpdaterMessage', 'onUpdaterProgress'
     ];
 
@@ -94,6 +94,17 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
 
     feedbackMethods.forEach(method => {
       assert.equal(typeof exposedApi.feedback[method], 'function', `Feedback method ${method} must be exposed in electronAPI.feedback`);
+    });
+  });
+
+  test('should contain all Find In Page (Ctrl+F) methods and native trigger listeners', () => {
+    const findMethods = [
+      'findInPage', 'stopFindInPage', 'onFoundInPageResult',
+      'onTriggerFindInPage', 'onTriggerCloseFindInPage'
+    ];
+
+    findMethods.forEach(method => {
+      assert.equal(typeof exposedApi[method], 'function', `FindInPage method ${method} must be exposed in electronAPI`);
     });
   });
 });

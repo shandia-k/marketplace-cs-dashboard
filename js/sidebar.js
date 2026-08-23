@@ -207,9 +207,6 @@ function renderSidebar(filteredStores) {
       const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
       const bgStyle  = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
       const storeTabList = storeTabs[store.id] || [];
-      const hibernatedTabs = storeTabList.filter(t => webviewMap[t.id]?.hibernated);
-      const hasRunningTab = storeTabList.some(t => webviewMap[t.id]?.webview && !webviewMap[t.id]?.hibernated);
-      const allHibernated = hibernatedTabs.length > 0 && !hasRunningTab;
       const isSyncing = storeTabList.some(t => webviewMap[t.id]?.isSyncing);
       const syncBadge = `
         <span class="sidebar-sync-badge" title="Sedang menyinkronkan chat...">
@@ -219,16 +216,14 @@ function renderSidebar(filteredStores) {
         </span>`;
       const unread = unreadMap[store.id] || 0;
       const unreadBadge = unread > 0 ? `<span class="unread-badge">${unread > 99 ? '99+' : unread}</span>` : '';
-      const leafBadge = `<span class="hibernate-badge" title="Toko ini sedang tidur (hemat RAM)">🍃</span>`;
-      const shieldBadge = store.hibernationWhitelisted ? '<span class="whitelist-badge" title="Toko ini dikecualikan dari hibernasi otomatis">🛡️</span>' : '';
 
       const statusLabel = isSyncing 
         ? '<span style="color:#3b82f6; font-weight:600;">&middot; Menyinkronkan...</span>' 
-        : (allHibernated ? '&middot; Tidur' : '');
+        : '';
 
       html += `
-        <div class="store-item ${isActive ? 'active' : ''} ${allHibernated ? 'hibernated' : ''} ${isSyncing ? 'syncing' : ''}" data-id="${store.id}" aria-label="${escapeHtml(store.name)}" draggable="true">
-          <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${isSyncing ? syncBadge : (allHibernated ? leafBadge : '')}${shieldBadge}${unreadBadge}</div>
+        <div class="store-item ${isActive ? 'active' : ''} ${isSyncing ? 'syncing' : ''}" data-id="${store.id}" aria-label="${escapeHtml(store.name)}" draggable="true">
+          <div class="store-favicon ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}${isSyncing ? syncBadge : ''}${unreadBadge}</div>
           <div class="store-info">
             <div class="store-name">${escapeHtml(store.name)}</div>
             <div class="store-marketplace-label">${cfg.label} ${statusLabel}</div>

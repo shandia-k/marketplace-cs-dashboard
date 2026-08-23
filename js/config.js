@@ -72,9 +72,10 @@ const MARKETPLACE_CONFIG = {
   }
 };
 
-// ── RAM Hibernation Config ─────────────────────────────────────────────────────
+// ── RAM Hibernation & Hot Pool Config ──────────────────────────────────────────
 const RAM_THRESHOLD_MB = 2048;  // 2 GB — hibernate otomatis di atas ini
 const RAM_CHECK_INTERVAL_MS = 8000; // Cek setiap 8 detik
+const HOT_WEBVIEW_POOL_LIMIT = 5;   // Maksimal 5 webview teraktif dipertahankan hidup di DOM (0s wake)
 
 // ── Default Smart Quick Reply Templates ────────────────────────────────────────
 const DEFAULT_SMART_TEMPLATES = [
@@ -157,6 +158,7 @@ const POPULAR_MARKETPLACE_PRESETS = [
 window.MARKETPLACE_CONFIG = MARKETPLACE_CONFIG;
 window.RAM_THRESHOLD_MB = RAM_THRESHOLD_MB;
 window.RAM_CHECK_INTERVAL_MS = RAM_CHECK_INTERVAL_MS;
+window.HOT_WEBVIEW_POOL_LIMIT = HOT_WEBVIEW_POOL_LIMIT;
 window.DEFAULT_SMART_TEMPLATES = DEFAULT_SMART_TEMPLATES;
 window.AVATAR_COLORS = AVATAR_COLORS;
 window.AVATAR_ICONS = AVATAR_ICONS;

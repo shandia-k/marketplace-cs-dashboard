@@ -142,6 +142,10 @@ function registerIpcHandlers(getMainWindow) {
     return sessionService.deepCleanAll(username);
   });
 
+  ipcMain.handle('prune-background-memory', () => {
+    return sessionService.pruneBackgroundMemory();
+  });
+
   // ── Scratchpad IPC ─────────────────────────────────────────────────────────
   ipcMain.handle('load-scratchpad-file', () => {
     return systemService.loadScratchpadFile(getMainWindow);

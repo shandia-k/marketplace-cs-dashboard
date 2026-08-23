@@ -689,15 +689,35 @@ function renderThreadStream(ticket, isBackgroundRefresh = false) {
     return;
   }
 
-  // Saring pesan log sistem duplikat berurutan agar timeline bersih
-  const displayMessages = messages.filter((msg, idx) => {
+  // Saring pesan duplikat (misal pesan inisiasi _init lokal vs remote, atau log sistem duplikat)
+  const displayMessages = [];
+  messages.forEach((msg, idx) => {
+    if (!msg) return;
+
+    // Saring log sistem duplikat berurutan
     if (msg.sender?.role === 'system') {
       const prev = messages[idx - 1];
       if (prev && prev.sender?.role === 'system' && prev.content === msg.content) {
-        return false;
+        return;
       }
     }
-    return true;
+
+    const isDuplicate = displayMessages.some(existing => {
+      if (existing.id && msg.id && existing.id === msg.id) return true;
+      if (existing.id && existing.id.endsWith('_init') && msg.id && msg.id.endsWith('_init')) {
+        return true;
+      }
+      if (existing.sender?.username === msg.sender?.username && existing.content === msg.content) {
+        const timeA = new Date(existing.timestamp || 0).getTime();
+        const timeB = new Date(msg.timestamp || 0).getTime();
+        if (Math.abs(timeA - timeB) < 15000) return true;
+      }
+      return false;
+    });
+
+    if (!isDuplicate) {
+      displayMessages.push(msg);
+    }
   });
 
   let lastDateStr = '';

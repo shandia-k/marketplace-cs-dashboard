@@ -25,6 +25,7 @@ window.debounce = debounce;
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg, type = '') {
   const toast   = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = msg;
   toast.className   = `toast show ${type}`;
   clearTimeout(toastTimer);

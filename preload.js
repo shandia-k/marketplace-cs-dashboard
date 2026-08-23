@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearStoreCache: (data) => ipcRenderer.invoke('clear-store-cache', data),
   deepCleanStore: (data) => ipcRenderer.invoke('deep-clean-store', data),
   deepCleanAll: (username) => ipcRenderer.invoke('deep-clean-all', username),
+  pruneBackgroundMemory: () => ipcRenderer.invoke('prune-background-memory'),
 
   // Auto Updater
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
@@ -97,6 +98,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_event, value) => callback(value);
     ipcRenderer.on('found-in-page-result', listener);
     return () => ipcRenderer.removeListener('found-in-page-result', listener);
+  },
+  onTriggerFindInPage: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('trigger-find-in-page', listener);
+    return () => ipcRenderer.removeListener('trigger-find-in-page', listener);
+  },
+  onTriggerCloseFindInPage: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('trigger-close-find-in-page', listener);
+    return () => ipcRenderer.removeListener('trigger-close-find-in-page', listener);
   }
 });
 

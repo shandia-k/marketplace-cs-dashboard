@@ -194,35 +194,8 @@
   opacity: 0.92;
 }
 
-.store-item.hibernated .store-favicon {
-  filter: grayscale(0.5);
-  position: relative;
-}
-
-.hibernate-badge {
-  position: absolute;
-  bottom: -3px;
-  right: -3px;
-  font-size: 9px;
-  line-height: 1;
-  background: var(--bg-secondary);
-  border-radius: 99px;
-  padding: 1px;
-  pointer-events: none;
-  z-index: 2;
-}
-
 .store-favicon {
   position: relative;
-}
-
-/* Tab bar: hibernated tab */
-.tab-item.hibernated {
-  opacity: 0.5;
-}
-
-.tab-item.hibernated .tab-favicon-mini {
-  filter: grayscale(0.7);
 }
 
 /* Tab bar: syncing badge */
@@ -1152,18 +1125,6 @@ mark.sp-search-mark.active {
 @keyframes badgePop {
   from { transform: scale(0); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
-}
-
-/* ==============
-   WHITELIST SHIELD BADGE (sidebar)
-   ============================================= */
-.whitelist-badge {
-  position: absolute;
-  bottom: -4px;
-  left: -4px;
-  font-size: 9px;
-  line-height: 1;
-  pointer-events: none;
 }
 
 /* ==============

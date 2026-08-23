@@ -24,7 +24,51 @@ function getTicketsFilePath() {
 }
 
 /**
- * Baca tiket dari disk lokal (dengan failover backup)
+ * Membersihkan duplikasi pesan (misal pesan _init lokal vs cloud)
+ */
+function deduplicateTicketMessages(messages) {
+  if (!Array.isArray(messages) || messages.length <= 1) return Array.isArray(messages) ? messages : [];
+
+  const uniqueList = [];
+  messages.forEach(msg => {
+    if (!msg) return;
+    const isDuplicate = uniqueList.some(existing => {
+      if (existing.id && msg.id && existing.id === msg.id) return true;
+
+      // Keduanya adalah pesan inisiasi tiket (_init)
+      if (existing.id && existing.id.endsWith('_init') && msg.id && msg.id.endsWith('_init')) {
+        // Pertahankan gambar jika yang satu punya base64 dan yang lain tidak
+        if ((!existing.images || existing.images.length === 0) && (msg.images && msg.images.length > 0)) {
+          existing.images = msg.images;
+        }
+        return true;
+      }
+
+      // Pengirim dan teks yang sama persis dalam jendela 15 detik
+      if (existing.sender?.username === msg.sender?.username && existing.content === msg.content) {
+        const timeA = new Date(existing.timestamp || 0).getTime();
+        const timeB = new Date(msg.timestamp || 0).getTime();
+        if (Math.abs(timeA - timeB) < 15000) {
+          if ((!existing.images || existing.images.length === 0) && (msg.images && msg.images.length > 0)) {
+            existing.images = msg.images;
+          }
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    if (!isDuplicate) {
+      uniqueList.push(msg);
+    }
+  });
+
+  return uniqueList;
+}
+
+/**
+ * Baca tiket dari disk lokal (dengan failover backup dan sanitasi duplikat)
  */
 function readTickets() {
   const filePath = getTicketsFilePath();
@@ -51,6 +95,23 @@ function readTickets() {
   if (!Array.isArray(loaded)) {
     return [];
   }
+
+  // Sanitasi pesan tiket agar bersih dari duplikat _init
+  let needsResave = false;
+  loaded.forEach(t => {
+    if (Array.isArray(t.messages)) {
+      const clean = deduplicateTicketMessages(t.messages);
+      if (clean.length !== t.messages.length) {
+        t.messages = clean;
+        needsResave = true;
+      }
+    }
+  });
+
+  if (needsResave) {
+    saveTickets(loaded);
+  }
+
   return loaded;
 }
 
@@ -501,14 +562,15 @@ function mergeRemoteTicketsDirectly(remoteTickets, sessionOverride = null) {
     if (localIdx !== -1) {
       const loc = localTickets[localIdx];
       
-      // Merge pesan berbasis ID unik agar tidak ada pesan tertinggal
+      // Merge pesan berbasis ID unik dan bersihkan duplikat _init/konten
       const msgMap = new Map();
       (loc.messages || []).forEach(m => { if (m && m.id) msgMap.set(m.id, m); });
       (rem.messages || []).forEach(m => { if (m && m.id) msgMap.set(m.id, m); });
 
-      const mergedMessages = Array.from(msgMap.values()).sort((a, b) => {
+      const rawMerged = Array.from(msgMap.values()).sort((a, b) => {
         return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
       });
+      const mergedMessages = deduplicateTicketMessages(rawMerged);
 
       if (mergedMessages.length !== (loc.messages || []).length) {
         hasUpdates = true;
@@ -531,6 +593,7 @@ function mergeRemoteTicketsDirectly(remoteTickets, sessionOverride = null) {
       loc.updatedAt = rem.updatedAt || loc.updatedAt;
     } else {
       // Tiket baru dari cloud
+      rem.messages = deduplicateTicketMessages(rem.messages || []);
       localTickets.push(rem);
       hasUpdates = true;
       const devMsgs = (rem.messages || []).filter(m => m.isDevReply || m.sender?.role === 'developer' || m.sender?.role === 'superadmin');

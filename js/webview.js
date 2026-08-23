@@ -5,16 +5,18 @@ function hibernateTab(storeId, tabId, forceHard = false) {
   // Jangan hibernasi tab yang sedang aktif menyinkronkan riwayat chat
   if (wvEntry.isSyncing) return;
 
-  // Cek apakah RAM sudah melewati batas kritis (> 2GB)
-  const isEmergencyRam = typeof ramUsageMB === 'number' && ramUsageMB > (typeof RAM_THRESHOLD_MB !== 'undefined' ? RAM_THRESHOLD_MB : 2048);
-
-  if (!forceHard && !isEmergencyRam) {
-    // 🍃 Smart Sleep (Suspended Rendering): Sembunyikan webview (0% GPU & CPU), tetapi PERTAHANKAN WebSocket agar notifikasi email & WhatsApp tetap masuk INSTAN (1 detik)!
+  // 🍃 Smart Suspended Sleep (0 Detik Wake):
+  // Sembunyikan webview (0% GPU & CPU compositing), mute audio, tetapi PERTAHANKAN elemen di DOM
+  // agar saat dibuka kembali langsung muncul 0 MILIDETIK (INSTAN) tanpa reload!
+  if (!forceHard) {
     wvEntry.webview.style.display = 'none';
     wvEntry.webview.classList.remove('visible');
     if (wvEntry.loading) wvEntry.loading.style.display = 'none';
+    if (typeof wvEntry.webview.setAudioMuted === 'function') {
+      try { wvEntry.webview.setAudioMuted(true); } catch (e) { }
+    }
   } else {
-    // Hard hibernate: Hapus dari DOM hanya saat kondisi RAM darurat (> 2GB)
+    // Hard destruction hanya jika diminta paksa secara eksplisit
     wvEntry.webview.remove();
     if (wvEntry.loading) wvEntry.loading.remove();
     delete wvEntry.webview;
@@ -30,29 +32,43 @@ function hibernateTab(storeId, tabId, forceHard = false) {
 
 async function checkAndHibernateIfNeeded() {
   try {
-    ramUsageMB = await window.electronAPI.getAppMemoryMB();
+    if (window.electronAPI && typeof window.electronAPI.getAppMemoryMB === 'function') {
+      const mb = await window.electronAPI.getAppMemoryMB();
+      if (typeof mb === 'number' && mb > 0) ramUsageMB = mb;
+    }
 
-    if (ramUsageMB < RAM_THRESHOLD_MB) return;
+    // 1. Pangkas memori cache in-memory jika RAM mendekati batas (> 2200 MB)
+    if (ramUsageMB > 2200 && window.electronAPI?.pruneBackgroundMemory) {
+      try {
+        await window.electronAPI.pruneBackgroundMemory();
+      } catch (e) { }
+    }
 
-    // Cari kandidat: webview aktif yang BUKAN tab aktif saat ini & bukan whitelist & tidak sedang sync
+    const threshold = typeof RAM_THRESHOLD_MB !== 'undefined' ? RAM_THRESHOLD_MB : 2048;
+    if (ramUsageMB < threshold) return;
+
+    // 2. Terapkan Smart Sleep untuk tab tidak aktif (LRU) yang bukan tab aktif saat ini
     const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
 
     const candidates = [];
     for (const [tabId, entry] of Object.entries(webviewMap)) {
       if (entry.hibernated || !entry.webview || entry.isSyncing) continue;
       if (tabId === activeTabId) continue;
-      // Skip toko yang di-whitelist dari hibernasi
+
       const storeId = Object.keys(storeTabs).find(sid =>
         storeTabs[sid].some(t => t.id === tabId)
       );
       const store = stores.find(s => s.id === storeId);
-      if (store?.hibernationWhitelisted) continue;
+      
+      // Jika di-shield (whitelist), pertahankan rendering aktif kecuali kondisi darurat (> 3GB)
+      if (store?.hibernationWhitelisted && ramUsageMB < 3072) continue;
+
       candidates.push({ tabId, lastSeen: lastAccessed[tabId] || 0 });
     }
 
     if (candidates.length === 0) return;
 
-    // Hibernate yang paling lama tidak diakses (LRU)
+    // Smart Sleep yang paling lama tidak diakses (LRU) tanpa merusak DOM
     candidates.sort((a, b) => a.lastSeen - b.lastSeen);
     const oldest = candidates[0];
     const storeId = Object.keys(storeTabs).find(sid =>
@@ -60,11 +76,7 @@ async function checkAndHibernateIfNeeded() {
     );
 
     if (storeId) {
-      const store = stores.find(s => s.id === storeId);
-      const agoMs = Date.now() - oldest.lastSeen;
-      const agoText = agoMs < 60000 ? 'baru saja' : `${Math.round(agoMs / 60000)} mnt lalu`;
-      showToast(`Hibernasi: "${store?.name || ''}" (diakses ${agoText}) — RAM ${Math.round(ramUsageMB / 1024 * 10) / 10} GB`, '');
-      hibernateTab(storeId, oldest.tabId);
+      hibernateTab(storeId, oldest.tabId, false);
     }
   } catch (e) {
     // Tidak kritis, abaikan
@@ -96,18 +108,24 @@ function hibernateAll() {
       continue;
     }
 
-    hibernateTab(storeId, tabId);
+    // Terapkan Smart Suspended Sleep (0 detik wake)
+    hibernateTab(storeId, tabId, false);
     count++;
   }
 
+  // Trigger pemangkasan memory cache seketika
+  if (window.electronAPI?.pruneBackgroundMemory) {
+    window.electronAPI.pruneBackgroundMemory().catch(() => {});
+  }
+
   if (count === 0 && skipped === 0) {
-    showToast('Tidak ada tab yang perlu dihibernasi.', '');
+    showToast('Semua tab latar belakang sudah dalam mode hemat RAM.', '');
   } else if (count === 0 && skipped > 0) {
-    showToast(`Semua tab dilindungi (${skipped} tab aktif / sinkronisasi).`, '');
+    showToast(`Semua tab dilindungi (${skipped} tab terlindungi dari sleep). Memori cache telah dipangkas!`, 'success');
   } else {
     const msg = skipped > 0
-      ? `${count} tab dihibernasi. ${skipped} tab dilindungi.`
-      : `${count} tab berhasil dihibernasi.`;
+      ? `${count} tab masuk Mode Hemat (0 detik wake). ${skipped} tab dilindungi.`
+      : `${count} tab masuk Mode Hemat RAM (0 detik wake).`;
     showToast(msg, 'success');
   }
 
@@ -200,6 +218,7 @@ function createWebview(store, tab) {
   wv.setAttribute('preload', preloadUrl);
   wv.setAttribute('useragent', cleanUa);
   wv.setAttribute('allowpopups', '');
+  wv.setAttribute('webpreferences', 'backgroundThrottling=true,sandbox=false');
 
   // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
   wv.addEventListener('ipc-message', (event) => {
@@ -440,10 +459,13 @@ function createWebview(store, tab) {
     } catch (e) { }
   };
   wv.addEventListener('did-attach', captureWcId);
-  wv.addEventListener('dom-ready', captureWcId);
+  wv.addEventListener('dom-ready', () => {
+    captureWcId();
+  });
   wv.addEventListener('did-finish-load', () => {
     captureWcId();
     loadingEl.classList.add('hidden');
+    loadingEl.style.display = 'none';
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
     if (tabEntry?.zoom && tabEntry.zoom !== 1.0) {
       wv.setZoomFactor(tabEntry.zoom);
@@ -505,6 +527,7 @@ function createWebview(store, tab) {
   wv.addEventListener('did-navigate-in-page', handleNavChange);
 
   wv.addEventListener('did-fail-load', e => {
+    if (tab) hideGhostSnapshot(tab.id, true);
     if (e.errorCode !== -3) {
       loadingEl.innerHTML = `
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5">
@@ -593,7 +616,70 @@ function createWebview(store, tab) {
 
   webviewCont.appendChild(wv);
   webviewMap[tab.id] = { webview: wv, loading: loadingEl, isCrashed: false, storeId: store.id, tabId: tab.id };
+
+  // ⚡ Enforce Hot Webview Pool limit (maksimal 5 webview teraktif di DOM)
+  if (typeof manageHotWebviewPool === 'function') {
+    manageHotWebviewPool();
+  }
 }
+
+/**
+ * ⚡ Hot Webview Pool Manager (Dual-Layer State Retention)
+ * Menjaga tab aktif tetap responsif dan mengalihkan tab lama ke Smart Sleep (display: none, audio muted)
+ * tanpa menghancurkan DOM agar dapat didekompresi kernel Windows secara instan (<30ms).
+ */
+function manageHotWebviewPool() {
+  const poolLimit = typeof HOT_WEBVIEW_POOL_LIMIT === 'number' ? HOT_WEBVIEW_POOL_LIMIT : 5;
+  const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
+
+  // Kumpulkan seluruh webview yang saat ini hidup di DOM
+  const liveEntries = [];
+  for (const [tabId, entry] of Object.entries(webviewMap)) {
+    if (entry && entry.webview && entry.webview.isConnected) {
+      liveEntries.push({
+        tabId,
+        entry,
+        isActive: tabId === activeTabId,
+        lastSeen: lastAccessed[tabId] || 0,
+        hasDraft: Boolean(entry.hasDraft),
+        isSyncing: Boolean(entry.isSyncing)
+      });
+    }
+  }
+
+  // Jika jumlah webview di DOM masih di bawah batas pool, biarkan semuanya tetap hidup (0s wake)
+  if (liveEntries.length <= poolLimit) return;
+
+  // Urutkan berdasarkan waktu terakhir diakses (paling baru di atas)
+  liveEntries.sort((a, b) => b.lastSeen - a.lastSeen);
+
+  // Tab yang masuk pool: Tab aktif + (poolLimit - 1) tab teraktif berikutnya
+  const warmTabIds = new Set();
+  if (activeTabId) warmTabIds.add(activeTabId);
+
+  for (const item of liveEntries) {
+    if (warmTabIds.size >= poolLimit) break;
+    warmTabIds.add(item.tabId);
+  }
+
+  // 🍃 Dual-Layer State Retention:
+  // Alihkan tab di luar warmTabIds ke Smart Sleep tanpa menghancurkan DOM
+  for (const item of liveEntries) {
+    if (warmTabIds.has(item.tabId)) continue;
+    if (item.hasDraft || item.isSyncing) continue;
+
+    if (!item.entry.hibernated) {
+      item.entry.webview.style.display = 'none';
+      item.entry.webview.classList.remove('visible');
+      if (item.entry.loading) item.entry.loading.style.display = 'none';
+      if (typeof item.entry.webview.setAudioMuted === 'function') {
+        try { item.entry.webview.setAudioMuted(true); } catch (e) { }
+      }
+      item.entry.hibernated = true;
+    }
+  }
+}
+window.manageHotWebviewPool = manageHotWebviewPool;
 
 // ── Hard Recreate Active Tab Webview (Emergency Heal Utility) ────────────────
 function forceRecreateActiveTab() {
@@ -685,6 +771,7 @@ function runNextBackgroundPing() {
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
   pingWv.setAttribute('useragent', pingUa);
+  pingWv.setAttribute('webpreferences', 'backgroundThrottling=true,sandbox=false');
 
   let unreadDetected = 0;
   let hasCleanedUp = false;

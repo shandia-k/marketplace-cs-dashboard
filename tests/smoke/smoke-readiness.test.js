@@ -78,4 +78,26 @@ describe('Level 8: Smoke & Build Readiness Tests', () => {
       assert.ok(html.includes(scriptPath), `index.html must include <script src="${scriptPath}">`);
     });
   });
+
+  test('should parse and compile all JS scripts via V8 without SyntaxErrors', () => {
+    const jsDir = path.join(rootDir, 'js');
+    const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
+
+    jsFiles.forEach(file => {
+      const filePath = path.join(jsDir, file);
+      const code = fs.readFileSync(filePath, 'utf8');
+      assert.doesNotThrow(() => {
+        new Function(code);
+      }, `Syntax error in frontend script: js/${file}`);
+    });
+
+    const rootScripts = ['preload.js', 'webview-preload.js'];
+    rootScripts.forEach(file => {
+      const filePath = path.join(rootDir, file);
+      const code = fs.readFileSync(filePath, 'utf8');
+      assert.doesNotThrow(() => {
+        new Function(code);
+      }, `Syntax error in root script: ${file}`);
+    });
+  });
 });

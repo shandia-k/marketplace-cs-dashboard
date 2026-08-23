@@ -385,6 +385,116 @@ async function createQrCodeForImage(srcUrl, getMainWindow) {
 }
 
 /**
+ * 7. Tentukan nama file yang sesuai untuk halaman/dokumen yang diekspor
+ */
+function suggestPageFilename(title, ext = '.pdf') {
+  const safeExt = ext.startsWith('.') ? ext : `.${ext}`;
+  if (!title || typeof title !== 'string') {
+    const now = new Date();
+    const dStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const tStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
+    return `halaman_${dStr}_${tStr}${safeExt}`;
+  }
+  const clean = title.trim().replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_');
+  const truncated = clean.length > 50 ? clean.substring(0, 50) : clean;
+  return (truncated.length > 0 ? truncated : `halaman_${Date.now()}`) + safeExt;
+}
+
+/**
+ * 8. Simpan Halaman sebagai PDF (printToPDF)
+ */
+async function savePageAsPdf(contents, getMainWindow) {
+  if (!contents || contents.isDestroyed()) return;
+  const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : getMainWindow;
+
+  try {
+    const pageTitle = (typeof contents.getTitle === 'function') ? contents.getTitle() : '';
+    const defaultFilename = suggestPageFilename(pageTitle, '.pdf');
+    const downloadsDir = app.getPath('downloads');
+    const defaultPath = path.join(downloadsDir, defaultFilename);
+
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Simpan Halaman sebagai PDF...',
+      defaultPath: defaultPath,
+      filters: [
+        { name: 'PDF Documents (*.pdf)', extensions: ['pdf'] },
+        { name: 'All Files (*.*)', extensions: ['*'] }
+      ]
+    });
+
+    if (!canceled && filePath) {
+      notifyRenderer(getMainWindow, '📄 Sedang memproses dokumen PDF...', '');
+      const pdfBuffer = await contents.printToPDF({
+        printBackground: true,
+        preferCSSPageSize: true
+      });
+      await fs.promises.writeFile(filePath, pdfBuffer);
+      notifyRenderer(getMainWindow, `✅ Halaman berhasil disimpan sebagai PDF: ${path.basename(filePath)}`, 'success');
+    }
+  } catch (err) {
+    console.error('[Context Menu] Failed to save page as PDF:', err);
+    notifyRenderer(getMainWindow, `Gagal menyimpan PDF: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * 9. Simpan Halaman sebagai Gambar JPG/PNG (capturePage)
+ */
+async function savePageAsJpg(contents, getMainWindow) {
+  if (!contents || contents.isDestroyed()) return;
+  const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : getMainWindow;
+
+  try {
+    const pageTitle = (typeof contents.getTitle === 'function') ? contents.getTitle() : '';
+    const defaultFilename = suggestPageFilename(pageTitle, '.jpg');
+    const downloadsDir = app.getPath('downloads');
+    const defaultPath = path.join(downloadsDir, defaultFilename);
+
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Simpan Halaman sebagai Gambar (JPG)...',
+      defaultPath: defaultPath,
+      filters: [
+        { name: 'JPEG Image (*.jpg;*.jpeg)', extensions: ['jpg', 'jpeg'] },
+        { name: 'PNG Image (*.png)', extensions: ['png'] },
+        { name: 'All Files (*.*)', extensions: ['*'] }
+      ]
+    });
+
+    if (!canceled && filePath) {
+      notifyRenderer(getMainWindow, '📸 Sedang mengambil tangkapan layar halaman...', '');
+      const image = await contents.capturePage();
+      const ext = path.extname(filePath).toLowerCase();
+      const buffer = (ext === '.png') ? image.toPNG() : image.toJPEG(90);
+      await fs.promises.writeFile(filePath, buffer);
+      notifyRenderer(getMainWindow, `✅ Tangkapan layar berhasil disimpan: ${path.basename(filePath)}`, 'success');
+    }
+  } catch (err) {
+    console.error('[Context Menu] Failed to save page as image:', err);
+    notifyRenderer(getMainWindow, `Gagal menyimpan gambar: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * 10. Cetak Halaman (Native OS Print Dialog)
+ */
+function printPage(contents, getMainWindow) {
+  if (!contents || contents.isDestroyed()) return;
+  try {
+    contents.print({
+      silent: false,
+      printBackground: true
+    }, (success, failureReason) => {
+      if (!success && failureReason && failureReason !== 'cancelled') {
+        notifyRenderer(getMainWindow, `Gagal mencetak: ${failureReason}`, 'error');
+      }
+    });
+  } catch (err) {
+    console.error('[Context Menu] Failed to trigger print:', err);
+    notifyRenderer(getMainWindow, `Gagal mencetak halaman: ${err.message}`, 'error');
+  }
+}
+
+/**
  * Bangun dan tampilkan Context Menu saat klik kanan
  */
 function showContextMenu(contents, params, getMainWindow) {
@@ -422,6 +532,21 @@ function showContextMenu(contents, params, getMainWindow) {
     menu.append(new MenuItem({
       label: 'Create QR Code for this image',
       click: () => createQrCodeForImage(params.srcURL, getMainWindow)
+    }));
+
+    // Opsi simpan/cetak halaman dokumen (sangat berguna untuk resi/label yang dirender di canvas/gambar)
+    menu.append(new MenuItem({ type: 'separator' }));
+    menu.append(new MenuItem({
+      label: '📄 Simpan Halaman sebagai PDF...',
+      click: () => savePageAsPdf(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '📸 Simpan Halaman sebagai Gambar (JPG)...',
+      click: () => savePageAsJpg(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '🖨️ Cetak Halaman (Print)...',
+      click: () => printPage(contents, getMainWindow)
     }));
 
     // Jika gambar ini juga berada di dalam hyperlink <a>
@@ -462,6 +587,19 @@ function showContextMenu(contents, params, getMainWindow) {
       label: 'Buat QR Code untuk Teks Ini',
       click: () => createQrCodeForImage(params.selectionText.trim(), getMainWindow)
     }));
+    menu.append(new MenuItem({ type: 'separator' }));
+    menu.append(new MenuItem({
+      label: '📄 Simpan Halaman sebagai PDF...',
+      click: () => savePageAsPdf(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '📸 Simpan Halaman sebagai Gambar (JPG)...',
+      click: () => savePageAsJpg(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '🖨️ Cetak Halaman (Print)...',
+      click: () => printPage(contents, getMainWindow)
+    }));
   } else if (params.linkURL) {
     // ── Regular Hyperlink Context Menu ────────────────────────────────────────
     menu.append(new MenuItem({
@@ -479,8 +617,34 @@ function showContextMenu(contents, params, getMainWindow) {
       label: 'Buat QR Code untuk Tautan Ini',
       click: () => createQrCodeForImage(params.linkURL, getMainWindow)
     }));
+    menu.append(new MenuItem({ type: 'separator' }));
+    menu.append(new MenuItem({
+      label: '📄 Simpan Halaman sebagai PDF...',
+      click: () => savePageAsPdf(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '📸 Simpan Halaman sebagai Gambar (JPG)...',
+      click: () => savePageAsJpg(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '🖨️ Cetak Halaman (Print)...',
+      click: () => printPage(contents, getMainWindow)
+    }));
   } else {
     // Standard page navigation context menu
+    menu.append(new MenuItem({
+      label: '📄 Simpan Halaman sebagai PDF...',
+      click: () => savePageAsPdf(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '📸 Simpan Halaman sebagai Gambar (JPG)...',
+      click: () => savePageAsJpg(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({
+      label: '🖨️ Cetak Halaman (Print)...',
+      click: () => printPage(contents, getMainWindow)
+    }));
+    menu.append(new MenuItem({ type: 'separator' }));
     menu.append(new MenuItem({
       label: 'Muat Ulang Halaman (Reload)',
       click: () => {
@@ -517,6 +681,7 @@ module.exports = {
   attachContextMenu,
   isImageUrl,
   suggestFilenameFromUrl,
+  suggestPageFilename,
   extractImageBuffer,
   openImageInNewTab,
   saveImageAs,
@@ -524,5 +689,8 @@ module.exports = {
   copyImageAddress,
   copyTextFromImage,
   createQrCodeForImage,
+  savePageAsPdf,
+  savePageAsJpg,
+  printPage,
   showContextMenu
 };

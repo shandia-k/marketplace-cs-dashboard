@@ -2575,10 +2575,9 @@ const OnboardingManager = {
       <div class="tab-item" title="Tab Pesanan Masuk">
         <div class="tab-favicon-mini" style="background:#f5521d; color:#fff;">SP</div>
         <span class="tab-title">Pesanan Masuk (3)</span>
-        <button class="tab-hibernate-btn" title="Tidurkan tab (hemat RAM)">🍃</button>
       </div>
-      <div class="tab-item hibernated" title="Tab Produk (Sedang Tidur / Hemat RAM)">
-        <div class="tab-favicon-mini" style="background:rgba(16,185,129,0.2); color:#10b981;">🍃</div>
+      <div class="tab-item" title="Tab Produk">
+        <div class="tab-favicon-mini" style="background:#f5521d; color:#fff;">SP</div>
         <span class="tab-title">Daftar Produk</span>
       </div>
       <button class="tab-add-btn" id="btn-add-tab" title="Tambah Tab Baru (+)">

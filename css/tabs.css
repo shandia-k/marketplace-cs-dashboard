@@ -171,9 +171,11 @@
   border: 1px solid transparent;
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
-  min-width: 50px;
-  max-width: 200px;
-  flex-shrink: 1; /* Memungkinkan tab menyusut saat terlalu banyak */
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  flex: 0 0 140px;
+  box-sizing: border-box;
   position: relative;
   user-select: none;
   overflow: hidden;
@@ -435,33 +437,4 @@ webview {
 .zoom-indicator.visible {
   opacity: 1;
   transform: translateY(0) scale(1);
-}
-
-/* ==============
-   TAB HIBERNATE BUTTON (per-tab leaf button)
-   ============================================= */
-.tab-hibernate-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
-  line-height: 1;
-  flex-shrink: 0;
-  opacity: 0.75;
-}
-
-.tab-hibernate-btn:hover {
-  opacity: 1 !important;
-  background: rgba(34, 197, 94, 0.18);
-  color: #4ade80;
-  transform: scale(1.12);
 }

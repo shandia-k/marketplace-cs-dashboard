@@ -1036,6 +1036,35 @@ function setupFocusAndCrashRecoveryLifecycle() {
     });
   }
 
+  // Listener IPC Trigger Universal Find in Page (Ctrl+F) dari Native Chromium Main Process
+  if (window.electronAPI && typeof window.electronAPI.onTriggerFindInPage === 'function') {
+    window.electronAPI.onTriggerFindInPage(() => {
+      // 1. Jika Scratchpad sedang terbuka, aktifkan search dedicated Scratchpad
+      const spWindow = document.getElementById('scratchpad-window');
+      if (spWindow && spWindow.style.display !== 'none') {
+        if (typeof openScratchpadSearch === 'function') {
+          openScratchpadSearch();
+        }
+        return;
+      }
+      // 2. Jika tidak, buka toolbar search webview reguler
+      const sel = (window.getSelection()?.toString() || '').trim();
+      if (typeof openFindInPage === 'function') {
+        openFindInPage(sel);
+      }
+    });
+  }
+
+  // Listener IPC Trigger Universal Close Find in Page (Escape) dari Native Chromium Main Process
+  if (window.electronAPI && typeof window.electronAPI.onTriggerCloseFindInPage === 'function') {
+    window.electronAPI.onTriggerCloseFindInPage(() => {
+      const bar = document.getElementById('find-in-page-bar');
+      if (bar && bar.style.display !== 'none' && typeof closeFindInPage === 'function') {
+        closeFindInPage();
+      }
+    });
+  }
+
   // Listener IPC Modal QR Code Gambar dari Main Process
   if (window.electronAPI && typeof window.electronAPI.onShowImageQrModal === 'function') {
     window.electronAPI.onShowImageQrModal((data) => {

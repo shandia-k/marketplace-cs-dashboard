@@ -139,8 +139,9 @@ describe('Level 7: Dedicated Regression Catalog Tests (Zero-Regression Guarantee
     assert.equal(partitionUserB, 'persist:user_cs_budi_shopee_store_1');
   });
 
-  test('[REG-008] Find in Page Incremental Search: findInPage handler must handle findNext properly', () => {
+  test('[REG-008] Find in Page Incremental Search: findInPage handler and native before-input-event shortcut guard', () => {
     const registerIpcCode = fs.readFileSync(path.join(__dirname, '../../src/main/ipc/register-ipc.js'), 'utf8');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
     
     // Pastikan handler 'find-in-page' terdaftar
     const findHandlerMatch = registerIpcCode.match(/ipcMain\.handle\('find-in-page'[\s\S]*?ipcMain\.handle\('stop-find-in-page'/);
@@ -150,6 +151,16 @@ describe('Level 7: Dedicated Regression Catalog Tests (Zero-Regression Guarantee
     assert.ok(
       findHandlerBody.includes('targetWc.findInPage'),
       'find-in-page handler must invoke targetWc.findInPage'
+    );
+
+    // Pastikan before-input-event terpasang untuk menangkap Ctrl+F lintas webview & iframe
+    assert.ok(
+      sessionServiceCode.includes("contents.on('before-input-event'"),
+      'session.service.js must register before-input-event on WebContents'
+    );
+    assert.ok(
+      sessionServiceCode.includes("'trigger-find-in-page'"),
+      'session.service.js must trigger find-in-page IPC signal'
     );
   });
 
@@ -298,6 +309,52 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.equal(detectTemplateCategory('Cek Resi J&T', 'Nomor resi pesanan kakak adalah {clipboard}'), 'order');
     assert.equal(detectTemplateCategory('Komplain Rusak', 'Mohon lampirkan video unboxing retur pengembalian'), 'complaint');
     assert.equal(detectTemplateCategory('Sapaan Pagi', 'Halo selamat pagi kak, ada yang bisa kami bantu?'), 'greeting');
+  });
+
+  test('[REG-015] Smart Suspended Sleep & Background Memory Pruning: Zero-delay instant tab wake without webview destruction', () => {
+    const webviewCode = fs.readFileSync(path.join(__dirname, '../../js/webview.js'), 'utf8');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+    const appConfigCode = fs.readFileSync(path.join(__dirname, '../../src/main/config/app.config.js'), 'utf8');
+
+    // 1. Pastikan hibernateTab mempertahankan DOM webview secara default (Smart Sleep)
+    assert.ok(webviewCode.includes("wvEntry.webview.style.display = 'none'"), 'hibernateTab must hide webview via CSS');
+    assert.ok(webviewCode.includes("wvEntry.webview.classList.remove('visible')"), 'hibernateTab must remove visible class');
+
+    // 2. Pastikan pruneBackgroundMemory terdaftar dan diimplementasikan di session.service.js
+    assert.ok(sessionServiceCode.includes('async function pruneBackgroundMemory'), 'session.service must implement pruneBackgroundMemory');
+
+    // 3. Pastikan app.config.js mengaktifkan MemoryReducer dan Process Pooling
+    assert.ok(appConfigCode.includes('MemoryReducer'), 'app.config.js must enable Chromium MemoryReducer feature');
+    assert.ok(appConfigCode.includes('renderer-process-limit'), 'app.config.js must enforce renderer-process-limit');
+    assert.ok(appConfigCode.includes('process-per-site'), 'app.config.js must enable process-per-site pooling');
+
+    // 4. Pastikan Hot Webview Pool Manager terdaftar untuk membatasi DOM live webviews
+    assert.ok(webviewCode.includes('function manageHotWebviewPool'), 'webview.js must implement manageHotWebviewPool');
+  });
+
+  test('[REG-016] Pure Instant Soft-Wake: Zero DOM destruction and instant unhiding without GPU command buffer stress', () => {
+    const tabsCode = fs.readFileSync(path.join(__dirname, '../../js/tabs.js'), 'utf8');
+    const webviewCode = fs.readFileSync(path.join(__dirname, '../../js/webview.js'), 'utf8');
+
+    // 1. Pastikan showTab melakukan soft wake murni tanpa memicu capturePage GPU berlebih
+    assert.ok(tabsCode.includes("entry.webview.classList.add('visible')"), 'tabs.js must unhide webview on soft wake');
+    assert.ok(!tabsCode.includes('captureTabSnapshot'), 'tabs.js must not contain legacy captureTabSnapshot loop');
+
+    // 2. Pastikan webview.js tidak memiliki loop capturePage yang membebani GPU
+    assert.ok(!webviewCode.includes('captureTabSnapshot('), 'webview.js must not execute legacy captureTabSnapshot');
+  });
+
+  test('[REG-017] Dual-Layer State Retention: V8 GC Heap Tuning and Native Windows Working Set Trimmer', () => {
+    const appConfigCode = fs.readFileSync(path.join(__dirname, '../../src/main/config/app.config.js'), 'utf8');
+    const memoryTrimmer = require('../../src/main/services/memory-trimmer.service');
+
+    // 1. Pastikan parameter V8 Tuning terpasang aman tanpa crash JIT
+    assert.ok(appConfigCode.includes('--max-old-space-size=512'), 'Must enforce max-old-space-size=512');
+    assert.ok(appConfigCode.includes('--expose-gc'), 'Must enforce --expose-gc');
+    assert.ok(appConfigCode.includes('renderer-process-limit'), 'Must enforce renderer-process-limit');
+
+    // 2. Pastikan memory trimmer service mengekspos fungsi trimWorkingSet
+    assert.equal(typeof memoryTrimmer.trimWorkingSet, 'function', 'memory-trimmer.service must export trimWorkingSet');
   });
 });
 

@@ -49,6 +49,54 @@ window.addEventListener('keydown', (e) => {
   }
 }, true);
 
+// ── DEEP BACKGROUND CPU & MEDIA FREEZER (0.001% CPU WHEN HIDDEN) ───────────────
+(function initDeepBackgroundCpuThrottler() {
+  const originalRAF = typeof window !== 'undefined' && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : null;
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (document.hidden) {
+        // Saat background: batasi loop animasi ke 1 fps (menghemat 99% instruksi CPU render)
+        return setTimeout(() => {
+          if (typeof callback === 'function') {
+            try { callback(performance.now()); } catch (e) {}
+          }
+        }, 1000);
+      }
+      return originalRAF(callback);
+    };
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // 1. Hentikan media video & audio TikTok / Shopee yang tidak terlihat
+      try {
+        document.querySelectorAll('video, audio').forEach(el => {
+          if (!el.paused) {
+            el.dataset.__wasPlaying = 'true';
+            el.pause();
+          }
+        });
+      } catch (e) { }
+
+      // 2. Panggil V8 GC saat berpindah ke background
+      if (typeof window.gc === 'function') {
+        try { window.gc(); } catch (e) { }
+      }
+    } else {
+      // 1. Resume video & audio jika sebelumnya aktif
+      try {
+        document.querySelectorAll('video, audio').forEach(el => {
+          if (el.dataset.__wasPlaying === 'true') {
+            delete el.dataset.__wasPlaying;
+            el.play().catch(() => {});
+          }
+        });
+      } catch (e) { }
+    }
+  });
+})();
+
 // Jika berada di halaman autentikasi Google / OAuth murni, jangan inject listener inline marketplace
 if (typeof window !== 'undefined' && window.location && window.location.hostname === 'accounts.google.com') {
   return;

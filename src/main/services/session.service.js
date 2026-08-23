@@ -3,7 +3,7 @@
  * Browser session management, stealth headers, webview security guards, and cache deep-cleaning
  */
 
-const { session } = require('electron');
+const { session, app, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const {
@@ -31,10 +31,82 @@ function flushAllSessions() {
   } catch (e) { }
 }
 
-function setupSessionStealthGuard(sess) {
+function setupSessionStealthGuard(sess, getMainWindow) {
   if (!sess || activeStealthSessions.has(sess)) return;
   activeStealthSessions.add(sess);
 
+  // 1. Tangani pengunduhan file (PDF resi, laporan Excel, dokumen cetak, dll.)
+  try {
+    sess.on('will-download', (event, item, webContents) => {
+      const filename = item.getFilename();
+      const defaultFilename = filename || `unduhan_${Date.now()}`;
+      const downloadsDir = (app && typeof app.getPath === 'function') ? app.getPath('downloads') : '';
+      const defaultPath = downloadsDir ? path.join(downloadsDir, defaultFilename) : defaultFilename;
+      const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : null;
+
+      const ext = path.extname(defaultFilename).slice(1);
+      const filters = [];
+      if (ext) {
+        filters.push({ name: `${ext.toUpperCase()} File (*.${ext})`, extensions: [ext] });
+      }
+      filters.push({ name: 'All Files (*.*)', extensions: ['*'] });
+
+      let savePath = null;
+      try {
+        if (dialog && typeof dialog.showSaveDialogSync === 'function') {
+          savePath = dialog.showSaveDialogSync(mainWindow, {
+            title: 'Simpan File Unduhan...',
+            defaultPath: defaultPath,
+            filters: filters
+          });
+        }
+      } catch (errDialog) {
+        console.warn('[Download Guard] showSaveDialogSync error, fallback to default path:', errDialog.message);
+        savePath = defaultPath;
+      }
+
+      if (savePath) {
+        item.setSavePath(savePath);
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('show-toast-message', {
+              message: `📥 Mengunduh: ${path.basename(savePath)}...`,
+              type: ''
+            });
+          }
+        } catch (e) { }
+
+        item.once('done', (doneEvent, state) => {
+          try {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              if (state === 'completed') {
+                mainWindow.webContents.send('show-toast-message', {
+                  message: `✅ File berhasil diunduh: ${path.basename(savePath)}`,
+                  type: 'success'
+                });
+              } else if (state === 'cancelled') {
+                mainWindow.webContents.send('show-toast-message', {
+                  message: `ℹ️ Unduhan dibatalkan: ${path.basename(savePath)}`,
+                  type: 'info'
+                });
+              } else {
+                mainWindow.webContents.send('show-toast-message', {
+                  message: `❌ Gagal mengunduh file (${state})`,
+                  type: 'error'
+                });
+              }
+            }
+          } catch (e) { }
+        });
+      } else {
+        item.cancel();
+      }
+    });
+  } catch (errDl) {
+    console.error('[Download Guard] Failed to attach will-download listener:', errDl);
+  }
+
+  // 2. Stealth User-Agent & Header Sanitizer
   try {
     sess.webRequest.onBeforeSendHeaders((details, callback) => {
       const requestHeaders = details.requestHeaders || {};
@@ -74,7 +146,7 @@ function setupWebContentsSecurity(contents, getMainWindow) {
   const type = contents.getType();
   if (type !== 'webview' && type !== 'window') return;
 
-  setupSessionStealthGuard(contents.session);
+  setupSessionStealthGuard(contents.session, getMainWindow);
   attachContextMenu(contents, getMainWindow);
 
   contents.on('found-in-page', (event, result) => {
@@ -88,6 +160,37 @@ function setupWebContentsSecurity(contents, getMainWindow) {
         });
       }
     } catch (e) { }
+  });
+
+  // Native Chromium Accelerator Guard: Tangkap input keyboard (Ctrl+F, Escape, dll.)
+  // sebelum diserap atau dicegat oleh iframe atau script website manapun
+  contents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+
+    const isCtrlOrMeta = input.control || input.meta;
+    const keyLower = (input.key || '').toLowerCase();
+
+    // 1. Ctrl+F / Cmd+F: Find in Page
+    if (isCtrlOrMeta && keyLower === 'f') {
+      event.preventDefault();
+      try {
+        const electron = require('electron');
+        const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : (electron.BrowserWindow.getAllWindows()[0] || null);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('trigger-find-in-page');
+        }
+      } catch (e) { }
+    }
+    // 2. Escape: Tutup toolbar Find in Page jika sedang aktif
+    else if (input.key === 'Escape') {
+      try {
+        const electron = require('electron');
+        const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : (electron.BrowserWindow.getAllWindows()[0] || null);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('trigger-close-find-in-page');
+        }
+      } catch (e) { }
+    }
   });
 
   const syncUserAgentForUrl = (targetUrl) => {
@@ -370,6 +473,58 @@ async function deepCleanAll(username) {
   }
 }
 
+/**
+ * Pangkas memori cache in-memory (decoded image bitmap & layout buffer) pada semua sesi aktif
+ * tanpa merusak DOM, tanpa menghapus cookie login, dan tanpa mereload halaman.
+ */
+async function pruneBackgroundMemory() {
+  try {
+    const electron = require('electron');
+
+    // 1. Bersihkan memory cache & shader cache pada defaultSession & semua partisi aktif
+    if (session.defaultSession) {
+      try { 
+        await session.defaultSession.clearCache(); 
+        await session.defaultSession.clearStorageData({ storages: ['shadercache', 'cachestorage'] });
+      } catch (e) { }
+    }
+
+    for (const s of activeStealthSessions) {
+      try { 
+        await s.clearCache(); 
+        await s.clearStorageData({ storages: ['shadercache', 'cachestorage'] });
+      } catch (e) { }
+    }
+
+    // 2. Minta WebContents untuk melepaskan unreferenced image/v8 memory & trim background render
+    if (electron.webContents) {
+      const allWc = electron.webContents.getAllWebContents();
+      for (const wc of allWc) {
+        if (!wc.isDestroyed() && wc.getType() === 'webview') {
+          try {
+            wc.executeJavaScript('if (typeof window !== "undefined" && typeof window.gc === "function") { try { window.gc(); } catch (e) {} }').catch(() => {});
+          } catch (e) { }
+        }
+      }
+    }
+
+    // 3. Panggil V8 GC pada proses utama jika tersedia
+    if (typeof global.gc === 'function') {
+      try { global.gc(); } catch (e) { }
+    }
+
+    // 4. Native Windows Working Set Trimming: Pindahkan halaman memori idle ke Windows RAM Compression Store
+    try {
+      const { trimWorkingSet } = require('./memory-trimmer.service');
+      await trimWorkingSet();
+    } catch (e) { }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   flushAllSessions,
   setupSessionStealthGuard,
@@ -378,5 +533,6 @@ module.exports = {
   clearSafeCache,
   clearStoreCache,
   deepCleanStore,
-  deepCleanAll
+  deepCleanAll,
+  pruneBackgroundMemory
 };
