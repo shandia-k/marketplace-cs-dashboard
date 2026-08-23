@@ -47,6 +47,11 @@ function getMainWindow() {
 // Flush data cookies & storage secara berkala ke disk (mencegah hilangnya cookie login)
 setInterval(sessionService.flushAllSessions, 30000);
 
+// Pangkas working set RAM secara otomatis setiap 45 detik untuk menjaga memori tetap ramping
+setInterval(() => {
+  sessionService.pruneBackgroundMemory().catch(() => {});
+}, 45000);
+
 // Daftarkan seluruh IPC handler
 registerIpcHandlers(getMainWindow);
 

@@ -31,10 +31,113 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.16',
+      version: '1.0.17',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#0284c7',
-      pillTag: 'v1.0.16 🚀',
+      pillTag: 'v1.0.17 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Production-Ready In-Memory RAM Compactor & Fixed-Width Tab Bar',
+      tagline: 'Pembaruan v1.0.17: Penguatan engine pemangkas RAM Dual-Layer agar bekerja 100% pada bundle rilis produksi (ASAR .exe) via In-Memory C# EncodedCommand dan Dynamic PID Targeting (mencakup Main, Renderers, GPU, Utility Process), pembersihan otomatis berkala setiap 45 detik, penyempurnaan desain Tab Bar Fixed-Width seragam (140px) dengan navigasi scroll roda mouse horizontal, serta retensi native context download yang ringan dan efisien.',
+      highlights: [
+        {
+          icon: '⚡',
+          iconBg: 'rgba(2, 132, 199, 0.15)',
+          title: 'Production-Ready In-Memory RAM Compactor',
+          desc: 'Kompilasi C# Win32 EmptyWorkingSet langsung di memori tanpa ketergantungan file disk fisik, memastikan kompresi RAM bekerja 100% optimal pada installer rilis produksi (.asar).'
+        },
+        {
+          icon: '🎯',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Fixed-Width Uniform Tab Bar (140px)',
+          desc: 'Deretan tab marketplace kini memiliki ukuran tetap seragam (140px) yang rapi, simetris, dan konsisten tanpa gangguan tab mengecil/membesar mengikuti panjang judul.'
+        },
+        {
+          icon: '🖱️',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Smooth Horizontal Mouse Wheel Scroll',
+          desc: 'Navigasi cepat dan mulus saat membuka banyak tab toko hanya dengan memutar roda mouse secara horizontal di atas deretan tab bar.'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Clean Native Context Downloads',
+          desc: 'Antarmuka aplikasi bebas dari modal unduhan yang membebani, dengan tetap mempertahankan kecepatan fitur unduh resi, dokumen, dan klik kanan gambar secara native.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Optimalisasi Memori & Bundle Rilis Produksi',
+          tag: 'Engine & RAM',
+          color: '#0284c7',
+          bgColor: 'rgba(2, 132, 199, 0.12)',
+          items: [
+            {
+              type: 'fix',
+              badge: 'ASAR Fix',
+              badgeColor: '#0284c7',
+              text: 'Mengubah eksekusi Working Set Trimmer dari file eksternal .ps1 menjadi In-Memory UTF-16LE Base64 Encoded Command sehingga berjalan tanpa hambatan di dalam bundel arsip app.asar.'
+            },
+            {
+              type: 'feature',
+              badge: 'Dynamic PIDs',
+              badgeColor: '#10b981',
+              text: 'Menghilangkan filter nama statis "electron.exe" dan menggantinya dengan penargetan dinamis seluruh PID aktif aplikasi (Main, Renderers, GPU, Utility) via app.getAppMetrics().'
+            },
+            {
+              type: 'perf',
+              badge: 'Auto Compactor',
+              badgeColor: '#f59e0b',
+              text: 'Menambahkan background compaction berkala setiap 45 detik untuk membersihkan cache stale, memicu Garbage Collection, dan memindahkan memori idle ke Windows RAM Compression Store.'
+            }
+          ]
+        },
+        {
+          category: 'Penyempurnaan Antarmuka Tab Bar',
+          tag: 'UI / UX',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Fixed Width',
+              badgeColor: '#10b981',
+              text: 'Menerapkan lebar tetap (140px) pada seluruh tab toko dengan pemotongan elipsis rapi untuk judul yang panjang.'
+            },
+            {
+              type: 'feature',
+              badge: 'Wheel Scroll',
+              badgeColor: '#38bdf8',
+              text: 'Mendukung scroll roda mouse horizontal otomatis pada tab-items-container untuk kemudahan navigasi saat membuka puluhan tab.'
+            }
+          ]
+        },
+        {
+          category: 'Kebersihan Kode & Pembersihan UI',
+          tag: 'Clean UI',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            {
+              type: 'cleanup',
+              badge: 'Clean Focus',
+              badgeColor: '#df1683',
+              text: 'Membersihkan seluruh elemen UI unduhan yang berlebih dan mengembalikan notifikasi toast ke format cepat dan minimalis.'
+            },
+            {
+              type: 'security',
+              badge: 'Native Context',
+              badgeColor: '#8b5cf6',
+              text: 'Menjaga keutuhan context menu klik kanan (Simpan Gambar, OCR, QR Scan) dan native will-download handler untuk berkas resi/dokumen marketplace.'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.16',
+      badge: 'Stabil',
+      badgeColor: '#64748b',
+      pillTag: 'v1.0.16',
       releaseDate: 'Agustus 2026',
       title: 'Dual-Layer RAM Compression, Deep CPU Throttler & Clean Focus UI',
       tagline: 'Pembaruan v1.0.16: Arsitektur Dual-Layer State Retention dengan kompresi Working Set native Windows (psapi.dll!EmptyWorkingSet) untuk manuver instan puluhan tab tanpa reload pada RAM 2.0–2.5 GB, Deep Background CPU Throttler (1 FPS RAF & Video Freeze) agar laptop tetap dingin dan kipas senyap saat membuka hingga 40 tab, pembersihan total indikator daun/perisai yang mengganggu mata, konsolidasi status bar ringkas per toko, serta penguatan Automated V8 AST Compiler Guard.',
