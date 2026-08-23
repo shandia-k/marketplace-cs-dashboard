@@ -29,6 +29,7 @@ let spDragOffsetY = 0;
 // Scratchpad tabs state
 let scratchpadTabs = [];
 let activeScratchpadTabId = null;
+let isSpSavePending = false;
 
 function loadScratchpadState() {
   const saved = Storage.get('scratchpadTabs', null);
@@ -47,7 +48,16 @@ function loadScratchpadState() {
 function saveScratchpadState() {
   Storage.set('scratchpadTabs', scratchpadTabs);
   Storage.set('activeScratchpadTabId', activeScratchpadTabId);
+  isSpSavePending = false;
 }
+
+const debouncedSaveScratchpadState = window.debounce ? window.debounce(saveScratchpadState, 500) : saveScratchpadState;
+
+window.addEventListener('beforeunload', () => {
+  if (isSpSavePending) {
+    saveScratchpadState();
+  }
+});
 
 loadScratchpadState();
 
@@ -423,7 +433,8 @@ spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    isSpSavePending = true;
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
     executeScratchpadSearch('current');
