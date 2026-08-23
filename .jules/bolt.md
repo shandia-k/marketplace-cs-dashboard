@@ -1,0 +1,3 @@
+## 2024-05-24 - Debouncing Synchronous I/O in Event Listeners
+**Learning:** Saving state to `localStorage` synchronously via `JSON.stringify` on every keystroke (e.g. in `spTextarea` input event) blocks the main thread and causes severe UI thrashing because the frontend is Vanilla JS without a Virtual DOM.
+**Action:** When capturing UI state (like `spTextarea.value`), read the DOM immediately, but debounce the expensive I/O operation (e.g., `saveScratchpadState`). Always ensure a `beforeunload` event listener is attached to `window` to synchronously flush pending saves, preventing data loss if the user closes the application before the timeout fires.
