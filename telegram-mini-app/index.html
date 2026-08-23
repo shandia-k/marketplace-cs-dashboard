@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Developer Hub - Marketplace CS Dashboard</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Chart.js for Telemetry & Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Main TMA Stylesheet -->
+  <link rel="stylesheet" href="css/tma.css">
+</head>
+<body class="tma-body">
+  <div id="app" class="tma-container">
+    
+    <!-- Top Navigation & Profile Bar -->
+    <header class="tma-header">
+      <div class="header-content">
+        <div class="brand-badge">
+          <span class="brand-icon">⚡</span>
+          <div class="brand-text">
+            <h1 class="brand-title">Dev Hub</h1>
+            <span class="brand-subtitle">Marketplace CS Dashboard</span>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button id="btnRefresh" class="icon-btn" title="Segarkan Data" aria-label="Segarkan Data">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          </button>
+          <button id="btnThemeToggle" class="icon-btn" title="Ubah Tema" aria-label="Ubah Tema">
+            <svg class="icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sync Status Banner -->
+      <div id="syncBanner" class="sync-banner hidden">
+        <span class="sync-spinner"></span>
+        <span id="syncText">Menyinkronkan data cloud...</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tma-nav-tabs">
+      <button class="nav-tab active" data-tab="tickets">
+        <span class="tab-icon">🏷️</span>
+        <span class="tab-label">Tiket CS</span>
+        <span id="tabBadgeTickets" class="tab-badge hidden">0</span>
+      </button>
+      <button class="nav-tab" data-tab="analytics">
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Telemetri</span>
+      </button>
+      <button class="nav-tab" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Server</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Views -->
+    <main class="tma-main">
+
+      <!-- ======================================================== -->
+      <!-- VIEW 1: TICKETS LIST (Daftar Tiket Feedback)             -->
+      <!-- ======================================================== -->
+      <section id="viewTickets" class="tab-view active">
+        <!-- Search & Quick Filters -->
+        <div class="search-filter-card">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="ticketSearchInput" class="search-input" placeholder="Cari tiket, CS, pesan, atau toko...">
+            <button id="btnClearSearch" class="clear-search-btn hidden">&times;</button>
+          </div>
+
+          <!-- Status Filter Pills -->
+          <div class="filter-pills-scroll">
+            <button class="filter-pill active" data-status="all">Semua <span id="countAll" class="pill-count">0</span></button>
+            <button class="filter-pill" data-status="open">🟡 Open <span id="countOpen" class="pill-count">0</span></button>
+            <button class="filter-pill" data-status="in_progress">🔵 Proses <span id="countInProgress" class="pill-count">0</span></button>
+            <button class="filter-pill" data-status="need_info">🟣 Butuh Info <span id="countNeedInfo" class="pill-count">0</span></button>
+            <button class="filter-pill" data-status="resolved">🟢 Selesai <span id="countResolved" class="pill-count">0</span></button>
+            <button class="filter-pill" data-status="closed">⚫ Ditutup <span id="countClosed" class="pill-count">0</span></button>
+          </div>
+        </div>
+
+        <!-- Ticket Cards Container -->
+        <div id="ticketsListContainer" class="tickets-list">
+          <div class="skeleton-loader">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyTicketsState" class="empty-state hidden">
+          <div class="empty-icon">📭</div>
+          <h3 class="empty-title">Tidak Ada Tiket Ditemukan</h3>
+          <p class="empty-subtitle">Semua tiket CS sudah terselesaikan atau tidak cocok dengan filter pencarian.</p>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 2: TICKET DETAIL & CHAT (Thread Percakapan)         -->
+      <!-- ======================================================== -->
+      <section id="viewDetail" class="tab-view hidden">
+        <!-- Ticket Header Detail -->
+        <div class="detail-header-card">
+          <div class="detail-top-row">
+            <button id="btnBackToTickets" class="back-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>Kembali</span>
+            </button>
+            <div class="detail-status-wrapper">
+              <select id="detailStatusSelect" class="status-dropdown">
+                <option value="open">🟡 Menunggu Review</option>
+                <option value="in_progress">🔵 Sedang Dikerjakan</option>
+                <option value="need_info">🟣 Butuh Info Tambahan</option>
+                <option value="resolved">🟢 Selesai (Resolved)</option>
+                <option value="closed">⚫ Ditutup</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ticket-meta-info">
+            <div class="meta-badge-row">
+              <span id="detailTicketId" class="badge-ticket-id">#TKT-0000</span>
+              <span id="detailTicketType" class="badge-type">🐛 BUG</span>
+              <span id="detailTicketTime" class="badge-time">Baru saja</span>
+            </div>
+            <h2 id="detailTicketTitle" class="ticket-detail-title">Judul Tiket Laporan</h2>
+            
+            <!-- Reporter Info Card -->
+            <div class="reporter-chip">
+              <div class="reporter-avatar">👤</div>
+              <div class="reporter-info">
+                <div id="detailReporterName" class="reporter-name">Nama CS (Role)</div>
+                <div id="detailReporterMarketplaces" class="reporter-sub">Marketplace: Shopee, Tokopedia (3 Toko)</div>
+              </div>
+            </div>
+
+            <!-- Diagnostics Accordion -->
+            <details class="diag-accordion">
+              <summary class="diag-summary">🖥️ Informasi Sistem &amp; Toko Aktif CS</summary>
+              <div id="detailSystemInfo" class="diag-content">
+                <pre class="diag-pre">Memuat data sistem...</pre>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Chat Thread Message Container -->
+        <div id="chatMessagesContainer" class="chat-thread-container">
+          <!-- Chat messages dynamically rendered here -->
+        </div>
+
+        <!-- Developer Reply Composer -->
+        <div class="reply-composer-card">
+          <!-- Quick Reply Presets -->
+          <div class="quick-reply-scroll">
+            <span class="quick-reply-label">Template Cepat:</span>
+            <button class="qr-chip" data-text="Terima kasih laporannya, saat ini tim developer sedang menginvestigasi bug tersebut.">🔍 Sedang Diinvestigasi</button>
+            <button class="qr-chip" data-text="Mohon informasikan nama toko yang mengalami kendala dan screenshot pesan errornya.">❓ Minta Info Tambahan</button>
+            <button class="qr-chip" data-text="Perbaikan bug ini sudah selesai dan akan tersedia pada rilis aplikasi versi berikutnya.">✅ Fixed di Update</button>
+            <button class="qr-chip" data-text="Halo, kendala ini terjadi karena sesi toko logout. Silakan coba buka ulang tab toko terkait.">💡 Solusi Sesi Toko</button>
+          </div>
+
+          <div class="composer-input-row">
+            <textarea id="replyTextInput" class="composer-textarea" rows="2" placeholder="Tulis balasan developer untuk CS..."></textarea>
+            <button id="btnSendReply" class="send-btn" title="Kirim Balasan" aria-label="Kirim Balasan">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 3: TELEMETRY & ANALYTICS DASHBOARD                 -->
+      <!-- ======================================================== -->
+      <section id="viewAnalytics" class="tab-view hidden">
+        <!-- Analytics Header & KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon blue">⚡</div>
+            <div class="kpi-content">
+              <div id="kpiTotalSessions" class="kpi-value">0</div>
+              <div class="kpi-label">Total Sesi CS</div>
+            </div>
+          </div>
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon green">👥</div>
+            <div class="kpi-content">
+              <div id="kpiActiveUsers" class="kpi-value">0</div>
+              <div class="kpi-label">CS Aktif</div>
+            </div>
+          </div>
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon purple">🏪</div>
+            <div class="kpi-content">
+              <div id="kpiTotalStores" class="kpi-value">0</div>
+              <div class="kpi-label">Toko Terhubung</div>
+            </div>
+          </div>
+          <div class="kpi-card glass-card">
+            <div class="kpi-icon orange">⏱️</div>
+            <div class="kpi-content">
+              <div id="kpiAvgDuration" class="kpi-value">0m</div>
+              <div class="kpi-label">Rata-rata Durasi</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 1: Fitur Paling Sering Digunakan -->
+        <div class="chart-card glass-card">
+          <div class="chart-header">
+            <h3 class="chart-title">🔥 Frekuensi Penggunaan Fitur CS</h3>
+            <span class="chart-sub">Aksi &amp; alat yang paling aktif dipakai</span>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="chartFeatures"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2 & 3: Distribusi Marketplace & Adopsi Versi -->
+        <div class="chart-grid-dual">
+          <div class="chart-card glass-card">
+            <div class="chart-header">
+              <h3 class="chart-title">🛍️ Distribusi Marketplace</h3>
+              <span class="chart-sub">Porsi platform toko CS</span>
+            </div>
+            <div class="chart-canvas-wrapper doughnut-wrapper">
+              <canvas id="chartMarketplaces"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card glass-card">
+            <div class="chart-header">
+              <h3 class="chart-title">🚀 Adopsi Versi Aplikasi</h3>
+              <span class="chart-sub">Versi app yang digunakan CS</span>
+            </div>
+            <div class="chart-canvas-wrapper doughnut-wrapper">
+              <canvas id="chartVersions"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Raw Telemetry Sessions Table -->
+        <div class="table-card glass-card">
+          <div class="table-header">
+            <h3 class="table-title">📜 Log Riwayat Sesi Telemetri Terbaru</h3>
+            <span class="table-badge"><span id="sessionLogCount">0</span> Sesi</span>
+          </div>
+          <div class="table-scroll-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Waktu (WIB)</th>
+                  <th>Versi</th>
+                  <th>Durasi</th>
+                  <th>Toko</th>
+                  <th>Marketplace</th>
+                  <th>Aksi Fitur</th>
+                </tr>
+              </thead>
+              <tbody id="telemetryTableBody">
+                <tr>
+                  <td colspan="6" class="table-empty-cell">Memuat data telemetri...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 4: SETTINGS & SERVER CONFIGURATION                 -->
+      <!-- ======================================================== -->
+      <section id="viewSettings" class="tab-view hidden">
+        <div class="settings-card glass-card">
+          <h2 class="settings-title">⚙️ Konfigurasi Server Cloud</h2>
+          <p class="settings-sub">Atur endpoint Google Apps Script untuk menghubungkan Telegram Mini App dengan database Feedback Hub.</p>
+          
+          <div class="form-group">
+            <label for="inputGasUrl" class="form-label">Google Apps Script Web App URL (/exec):</label>
+            <input type="text" id="inputGasUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+            <span class="form-help">Pastikan URL berakhiran <code>/exec</code> dan memiliki hak akses deployment <i>"Anyone"</i>.</span>
+          </div>
+
+          <div class="settings-action-row">
+            <button id="btnSaveSettings" class="primary-btn">💾 Simpan Konfigurasi</button>
+            <button id="btnTestConnection" class="secondary-btn">🔄 Tes Koneksi</button>
+          </div>
+
+          <div id="connectionStatusBox" class="status-box hidden"></div>
+        </div>
+
+        <div class="settings-card glass-card">
+          <h3 class="settings-title">🤖 Informasi Telegram Bot</h3>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="info-key">Mode Mini App:</span>
+              <span id="infoTgMode" class="info-val">Telegram WebApp Active</span>
+            </div>
+            <div class="info-item">
+              <span class="info-key">User Telegram:</span>
+              <span id="infoTgUser" class="info-val">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-key">Platform:</span>
+              <span id="infoTgPlatform" class="info-val">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-key">Versi SDK TMA:</span>
+              <span id="infoTgVersion" class="info-val">8.0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card glass-card">
+          <h3 class="settings-title">📖 Panduan Singkat Mini App</h3>
+          <ul class="guide-list">
+            <li><strong>Balas Tiket:</strong> Buka tiket dari tab <em>Tiket CS</em>, baca riwayat chat, pilih template balasan cepat, lalu kirim balasan langsung ke CS.</li>
+            <li><strong>Ubah Status:</strong> Pilih status di pojok kanan atas tiket (<em>Open, Proses, Butuh Info, Selesai, Closed</em>) untuk memperbarui status di aplikasi CS dan spreadsheet secara instan.</li>
+            <li><strong>Lihat Bukti Foto:</strong> Klik pada foto thumbnail screenshot untuk membuka Lightbox foto resolusi tinggi.</li>
+            <li><strong>Pantau Penggunaan:</strong> Buka tab <em>Telemetri</em> untuk melihat metrik pemakaian CS dan fitur yang paling diminati.</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Lightbox Modal for High-Res Image Screenshots -->
+    <div id="lightboxModal" class="lightbox-modal hidden">
+      <div class="lightbox-backdrop"></div>
+      <div class="lightbox-container">
+        <button id="btnCloseLightbox" class="lightbox-close-btn">&times;</button>
+        <div class="lightbox-image-wrapper">
+          <img id="lightboxImg" class="lightbox-img" src="" alt="Screenshot Bukti Bug">
+        </div>
+        <div id="lightboxCaption" class="lightbox-caption">Screenshot Lampiran</div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+  </div>
+
+  <!-- Main TMA JavaScript Logic -->
+  <script src="js/tma-app.js"></script>
+</body>
+</html>
