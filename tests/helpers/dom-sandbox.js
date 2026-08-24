@@ -44,12 +44,16 @@ class MockElement {
     this.id = id;
     this.classList = new MockClassList();
     this.className = '';
-    this.style = {};
+    this.style = {
+      setProperty: (k, v) => { this.style[k] = String(v); },
+      getPropertyValue: (k) => this.style[k] || ''
+    };
     this.children = [];
     this.attributes = new Map();
     this.textContent = '';
     this._innerHTML = '';
     this.value = '';
+    this.dataset = {};
     this.disabled = false;
     this.onclick = null;
     this.oninput = null;
@@ -260,6 +264,9 @@ function createDOMSandbox() {
       },
       confirm: () => true,
       alert: () => {},
+      addEventListener: (evt, fn) => doc.addEventListener(evt, fn),
+      removeEventListener: (evt, fn) => doc.removeEventListener(evt, fn),
+      dispatchEvent: (evt) => doc.dispatchEvent(evt),
       setTimeout: setTimeout,
       clearTimeout: clearTimeout,
       setInterval: setInterval,

@@ -53,7 +53,13 @@ const ONBOARDING_CONFIG = {
   get changelog() {
     const ver = this.currentVersionObj;
     if (ver && Array.isArray(ver.categories)) {
-      return ver.categories.flatMap(c => c.items.map(item => `[${c.tag}] ${item}`));
+      return ver.categories.flatMap(c => (c.items || []).map(item => {
+        if (typeof item === 'object' && item !== null) {
+          const badge = item.badge ? `[${item.badge}] ` : '';
+          return `[${c.tag}] ${badge}${item.text || ''}`;
+        }
+        return `[${c.tag}] ${item}`;
+      }));
     }
     return [];
   },
@@ -2079,14 +2085,30 @@ const OnboardingManager = {
                   <strong class="onboarding-changelog-cat-title">${cat.category}</strong>
                 </div>
                 <ul class="onboarding-changelog-list">
-                  ${cat.items.map(item => `<li>${item}</li>`).join('')}
+                  ${cat.items.map(item => {
+                    if (typeof item === 'object' && item !== null) {
+                      const badgeHtml = item.badge
+                        ? `<span class="onboarding-changelog-item-badge" style="${item.badgeColor ? `color: ${item.badgeColor}; border: 1px solid ${item.badgeColor}44; background: ${item.badgeColor}18;` : ''}">${item.badge}</span>`
+                        : '';
+                      return `<li>${badgeHtml}<span>${item.text || ''}</span></li>`;
+                    }
+                    return `<li><span>${item}</span></li>`;
+                  }).join('')}
                 </ul>
               </div>
             `).join('')}
           </div>
         ` : `
           <ul class="onboarding-changelog-list">
-            ${(ver.items || []).map(item => `<li>${item}</li>`).join('')}
+            ${(ver.items || []).map(item => {
+              if (typeof item === 'object' && item !== null) {
+                const badgeHtml = item.badge
+                  ? `<span class="onboarding-changelog-item-badge" style="${item.badgeColor ? `color: ${item.badgeColor}; border: 1px solid ${item.badgeColor}44; background: ${item.badgeColor}18;` : ''}">${item.badge}</span>`
+                  : '';
+                return `<li>${badgeHtml}<span>${item.text || ''}</span></li>`;
+              }
+              return `<li><span>${item}</span></li>`;
+            }).join('')}
           </ul>
         `}
       </div>

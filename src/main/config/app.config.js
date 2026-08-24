@@ -4,8 +4,8 @@
  */
 
 function applyChromiumSwitches(app) {
-  // Headroom V8 aman dengan expose-gc untuk pembersihan heap berkala tanpa crash JIT
-  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+  // Headroom V8 aman (1024MB) dengan expose-gc untuk sinkronisasi ribuan chat WhatsApp tanpa OOM crash
+  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024 --expose-gc');
   // Aktifkan fitur kompresi memori & cache navigasi instan Chromium
   app.commandLine.appendSwitch('enable-features', 'MemoryReducer,BackForwardCache');
   // Cegah discarding paksa dari OS agar tab selalu terjaga di memori untuk instant wake (0 detik)

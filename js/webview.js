@@ -1,26 +1,22 @@
-function hibernateTab(storeId, tabId, forceHard = false) {
+function hibernateTab(storeId, tabId) {
   const wvEntry = webviewMap[tabId];
   if (!wvEntry || wvEntry.hibernated || !wvEntry.webview) return;
 
-  // Jangan hibernasi tab yang sedang aktif menyinkronkan riwayat chat
-  if (wvEntry.isSyncing) return;
+  const store = (typeof stores !== 'undefined' && Array.isArray(stores)) ? stores.find(s => s.id === storeId) : null;
+  const tab = (typeof storeTabs !== 'undefined' && storeTabs[storeId]) ? storeTabs[storeId].find(t => t.id === tabId) : null;
+  const isWhatsApp = store?.marketplace === 'whatsapp' || (store?.url || '').includes('whatsapp.com') || (tab?.url || '').includes('whatsapp.com');
+
+  // Jangan hibernasi tab yang sedang aktif menyinkronkan riwayat chat atau WhatsApp Web (mencegah putus koneksi WebSocket & logout)
+  if (wvEntry.isSyncing || isWhatsApp) return;
 
   // 🍃 Smart Suspended Sleep (0 Detik Wake):
   // Sembunyikan webview (0% GPU & CPU compositing), mute audio, tetapi PERTAHANKAN elemen di DOM
   // agar saat dibuka kembali langsung muncul 0 MILIDETIK (INSTAN) tanpa reload!
-  if (!forceHard) {
-    wvEntry.webview.style.display = 'none';
-    wvEntry.webview.classList.remove('visible');
-    if (wvEntry.loading) wvEntry.loading.style.display = 'none';
-    if (typeof wvEntry.webview.setAudioMuted === 'function') {
-      try { wvEntry.webview.setAudioMuted(true); } catch (e) { }
-    }
-  } else {
-    // Hard destruction hanya jika diminta paksa secara eksplisit
-    wvEntry.webview.remove();
-    if (wvEntry.loading) wvEntry.loading.remove();
-    delete wvEntry.webview;
-    delete wvEntry.loading;
+  wvEntry.webview.style.display = 'none';
+  wvEntry.webview.classList.remove('visible');
+  if (wvEntry.loading) wvEntry.loading.style.display = 'none';
+  if (typeof wvEntry.webview.setAudioMuted === 'function') {
+    try { wvEntry.webview.setAudioMuted(true); } catch (e) { }
   }
 
   wvEntry.hibernated = true;
@@ -49,11 +45,12 @@ async function checkAndHibernateIfNeeded() {
 
     // 2. Terapkan Smart Sleep untuk tab tidak aktif (LRU) yang bukan tab aktif saat ini
     const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
+    const rightActiveTabId = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId) ? splitRightTabId : null;
 
     const candidates = [];
     for (const [tabId, entry] of Object.entries(webviewMap)) {
       if (entry.hibernated || !entry.webview || entry.isSyncing) continue;
-      if (tabId === activeTabId) continue;
+      if (tabId === activeTabId || tabId === rightActiveTabId) continue;
 
       const storeId = Object.keys(storeTabs).find(sid =>
         storeTabs[sid].some(t => t.id === tabId)
@@ -76,7 +73,7 @@ async function checkAndHibernateIfNeeded() {
     );
 
     if (storeId) {
-      hibernateTab(storeId, oldest.tabId, false);
+      hibernateTab(storeId, oldest.tabId);
     }
   } catch (e) {
     // Tidak kritis, abaikan
@@ -109,7 +106,7 @@ function hibernateAll() {
     }
 
     // Terapkan Smart Suspended Sleep (0 detik wake)
-    hibernateTab(storeId, tabId, false);
+    hibernateTab(storeId, tabId);
     count++;
   }
 
@@ -171,7 +168,7 @@ function isValidTopNavigationUrl(url) {
 window.isValidTopNavigationUrl = isValidTopNavigationUrl;
 
 // ── Create Webview ────────────────────────────────────────────────────────────
-function createWebview(store, tab) {
+function createWebview(store, tab, targetPane = 'left') {
   // Build absolute path to webview-preload.js (works dev & packaged)
   const preloadPath = appPath.replace(/\\/g, '/');
   const preloadUrl = `file:///${preloadPath}/webview-preload.js`;
@@ -202,7 +199,10 @@ function createWebview(store, tab) {
   loadingEl.innerHTML = `
     <div class="spinner"></div>
     <p>Membuka ${escapeHtml(store.name)}…</p>`;
-  webviewCont.appendChild(loadingEl);
+  const leftPaneEl = document.getElementById('split-pane-left');
+  const rightBodyEl = document.getElementById('split-right-body');
+  const parentContainer = (targetPane === 'right' && rightBodyEl) ? rightBodyEl : (leftPaneEl || webviewCont);
+  parentContainer.appendChild(loadingEl);
 
   // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
   const actualPartition = getStorePartition(store);
@@ -210,15 +210,16 @@ function createWebview(store, tab) {
   const cleanUa = isGoogleAuthUrl
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-  const isTabActive = (typeof activeStoreId !== 'undefined' && activeStoreId === store.id && activeTabMap[store.id] === tab.id);
+  const isTabActive = (targetPane === 'right') || (typeof activeStoreId !== 'undefined' && activeStoreId === store.id && activeTabMap[store.id] === tab.id);
   const wv = document.createElement('webview');
   wv.className = isTabActive ? 'store-webview visible' : 'store-webview';
   wv.setAttribute('src', tab.url);
   wv.setAttribute('partition', actualPartition);
   wv.setAttribute('preload', preloadUrl);
   wv.setAttribute('useragent', cleanUa);
-  wv.setAttribute('allowpopups', '');
-  wv.setAttribute('webpreferences', 'backgroundThrottling=true,sandbox=false');
+  const isWhatsApp = store.marketplace === 'whatsapp' || (store.url || '').toLowerCase().includes('whatsapp.com') || (tab.url || '').toLowerCase().includes('whatsapp.com');
+  const bgThrottling = isWhatsApp ? 'false' : 'true';
+  wv.setAttribute('webpreferences', `backgroundThrottling=${bgThrottling},sandbox=false`);
 
   // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
   wv.addEventListener('ipc-message', (event) => {
@@ -257,12 +258,26 @@ function createWebview(store, tab) {
     } else if (event.channel === 'unread-count') {
       handleUnreadCount(event.args[0] || 0);
 
+    } else if (event.channel === 'webview-page-focused') {
+      const isRight = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId === tab.id);
+      if (typeof setFocusedPane === 'function') {
+        setFocusedPane(isRight ? 'right' : 'left');
+      }
+
     } else if (event.channel === 'open-quick-reply') {
+      const isRight = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId === tab.id);
+      if (typeof setFocusedPane === 'function') {
+        setFocusedPane(isRight ? 'right' : 'left');
+      }
       if (typeof openQuickReplyDrawer === 'function') {
         openQuickReplyDrawer();
       }
 
     } else if (event.channel === 'open-find-in-page') {
+      const isRight = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId === tab.id);
+      if (typeof setFocusedPane === 'function') {
+        setFocusedPane(isRight ? 'right' : 'left');
+      }
       if (typeof openFindInPage === 'function') {
         openFindInPage(event.args[0]);
       }
@@ -429,7 +444,9 @@ function createWebview(store, tab) {
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
     if (tabEntry && e.title) {
       tabEntry.title = e.title.length > 30 ? e.title.substring(0, 28) + '…' : e.title;
-      if (activeStoreId === store.id) renderTabBar();
+      if (activeStoreId === store.id || (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightStoreId === store.id)) {
+        renderTabBar();
+      }
       if (typeof debouncedSaveStoreTabsState === 'function') debouncedSaveStoreTabsState();
 
       // Jika judul memuat format angka (misal: "(1) WhatsApp", "Inbox (2)"), sinkronkan unread
@@ -449,6 +466,32 @@ function createWebview(store, tab) {
   });
 
   // ── Loading done & Nav state update ──────────────────────────────────────
+  const isThisTabCurrentlyFocused = () => {
+    if (typeof isSplitViewActive !== 'undefined' && isSplitViewActive) {
+      if (activeFocusedPane === 'right') {
+        return splitRightStoreId === store.id && splitRightTabId === tab.id;
+      } else {
+        return activeStoreId === store.id && activeTabMap[store.id] === tab.id;
+      }
+    }
+    return activeStoreId === store.id && activeTabMap[store.id] === tab.id;
+  };
+
+  const injectModernScrollbar = () => {
+    try {
+      if (typeof wv.insertCSS === 'function') {
+        wv.insertCSS(`
+          ::-webkit-scrollbar { width: 6px !important; height: 6px !important; }
+          ::-webkit-scrollbar-track { background: transparent !important; }
+          ::-webkit-scrollbar-thumb { background: rgba(145, 145, 165, 0.4) !important; border-radius: 99px !important; border: 1px solid transparent !important; background-clip: content-box !important; }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(223, 22, 131, 0.75) !important; }
+          ::-webkit-scrollbar-corner { background: transparent !important; }
+          * { scrollbar-width: thin !important; scrollbar-color: rgba(145, 145, 165, 0.4) transparent !important; }
+        `).catch(() => {});
+      }
+    } catch (e) {}
+  };
+
   const captureWcId = () => {
     try {
       if (webviewMap[tab.id] && typeof wv.getWebContentsId === 'function') {
@@ -461,9 +504,11 @@ function createWebview(store, tab) {
   wv.addEventListener('did-attach', captureWcId);
   wv.addEventListener('dom-ready', () => {
     captureWcId();
+    injectModernScrollbar();
   });
   wv.addEventListener('did-finish-load', () => {
     captureWcId();
+    injectModernScrollbar();
     loadingEl.classList.add('hidden');
     loadingEl.style.display = 'none';
     const tabEntry = storeTabs[store.id]?.find(t => t.id === tab.id);
@@ -471,7 +516,7 @@ function createWebview(store, tab) {
       wv.setZoomFactor(tabEntry.zoom);
     }
     // Update back/forward button states & Address Bar
-    if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
+    if (isThisTabCurrentlyFocused()) {
       updateNavButtonStates();
       if (typeof updateAddressBarUrl === 'function' && typeof wv.getURL === 'function') {
         try { updateAddressBarUrl(wv.getURL()); } catch (err) { }
@@ -511,7 +556,7 @@ function createWebview(store, tab) {
           tabEntry.initialUrl = store.url || currentUrl;
         }
       }
-      if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
+      if (isThisTabCurrentlyFocused()) {
         updateNavButtonStates();
         if (typeof updateAddressBarUrl === 'function') {
           updateAddressBarUrl(currentUrl);
@@ -614,8 +659,15 @@ function createWebview(store, tab) {
     console.warn(`[Webview Watchdog] Webview for ${store.name} is temporarily unresponsive.`);
   });
 
-  webviewCont.appendChild(wv);
-  webviewMap[tab.id] = { webview: wv, loading: loadingEl, isCrashed: false, storeId: store.id, tabId: tab.id };
+  wv.addEventListener('focus', () => {
+    const isRight = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId === tab.id);
+    if (typeof setFocusedPane === 'function') {
+      setFocusedPane(isRight ? 'right' : 'left');
+    }
+  });
+
+  parentContainer.appendChild(wv);
+  webviewMap[tab.id] = { webview: wv, loading: loadingEl, isCrashed: false, storeId: store.id, tabId: tab.id, pane: targetPane };
 
   // ⚡ Enforce Hot Webview Pool limit (maksimal 5 webview teraktif di DOM)
   if (typeof manageHotWebviewPool === 'function') {
@@ -631,6 +683,7 @@ function createWebview(store, tab) {
 function manageHotWebviewPool() {
   const poolLimit = typeof HOT_WEBVIEW_POOL_LIMIT === 'number' ? HOT_WEBVIEW_POOL_LIMIT : 5;
   const activeTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
+  const rightActiveTabId = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive && splitRightTabId) ? splitRightTabId : null;
 
   // Kumpulkan seluruh webview yang saat ini hidup di DOM
   const liveEntries = [];
@@ -639,7 +692,7 @@ function manageHotWebviewPool() {
       liveEntries.push({
         tabId,
         entry,
-        isActive: tabId === activeTabId,
+        isActive: (tabId === activeTabId || tabId === rightActiveTabId),
         lastSeen: lastAccessed[tabId] || 0,
         hasDraft: Boolean(entry.hasDraft),
         isSyncing: Boolean(entry.isSyncing)
@@ -656,6 +709,7 @@ function manageHotWebviewPool() {
   // Tab yang masuk pool: Tab aktif + (poolLimit - 1) tab teraktif berikutnya
   const warmTabIds = new Set();
   if (activeTabId) warmTabIds.add(activeTabId);
+  if (rightActiveTabId) warmTabIds.add(rightActiveTabId);
 
   for (const item of liveEntries) {
     if (warmTabIds.size >= poolLimit) break;
@@ -666,7 +720,15 @@ function manageHotWebviewPool() {
   // Alihkan tab di luar warmTabIds ke Smart Sleep tanpa menghancurkan DOM
   for (const item of liveEntries) {
     if (warmTabIds.has(item.tabId)) continue;
-    if (item.hasDraft || item.isSyncing) continue;
+    
+    // Cari apakah tab ini adalah WhatsApp Web
+    const storeId = Object.keys(storeTabs).find(sid => storeTabs[sid].some(t => t.id === item.tabId));
+    const store = (typeof stores !== 'undefined' && Array.isArray(stores)) ? stores.find(s => s.id === storeId) : null;
+    const tab = (typeof storeTabs !== 'undefined' && storeId && storeTabs[storeId]) ? storeTabs[storeId].find(t => t.id === item.tabId) : null;
+    const isWhatsApp = store?.marketplace === 'whatsapp' || (store?.url || '').includes('whatsapp.com') || (tab?.url || '').includes('whatsapp.com');
+
+    // Jangan hibernasi tab yang memiliki draft, sedang sync, atau WhatsApp Web
+    if (item.hasDraft || item.isSyncing || isWhatsApp) continue;
 
     if (!item.entry.hibernated) {
       item.entry.webview.style.display = 'none';
@@ -719,205 +781,242 @@ function parseUnreadFromTitle(title) {
 }
 window.parseUnreadFromTitle = parseUnreadFromTitle;
 
-// ── Smart Staggered Background Ping ──────────────────────────────────────────
-let pingQueue = [];
-let isPingRunning = false;
-let pingInterval = null;
+// ── Show Tab in Right Pane (Side-by-Side View) ───────────────────────────────
+function showTabInRightPane(store, tab) {
+  const rightBodyEl = document.getElementById('split-right-body');
+  if (!rightBodyEl) return;
 
-function runNextBackgroundPing() {
-  if (isPingRunning) return;
+  // Sembunyikan webview lain yang ada di right body
+  rightBodyEl.querySelectorAll('webview.store-webview').forEach(el => {
+    el.classList.remove('visible');
+    el.style.display = 'none';
+  });
 
-  // Proteksi RAM Guard: Jangan jalankan background ping jika pemakaian RAM mendekati batas
-  if (typeof ramUsageMB === 'number' && ramUsageMB > 1200) {
+  lastAccessed[tab.id] = Date.now();
+
+  let entry = webviewMap[tab.id];
+
+  // Jika webview belum dibuat atau crashed, buat di right pane
+  if (!entry || !entry.webview || !entry.webview.isConnected || (typeof entry.webview.isCrashed === 'function' && entry.webview.isCrashed())) {
+    if (entry) {
+      try { entry.webview?.remove(); } catch (e) {}
+      try { entry.loading?.remove(); } catch (e) {}
+      delete webviewMap[tab.id];
+    }
+    createWebview(store, tab, 'right');
+  } else {
+    // Jika webview sudah ada, pindahkan ke right body jika belum di dalamnya
+    if (!rightBodyEl.contains(entry.webview)) {
+      rightBodyEl.appendChild(entry.webview);
+    }
+    entry.webview.style.display = '';
+    entry.webview.classList.add('visible');
+    if (entry.loading) {
+      entry.loading.style.display = 'none';
+    }
+    if (tab.zoom && tab.zoom !== 1.0) {
+      try { entry.webview.setZoomFactor(tab.zoom); } catch (e) {}
+    }
+  }
+}
+window.showTabInRightPane = showTabInRightPane;
+
+// ── Render Split Tab Picker (Thumbnail Grid) ─────────────────────────────────
+function renderSplitTabPicker() {
+  const container = document.getElementById('split-picker-body');
+  if (!container) return;
+
+  const searchInput = document.getElementById('split-picker-search-input');
+  const query = (searchInput?.value || splitPickerFilter || '').toLowerCase().trim();
+  const activeMpFilter = splitPickerMarketplace || 'all';
+
+  const leftActiveTabId = activeStoreId ? activeTabMap[activeStoreId] : null;
+
+  // Filter stores
+  const filteredStores = stores.filter(store => {
+    if (activeMpFilter !== 'all' && store.marketplace !== activeMpFilter) {
+      return false;
+    }
+    if (!query) return true;
+    const matchStoreName = (store.name || '').toLowerCase().includes(query);
+    const matchMp = (store.marketplace || '').toLowerCase().includes(query);
+    const tabs = storeTabs[store.id] || [];
+    const matchTabs = tabs.some(t => (t.title || '').toLowerCase().includes(query) || (t.url || '').toLowerCase().includes(query));
+    return matchStoreName || matchMp || matchTabs;
+  });
+
+  if (filteredStores.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 28px 16px; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted);">Tidak ada toko atau tab yang cocok dengan pencarian.</p>
+      </div>`;
     return;
   }
 
-  // Kumpulkan tab yang saat ini sedang di-hard hibernate
-  if (pingQueue.length === 0) {
-    const hibernatedTabs = [];
-    Object.entries(storeTabs).forEach(([storeId, tabs]) => {
-      tabs.forEach(tab => {
-        const entry = webviewMap[tab.id];
-        if (entry && entry.hibernated && !entry.webview) {
-          hibernatedTabs.push({ storeId, tab });
-        }
-      });
-    });
-    pingQueue = hibernatedTabs;
-  }
-
-  if (pingQueue.length === 0) return;
-
-  const item = pingQueue.shift();
-  const { storeId, tab } = item;
-  const store = stores.find(s => s.id === storeId);
-  if (!store) return;
-
-  isPingRunning = true;
-
-  // Buat webview ping tersembunyi
-  const preloadPath = appPath.replace(/\\/g, '/');
-  const preloadUrl = `file:///${preloadPath}/webview-preload.js`;
-  const actualPartition = getStorePartition(store);
-
-  const pingWv = document.createElement('webview');
-  pingWv.className = 'store-webview-ping';
-  pingWv.style.cssText = 'position:fixed; left:-9999px; top:-9999px; width:400px; height:400px; opacity:0; pointer-events:none; visibility:hidden;';
-  pingWv.setAttribute('src', tab.url);
-  pingWv.setAttribute('partition', actualPartition);
-  pingWv.setAttribute('preload', preloadUrl);
-  const isGoogleAuthUrl = tab.url && (tab.url.includes('accounts.google.com') || tab.url.includes('mail.google.com') || tab.url.includes('google.com/accounts'));
-  const pingUa = isGoogleAuthUrl
-    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
-    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-  pingWv.setAttribute('useragent', pingUa);
-  pingWv.setAttribute('webpreferences', 'backgroundThrottling=true,sandbox=false');
-
-  let unreadDetected = 0;
-  let hasCleanedUp = false;
-  let pingTimeout = null;
-
-  const cleanupPing = (keepAlive = false) => {
-    if (hasCleanedUp) return;
-    hasCleanedUp = true;
-    isPingRunning = false;
-    if (pingTimeout) {
-      clearTimeout(pingTimeout);
-      pingTimeout = null;
+  const html = filteredStores.map(store => {
+    if (typeof ensureStoreTabs === 'function') {
+      ensureStoreTabs(store);
     }
+    const tabs = storeTabs[store.id] || [];
+    const cfg = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
+    const initials = (store.initials || store.name.substring(0, 2)).toUpperCase();
+    const bgStyle = store.color ? `style="background: ${escapeHtml(store.color)}"` : '';
+    const unread = unreadMap[store.id] || 0;
 
-    // Jika tab sudah dibuka/diaktifkan secara manual oleh user saat ping berjalan
-    const currentEntry = webviewMap[tab.id];
-    if (currentEntry && currentEntry.webview && !currentEntry.hibernated) {
-      if (unreadDetected > 0) {
-        currentEntry.unreadCount = unreadDetected;
-        unreadMap[store.id] = unreadDetected;
-        if (typeof playNotificationSound === 'function') playNotificationSound();
-        if (window.electronAPI?.flashWindow) window.electronAPI.flashWindow(true);
-        showToast(`💬 Pesan baru masuk di ${store.name}! (${unreadDetected} pesan)`, 'warning');
-        renderSidebar(getFilteredStores());
-        if (activeStoreId === store.id) renderTabBar();
-      }
-      try { pingWv.remove(); } catch (e) { }
-      return;
-    }
+    const tabsHtml = tabs.map(tab => {
+      const isCurrentLeft = (store.id === activeStoreId && tab.id === leftActiveTabId);
+      const isCurrentRight = (store.id === splitRightStoreId && tab.id === splitRightTabId);
 
-    if (keepAlive) {
-      // Ada chat/email masuk! Pindahkan webview ke dalam webviewCont dan jadikan webview resmi
-      pingWv.className = 'store-webview';
-      pingWv.style.cssText = '';
-      if (activeStoreId === store.id && activeTabMap[store.id] === tab.id) {
-        pingWv.classList.add('visible');
-      }
-
-      // Pastikan webview dipindahkan dari document.body ke webviewCont
-      webviewCont.appendChild(pingWv);
-
-      const loadingEl = document.createElement('div');
-      loadingEl.className = 'webview-loading hidden';
-      webviewCont.appendChild(loadingEl);
-
-      webviewMap[tab.id] = {
-        webview: pingWv,
-        loading: loadingEl,
-        hibernated: false,
-        unreadCount: unreadDetected
-      };
-
-      const prevTotal = unreadMap[store.id] || 0;
-      unreadMap[store.id] = unreadDetected;
-
-      if (unreadDetected > prevTotal && unreadDetected > 0) {
-        if (typeof playNotificationSound === 'function') playNotificationSound();
-        if (window.electronAPI?.flashWindow) window.electronAPI.flashWindow(true);
-        showToast(`💬 Pesan baru masuk di ${store.name}! (${unreadDetected} pesan)`, 'warning');
-      }
-
-      renderSidebar(getFilteredStores());
-      if (activeStoreId === store.id) renderTabBar();
-    } else {
-      // Tidak ada chat baru, hancurkan webview ping agar RAM tetap bersih
+      let domain = '';
       try {
-        pingWv.remove();
-      } catch (e) { }
-    }
-  };
-
-  // 1. Tangkap update unread lewat IPC dari preload
-  pingWv.addEventListener('ipc-message', (e) => {
-    if (e.channel === 'unread-count') {
-      const count = e.args[0] || 0;
-      if (count > 0) {
-        unreadDetected = count;
-        cleanupPing(true); // Keep alive karena ada chat/email baru
+        domain = new URL(tab.url || store.url || cfg.url).hostname;
+      } catch (e) {
+        domain = tab.url || store.url || '';
       }
+
+      let pillHtml = '';
+      if (isCurrentLeft) {
+        pillHtml = `<span class="split-tab-card-pill pill-left">◀ Aktif di Kiri</span>`;
+      } else if (isCurrentRight) {
+        pillHtml = `<span class="split-tab-card-pill pill-ready">▶ Aktif di Kanan</span>`;
+      } else {
+        pillHtml = `<span class="split-tab-card-pill pill-ready">⚡ Buka di Kanan</span>`;
+      }
+
+      return `
+        <div class="split-tab-card ${isCurrentLeft ? 'active-left' : ''} ${isCurrentRight ? 'active-right' : ''}" data-store-id="${store.id}" data-tab-id="${tab.id}" title="Buka ${escapeHtml(tab.title)} di sisi kanan">
+          <div class="split-tab-card-title">${escapeHtml(tab.title)}</div>
+          <div class="split-tab-card-url">${escapeHtml(domain)}</div>
+          ${pillHtml}
+        </div>`;
+    }).join('');
+
+    const unreadBadgeHtml = unread > 0
+      ? `<span class="split-group-unread-badge">${unread} Pesan</span>`
+      : '';
+
+    return `
+      <div class="split-picker-store-group">
+        <div class="split-group-header">
+          <div class="split-group-left">
+            <div class="split-group-avatar ${cfg.faviconClass}" ${bgStyle}>${escapeHtml(initials)}</div>
+            <span class="split-group-name">${escapeHtml(store.name)}</span>
+            <span class="split-group-mp-tag">${escapeHtml(cfg.label || store.marketplace)}</span>
+          </div>
+          ${unreadBadgeHtml}
+        </div>
+        <div class="split-tab-cards-grid">
+          ${tabsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = html;
+
+  // Bind klik kartu
+  container.querySelectorAll('.split-tab-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const sId = card.dataset.storeId;
+      const tId = card.dataset.tabId;
+      if (sId && tId && typeof selectRightSplitTab === 'function') {
+        selectRightSplitTab(sId, tId);
+      }
+    });
+  });
+}
+window.renderSplitTabPicker = renderSplitTabPicker;
+
+// ── Inisialisasi Split Resizer & Split Picker Event Listeners ─────────────────
+let isSplitResizerBound = false;
+function initSplitResizer() {
+  if (isSplitResizerBound) return;
+  isSplitResizerBound = true;
+
+  const resizer = document.getElementById('split-resizer');
+  const webviewContainer = document.getElementById('webview-container');
+  if (!resizer || !webviewContainer) return;
+
+  let isDragging = false;
+
+  resizer.addEventListener('mousedown', (e) => {
+    if (!isSplitViewActive) return;
+    isDragging = true;
+    resizer.classList.add('dragging');
+    document.body.classList.add('resizing');
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging || !isSplitViewActive) return;
+    const containerRect = webviewContainer.getBoundingClientRect();
+    if (containerRect.width <= 0) return;
+
+    const offsetX = e.clientX - containerRect.left;
+    let percent = (offsetX / containerRect.width) * 100;
+    percent = Math.max(20, Math.min(80, percent));
+
+    splitRatio = Math.round(percent);
+    webviewContainer.style.setProperty('--split-ratio', `${splitRatio}%`);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      resizer.classList.remove('dragging');
+      document.body.classList.remove('resizing');
     }
   });
 
-  // 2. Tangkap update title langsung dari webview (Gmail/Outlook/WA selalu update title)
-  pingWv.addEventListener('page-title-updated', (e) => {
-    if (e.title) {
-      const count = parseUnreadFromTitle(e.title);
-      if (count > 0) {
-        unreadDetected = count;
-        cleanupPing(true);
-      }
-    }
+  // Double click untuk reset 50:50
+  resizer.addEventListener('dblclick', () => {
+    if (!isSplitViewActive) return;
+    splitRatio = 50;
+    webviewContainer.style.setProperty('--split-ratio', '50%');
+    showToast('Ukuran layar diatur ke 50:50', '');
   });
 
-  // Timeout maksimal 16 detik per ping
-  pingTimeout = setTimeout(() => {
-    cleanupPing(false);
-  }, 16000);
-
-  pingWv.addEventListener('did-finish-load', () => {
-    // Beri waktu 7.5 detik setelah load untuk mendeteksi chat badge/title/DOM pada SPA berat (Gmail/WA/Shopee)
-    setTimeout(() => {
-      if (unreadDetected === 0) {
-        try {
-          if (typeof pingWv.getTitle === 'function') {
-            const currentTitle = pingWv.getTitle();
-            const count = parseUnreadFromTitle(currentTitle);
-            if (count > 0) {
-              unreadDetected = count;
-              cleanupPing(true);
-              return;
-            }
-          }
-        } catch (e) { }
-        cleanupPing(false);
-      }
-    }, 7500);
+  // Listener tombol picker modal split (Batal / Kembali ke tab sebelumnya)
+  document.getElementById('btn-split-picker-close')?.addEventListener('click', () => {
+    if (typeof cancelSplitTabPicker === 'function') cancelSplitTabPicker();
+    else if (typeof closeSplitView === 'function') closeSplitView();
   });
 
-  pingWv.addEventListener('did-fail-load', () => {
-    cleanupPing(false);
-  });
-
-  document.body.appendChild(pingWv);
-}
-
-function cancelPendingPing(tabId) {
-  if (!tabId) return;
-  pingQueue = pingQueue.filter(item => item.tab && item.tab.id !== tabId);
-}
-
-function startStaggeredBackgroundPing() {
-  if (pingInterval) clearInterval(pingInterval);
-  // Jalankan background ping setiap 45 detik secara bergantian untuk tab tidur
-  pingInterval = setInterval(runNextBackgroundPing, 45000);
-}
-
-function stopStaggeredBackgroundPing() {
-  if (pingInterval) {
-    clearInterval(pingInterval);
-    pingInterval = null;
+  // Terapkan mode tampilan awal (responsive vs scroll)
+  if (typeof applySplitDisplayModeUI === 'function') {
+    applySplitDisplayModeUI();
   }
-  pingQueue = [];
-  isPingRunning = false;
-}
 
-// Expose ke global
-window.cancelPendingPing = cancelPendingPing;
-window.startStaggeredBackgroundPing = startStaggeredBackgroundPing;
-window.stopStaggeredBackgroundPing = stopStaggeredBackgroundPing;
+  // Listener input pencarian di thumbnail picker
+  const searchInput = document.getElementById('split-picker-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(() => renderSplitTabPicker(), 60));
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (typeof cancelSplitTabPicker === 'function') cancelSplitTabPicker();
+      }
+    });
+  }
+
+  // Listener filter marketplace chips
+  document.querySelectorAll('.split-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.split-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      splitPickerMarketplace = chip.dataset.mp || 'all';
+      renderSplitTabPicker();
+    });
+  });
+
+  // Listener klik pada pane untuk memindahkan fokus
+  const leftPane = document.getElementById('split-pane-left');
+  const rightPane = document.getElementById('split-pane-right');
+
+  leftPane?.addEventListener('mousedown', () => {
+    if (typeof setFocusedPane === 'function') setFocusedPane('left');
+  });
+  rightPane?.addEventListener('mousedown', () => {
+    if (typeof setFocusedPane === 'function') setFocusedPane('right');
+  });
+}
+window.initSplitResizer = initSplitResizer;

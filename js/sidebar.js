@@ -233,6 +233,51 @@ function renderSidebar(filteredStores) {
     html += `</div>`;
   }
 
+  // ── Render Split Sessions / Dual Workspaces Group ──────────────────────────
+  if (typeof splitSessions !== 'undefined' && Array.isArray(splitSessions) && splitSessions.length > 0) {
+    const hasFavs = splitSessions.some(s => s.isFavorite);
+    html += `<div class="store-group split-sessions-group">
+      <div class="store-group-header" aria-label="Sesi Split Berdampingan & Favorit">
+        <div class="store-group-dot" style="background: ${hasFavs ? '#f59e0b' : 'var(--accent-primary, #DF1683)'};"></div>
+        <span class="store-group-label">${hasFavs ? 'Split View & Favorit' : 'Split Dual View'}</span>
+      </div>`;
+    
+    splitSessions.forEach(session => {
+      const isSplitActive = (typeof isSplitViewActive !== 'undefined' && isSplitViewActive) && (typeof activeSplitSessionId !== 'undefined' && activeSplitSessionId === session.id);
+      const isFav = !!session.isFavorite;
+      const sLeft = stores.find(s => s.id === session.leftStoreId);
+      const sRight = stores.find(s => s.id === session.rightStoreId);
+      const leftInit = (sLeft?.initials || sLeft?.name?.substring(0, 1) || 'L').toUpperCase();
+      const rightInit = (sRight?.initials || sRight?.name?.substring(0, 1) || 'R').toUpperCase();
+      const leftColor = sLeft?.color || '#EE4D2D';
+      const rightColor = sRight?.color || '#03AC0E';
+      const subLabel = isFav ? (isSplitActive ? '⭐ Favorit (Aktif)' : '⭐ Favorit Tersimpan') : (isSplitActive ? 'Dual Workspace (Aktif)' : 'Dual Workspace');
+
+      html += `
+        <div class="store-item split-session-item ${isSplitActive ? 'active' : ''} ${isFav ? 'favorited' : ''}" data-split-id="${escapeHtml(session.id)}" aria-label="${escapeHtml(session.name)}">
+          <div class="split-dual-avatar">
+            <div class="split-avatar-half left" style="background: ${escapeHtml(leftColor)}">${escapeHtml(leftInit)}</div>
+            <div class="split-avatar-half right" style="background: ${escapeHtml(rightColor)}">${escapeHtml(rightInit)}</div>
+            <span class="split-avatar-badge">${isFav ? '⭐' : '◫'}</span>
+          </div>
+          <div class="store-info">
+            <div class="store-name">${escapeHtml(session.name)}</div>
+            <div class="store-marketplace-label">${escapeHtml(subLabel)}</div>
+          </div>
+          <button type="button" class="btn-fav-split-session ${isFav ? 'favorited' : ''}" data-split-id="${escapeHtml(session.id)}" title="${isFav ? 'Hapus dari Favorit' : 'Simpan sebagai Split View Favorit'}" aria-label="Favorit">
+            ${isFav ? '⭐' : '☆'}
+          </button>
+          <button type="button" class="btn-remove-split-session" data-split-id="${escapeHtml(session.id)}" title="${isFav ? (isSplitActive ? 'Tutup Tampilan Split (Tetap Tersimpan di Favorit)' : 'Hapus Sesi Favorit') : 'Tutup Sesi Split'}" aria-label="Tutup Sesi Split">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
   const hasStoreItems = sidebarContent.querySelector('.store-item') !== null;
   const isSameUser = sidebarContent.dataset.lastUser === (window.currentUser || '');
 
@@ -255,9 +300,36 @@ function renderSidebar(filteredStores) {
     }
   }
 
-  sidebarContent.querySelectorAll('.store-item').forEach(el => {
+  sidebarContent.querySelectorAll('.store-item:not(.split-session-item)').forEach(el => {
     el.addEventListener('click', () => activateStore(el.dataset.id));
     bindDragEvents(el);
+  });
+
+  sidebarContent.querySelectorAll('.split-session-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-remove-split-session') || e.target.closest('.btn-fav-split-session')) return;
+      if (typeof activateSplitSession === 'function') {
+        activateSplitSession(el.dataset.splitId);
+      }
+    });
+  });
+
+  sidebarContent.querySelectorAll('.btn-fav-split-session').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof toggleFavoriteSplitSession === 'function') {
+        toggleFavoriteSplitSession(btn.dataset.splitId);
+      }
+    });
+  });
+
+  sidebarContent.querySelectorAll('.btn-remove-split-session').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof closeSplitSession === 'function') {
+        closeSplitSession(btn.dataset.splitId);
+      }
+    });
   });
 
   if (typeof updateSidebarScrollAffordance === 'function') {

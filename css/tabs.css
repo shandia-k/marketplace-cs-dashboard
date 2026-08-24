@@ -302,6 +302,36 @@
   border-color: var(--border-hover);
 }
 
+/* Split View Toggle Button in Tab Bar */
+.tab-split-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: all var(--transition-fast);
+}
+
+.tab-split-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.tab-split-btn.active {
+  background: rgba(223, 22, 131, 0.18);
+  color: var(--accent-primary, #DF1683);
+  border-color: var(--accent-primary, #DF1683);
+  box-shadow: 0 0 10px rgba(223, 22, 131, 0.25);
+}
+
 /* Empty State */
 .empty-state {
   display: flex;
@@ -346,11 +376,527 @@
   min-height: 0;
   position: relative;
   display: none;
-  flex-direction: column;
+  flex-direction: row;
+  --split-ratio: 50%;
 }
 
 .webview-container.active {
   display: flex;
+}
+
+/* Split Pane Layout */
+.split-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.split-pane-left {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
+.webview-container.split-active .split-pane-left {
+  flex: 0 0 var(--split-ratio, 50%);
+  width: var(--split-ratio, 50%);
+  max-width: 80%;
+  min-width: 250px;
+}
+
+/* Splitter Resizer Divider */
+.split-resizer {
+  display: none;
+  width: 6px;
+  cursor: col-resize;
+  background: var(--border-color);
+  position: relative;
+  z-index: 40;
+  transition: background 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.webview-container.split-active .split-resizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.split-resizer:hover,
+.split-resizer.dragging {
+  background: var(--accent-primary, #DF1683);
+}
+
+.split-resizer-line {
+  width: 2px;
+  height: 24px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Right Pane */
+.split-pane-right {
+  display: none;
+  flex: 1 1 0;
+  min-width: 250px;
+  background: var(--bg-primary);
+}
+
+.webview-container.split-active .split-pane-right {
+  display: flex;
+}
+
+.webview-container.split-active .split-pane.focused {
+  border-color: var(--accent-primary, #DF1683);
+  z-index: 10;
+}
+
+/* Split View Display Modes (Responsive Auto-Resize vs Horizontal Scroll) */
+.webview-container.split-mode-responsive .split-pane {
+  overflow-x: hidden;
+}
+
+.webview-container.split-mode-responsive .store-webview {
+  min-width: 0;
+  width: 100%;
+}
+
+.webview-container.split-mode-scroll .split-pane-left {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.webview-container.split-mode-scroll #split-right-body {
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.webview-container.split-mode-scroll .store-webview {
+  min-width: 1120px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Custom Horizontal Scrollbar for Split Panes */
+.split-pane-left::-webkit-scrollbar,
+#split-right-body::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.split-pane-left::-webkit-scrollbar-track,
+#split-right-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.split-pane-left::-webkit-scrollbar-thumb,
+#split-right-body::-webkit-scrollbar-thumb {
+  background: rgba(145, 145, 165, 0.4);
+  border-radius: 99px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  transition: background-color var(--transition-fast);
+}
+
+.split-pane-left::-webkit-scrollbar-thumb:hover,
+#split-right-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary, #DF1683);
+}
+
+/* Pointer Events Protection during resize drag */
+body.resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.resizing webview {
+  pointer-events: none !important;
+}
+
+/* Symmetrical Split Dual Tabs in Main Tab Bar */
+.tab-item.split-dual-tab {
+  flex: 1 1 0;
+  max-width: 320px;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  height: 28px;
+  transition: all var(--transition-fast);
+}
+
+.tab-item.split-dual-tab:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.tab-item.split-dual-tab.active {
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary, #DF1683);
+  color: var(--text-primary);
+  box-shadow: 0 0 8px rgba(223, 22, 131, 0.2);
+}
+
+.tab-item.split-dual-tab .tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tab-item.split-dual-tab .tab-title b {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Split Action Buttons in Main Tab Bar */
+.tab-split-action-btn {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-family: inherit;
+  font-weight: 500;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.tab-split-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.tab-split-action-btn.favorite {
+  color: var(--text-muted);
+}
+
+.tab-split-action-btn.favorite:hover {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.tab-split-action-btn.favorite.active {
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+  font-weight: 600;
+}
+
+.tab-split-action-btn.close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Interactive Store & Tab Thumbnail Picker */
+.split-tab-picker {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.split-picker-header {
+  padding: 12px 14px 10px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.split-picker-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.split-picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.split-picker-icon {
+  font-size: 16px;
+  color: var(--accent-primary);
+  line-height: 1;
+}
+
+.split-picker-heading h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.split-picker-heading p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.split-picker-close-btn {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.split-picker-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.split-picker-search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  height: 28px;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.split-picker-search-bar:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(223, 22, 131, 0.15);
+}
+
+.split-picker-search-bar input {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+
+.split-picker-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.split-picker-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.split-chip {
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  border-radius: 99px;
+  padding: 2px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.split-chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.split-chip.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+  font-weight: 500;
+}
+
+.split-picker-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.split-picker-store-group {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 110px;
+}
+
+.split-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.split-group-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.split-group-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+}
+
+.split-group-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.split-group-mp-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.split-group-unread-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 99px;
+  padding: 1px 6px;
+}
+
+.split-tab-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.split-tab-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.16s ease;
+  position: relative;
+  user-select: none;
+}
+
+.split-tab-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-primary);
+  background: var(--bg-active);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.split-tab-card.active-left {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.split-tab-card-title {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.split-tab-card-url {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.split-tab-card-pill {
+  align-self: flex-start;
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.split-tab-card-pill.pill-left {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.split-tab-card-pill.pill-ready {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.split-right-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Individual Webview — Electron <webview> perlu display:flex + flex:1 */

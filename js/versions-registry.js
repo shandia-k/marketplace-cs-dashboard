@@ -31,10 +31,181 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.17',
+      version: '1.0.18',
       badge: 'Versi Terbaru 🚀',
+      badgeColor: '#df1683',
+      pillTag: 'v1.0.18 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Side-by-Side Dual Workspace (Split View), Ketahanan WhatsApp Web & Modern Sleek Scrollbars',
+      tagline: 'Pembaruan v1.0.18: Hadirnya fitur Side-by-Side Split View (Dual Workspace) untuk membuka dan memantau 2 toko/tab sekaligus secara berdampingan dengan resizer fleksibel (20:80 s/d 80:20), interactive thumbnail tab picker, sesi favorit persisten (⭐) di sidebar, tombol tukar posisi instan (⇆), dan mode tampilan Responsive vs Horizontal Scroll; penguatan arsitektur ketahanan WhatsApp Web (V8 1024MB Heap, background anti-throttling bypass, proteksi antrean IndexedDB & WebSocket saat sync, preservasi shader cache WebGL, bebas putus koneksi); serta injeksi kustom Modern Sleek Scrollbars 6px beraksen CS Magenta pada seluruh tampilan webview toko.',
+      highlights: [
+        {
+          icon: '◫',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Side-by-Side Dual Workspace (Split View)',
+          desc: 'Buka dan pantau dua toko atau tab chat sekaligus secara berdampingan dengan pembagi layar fleksibel (20:80 s/d 80:20), tombol tukar posisi instan (⇆), dan navigasi dual tab bar simetris.'
+        },
+        {
+          icon: '⭐',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Persistent Favorite Split Sessions',
+          desc: 'Simpan pasangan toko split view favorit (⭐) ke grup khusus sidebar untuk akses instan 1-klik kapan saja tanpa perlu memilih ulang dari awal.'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'WhatsApp Web Hardening & Anti-Crash',
+          desc: 'Headroom V8 1024MB, bypass background throttling, proteksi antrean IndexedDB & WebSocket chat saat sinkronisasi ribuan pesan tanpa risiko freeze atau logout.'
+        },
+        {
+          icon: '🎨',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Modern Sleek Scrollbar Suite',
+          desc: 'Injeksi scrollbar mengambang ramping 6px berdesain rounded minimalis dengan aksen warna tema CS Magenta pada antarmuka dashboard dan seluruh webview toko.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Side-by-Side Dual Workspace & Manajemen Split View',
+          tag: 'Split View & Tabs',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Dual Workspace',
+              badgeColor: '#df1683',
+              text: 'Membuka dua tab atau toko marketplace sekaligus secara berdampingan di layar yang sama untuk efisiensi CS melayani chat multi-toko simultan.'
+            },
+            {
+              type: 'feature',
+              badge: 'Tab Picker Grid',
+              badgeColor: '#3b82f6',
+              text: 'Modal pemilihan tab interaktif dengan grid kartu toko, live search filter (Ctrl+F / Esc), dan filter chip kategori marketplace (Shopee, Tokopedia, Lazada, TikTok, WhatsApp).'
+            },
+            {
+              type: 'feature',
+              badge: 'Draggable Resizer',
+              badgeColor: '#10b981',
+              text: 'Pembagi layar (splitter divider) yang dapat digeser bebas dari 20% hingga 80% lebar layar, dilengkapi shortcut double-click untuk reset instan ke rasio seimbang 50:50.'
+            },
+            {
+              type: 'feature',
+              badge: 'Favorite Sessions',
+              badgeColor: '#f59e0b',
+              text: 'Fitur bintang favorit (⭐) untuk menyimpan kombinasi dual workspace ke grup khusus "Split View & Favorit" di sidebar dengan dual-avatar toko.'
+            },
+            {
+              type: 'feature',
+              badge: 'Display Modes',
+              badgeColor: '#8b5cf6',
+              text: 'Dua mode tampilan split: Mode Responsif (auto-fit lebar layar) dan Mode Horizontal Scroll (mempertahankan resolusi desktop 1024px dengan geser kanan-kiri yang mulus).'
+            },
+            {
+              type: 'perf',
+              badge: 'Focus Isolation',
+              badgeColor: '#0284c7',
+              text: 'Pemisahan fokus cerdas dengan highlight visual magenta aktif, perutean address bar independen, navigasi link mandiri, serta integrasi shortcut keyboard (Ctrl+F & Quick Reply) ke panel yang aktif.'
+            },
+            {
+              type: 'feature',
+              badge: 'Instant Swap',
+              badgeColor: '#ec4899',
+              text: 'Tombol Tukar Posisi (⇆) untuk menukar posisi webview kiri dan kanan seketika tanpa kehilangan state input, scroll position, atau reload halaman.'
+            }
+          ]
+        },
+        {
+          category: 'Ketahanan Engine & Optimasi Khusus WhatsApp Web',
+          tag: 'WhatsApp & Engine',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            {
+              type: 'perf',
+              badge: 'V8 1024MB Heap',
+              badgeColor: '#10b981',
+              text: 'Menaikkan alokasi memori V8 max-old-space-size menjadi 1024MB guna menampung sinkronisasi riwayat chat ribuan pesan dan basis data IndexedDB WhatsApp tanpa Out-Of-Memory (OOM) crash.'
+            },
+            {
+              type: 'fix',
+              badge: 'RAF Throttling Bypass',
+              badgeColor: '#0284c7',
+              text: 'Mengecualikan WhatsApp Web dari pembatasan 1 FPS requestAnimationFrame agar antrean transaksi chunked IndexedDB dan proses dekripsi pesan tetap berjalan lancar saat tab di latar belakang.'
+            },
+            {
+              type: 'security',
+              badge: 'Sync Immunity',
+              badgeColor: '#f59e0b',
+              text: 'Melindungi tab WhatsApp dan tab yang sedang melakukan sinkronisasi chat dari auto-hibernasi, auto-pause audio notifikasi, dan pemanggilan paksa V8 GC agresif.'
+            },
+            {
+              type: 'perf',
+              badge: 'Shader Cache Guard',
+              badgeColor: '#8b5cf6',
+              text: 'Menjaga keutuhan shader cache WebGL dan storage cache saat pembersihan memori latar belakang untuk memastikan canvas render dan database WhatsApp tidak rusak.'
+            },
+            {
+              type: 'cleanup',
+              badge: 'Ping Deprecation',
+              badgeColor: '#64748b',
+              text: 'Menghapus interval background ping berkala legacy yang membebani CPU dan menggantikannya dengan penanganan siklus hidup webview yang efisien.'
+            }
+          ]
+        },
+        {
+          category: 'Modern UI Styling & Antarmuka Scrollbar Ramping',
+          tag: 'UI & UX',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Sleek Scrollbar',
+              badgeColor: '#df1683',
+              text: 'Menerapkan custom scrollbar modern 6px berujung bulat minimalis dengan efek hover aksen CS Magenta pada seluruh dashboard dan panel webview.'
+            },
+            {
+              type: 'feature',
+              badge: 'Webview Injection',
+              badgeColor: '#3b82f6',
+              text: 'Injeksi otomatis style scrollbar modern ke dalam seluruh halaman webview marketplace melalui webview-preload.js untuk pengalaman visual yang konsisten dan elegan.'
+            }
+          ]
+        },
+        {
+          category: 'Integritas Sistem & Pengujian Otomatis (Anti-Regression)',
+          tag: 'QA & Testing',
+          color: '#8b5cf6',
+          bgColor: 'rgba(139, 92, 246, 0.12)',
+          items: [
+            {
+              type: 'test',
+              badge: 'Split View Tests',
+              badgeColor: '#8b5cf6',
+              text: 'Menambahkan rangkaian Level 5 Integration Test (tests/integration/renderer/split-view.test.js) dengan 10 skenario pengujian split view, resizer, picker, favorite persistence, swap, dan focus routing.'
+            },
+            {
+              type: 'test',
+              badge: 'Sandbox Extension',
+              badgeColor: '#0284c7',
+              text: 'Memperluas Mock DOM Sandbox (setProperty, dataset, window event dispatcher) untuk memvalidasi komponen UI interaktif.'
+            },
+            {
+              type: 'test',
+              badge: 'Zero-Defect 100%',
+              badgeColor: '#10b981',
+              text: 'Seluruh 26 test suite multi-level dan 17 tes katalog regresi tervalidasi 100% lulus tanpa kegagalan.'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.17',
+      badge: 'Stabil ⚡',
       badgeColor: '#0284c7',
-      pillTag: 'v1.0.17 🚀',
+      pillTag: 'v1.0.17',
       releaseDate: 'Agustus 2026',
       title: 'Production-Ready In-Memory RAM Compactor & Fixed-Width Tab Bar',
       tagline: 'Pembaruan v1.0.17: Penguatan engine pemangkas RAM Dual-Layer agar bekerja 100% pada bundle rilis produksi (ASAR .exe) via In-Memory C# EncodedCommand dan Dynamic PID Targeting (mencakup Main, Renderers, GPU, Utility Process), pembersihan otomatis berkala setiap 45 detik, penyempurnaan desain Tab Bar Fixed-Width seragam (140px) dengan navigasi scroll roda mouse horizontal, serta retensi native context download yang ringan dan efisien.',

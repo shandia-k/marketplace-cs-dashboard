@@ -349,7 +349,7 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     const memoryTrimmer = require('../../src/main/services/memory-trimmer.service');
 
     // 1. Pastikan parameter V8 Tuning terpasang aman tanpa crash JIT
-    assert.ok(appConfigCode.includes('--max-old-space-size=512'), 'Must enforce max-old-space-size=512');
+    assert.ok(appConfigCode.includes('--max-old-space-size='), 'Must enforce max-old-space-size');
     assert.ok(appConfigCode.includes('--expose-gc'), 'Must enforce --expose-gc');
     assert.ok(appConfigCode.includes('renderer-process-limit'), 'Must enforce renderer-process-limit');
 

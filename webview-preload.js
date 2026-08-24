@@ -22,8 +22,73 @@ try {
   }
 } catch (e) { }
 
+// ── WEBVIEW FOCUS & INTERACTION TRACKING ──────────────────────────────────────
+window.addEventListener('mousedown', () => {
+  try {
+    ipcRenderer.sendToHost('webview-page-focused');
+  } catch (e) { }
+}, { capture: true, passive: true });
+
+window.addEventListener('focus', () => {
+  try {
+    ipcRenderer.sendToHost('webview-page-focused');
+  } catch (e) { }
+}, { capture: true, passive: true });
+
+// ── MODERN SLEEK WEBVIEW SCROLLBAR INJECTION ──────────────────────────────────
+(function injectModernScrollbarStyles() {
+  const MODERN_SCROLLBAR_CSS = `
+    ::-webkit-scrollbar {
+      width: 6px !important;
+      height: 6px !important;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent !important;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(145, 145, 165, 0.4) !important;
+      border-radius: 99px !important;
+      border: 1px solid transparent !important;
+      background-clip: content-box !important;
+      transition: background-color 0.2s ease !important;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(223, 22, 131, 0.75) !important;
+    }
+    ::-webkit-scrollbar-thumb:active {
+      background: rgba(223, 22, 131, 1) !important;
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent !important;
+    }
+    * {
+      scrollbar-width: thin !important;
+      scrollbar-color: rgba(145, 145, 165, 0.4) transparent !important;
+    }
+  `;
+
+  const inject = () => {
+    try {
+      if (document.getElementById('antigravity-modern-scrollbar')) return;
+      const style = document.createElement('style');
+      style.id = 'antigravity-modern-scrollbar';
+      style.textContent = MODERN_SCROLLBAR_CSS;
+      (document.head || document.documentElement).appendChild(style);
+    } catch (e) { }
+  };
+
+  if (document.documentElement) {
+    inject();
+  }
+  window.addEventListener('DOMContentLoaded', inject, { once: true });
+})();
+
 // ── KEYBOARD SHORTCUTS & FIND IN PAGE (Ctrl+F) INTERCEPTOR ──────────────────
 window.addEventListener('keydown', (e) => {
+  try {
+    ipcRenderer.sendToHost('webview-page-focused');
+  } catch (err) { }
+
   // Ctrl+F / Cmd+F: Find in Page
   if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
     e.preventDefault();
@@ -52,11 +117,16 @@ window.addEventListener('keydown', (e) => {
 // ── DEEP BACKGROUND CPU & MEDIA FREEZER (0.001% CPU WHEN HIDDEN) ───────────────
 (function initDeepBackgroundCpuThrottler() {
   const originalRAF = typeof window !== 'undefined' && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : null;
+  const isWhatsApp = typeof window !== 'undefined' && (window.location?.hostname || '').includes('whatsapp.com');
 
   if (originalRAF) {
     window.requestAnimationFrame = function(callback) {
-      if (document.hidden) {
-        // Saat background: batasi loop animasi ke 1 fps (menghemat 99% instruksi CPU render)
+      // ⚡ PROTEKSI KHUSUS WHATSAPP & SINKRONISASI AKTIF:
+      // WhatsApp Web menggunakan requestAnimationFrame untuk chunked IndexedDB transaction queues
+      // dan dekripsi ribuan pesan saat sync. Jangan throttle RAF pada WhatsApp Web atau saat sedang sync!
+      const isSyncingActive = (typeof isCurrentlySyncing !== 'undefined' && isCurrentlySyncing);
+      if (document.hidden && !isWhatsApp && !isSyncingActive) {
+        // Saat background marketplace (Shopee/Tokopedia/TikTok): batasi loop animasi ke 1 fps (menghemat 99% instruksi CPU render)
         return setTimeout(() => {
           if (typeof callback === 'function') {
             try { callback(performance.now()); } catch (e) {}
@@ -69,30 +139,35 @@ window.addEventListener('keydown', (e) => {
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      // 1. Hentikan media video & audio TikTok / Shopee yang tidak terlihat
-      try {
-        document.querySelectorAll('video, audio').forEach(el => {
-          if (!el.paused) {
-            el.dataset.__wasPlaying = 'true';
-            el.pause();
-          }
-        });
-      } catch (e) { }
+      // 1. Hentikan media video & audio TikTok / Shopee yang tidak terlihat (kecuali WhatsApp agar audio notifikasi pesan tetap terjaga)
+      if (!isWhatsApp) {
+        try {
+          document.querySelectorAll('video, audio').forEach(el => {
+            if (!el.paused) {
+              el.dataset.__wasPlaying = 'true';
+              el.pause();
+            }
+          });
+        } catch (e) { }
 
-      // 2. Panggil V8 GC saat berpindah ke background
-      if (typeof window.gc === 'function') {
-        try { window.gc(); } catch (e) { }
+        // 2. Panggil V8 GC saat berpindah ke background pada marketplace
+        const isSyncingActive = (typeof isCurrentlySyncing !== 'undefined' && isCurrentlySyncing);
+        if (typeof window.gc === 'function' && !isSyncingActive) {
+          try { window.gc(); } catch (e) { }
+        }
       }
     } else {
       // 1. Resume video & audio jika sebelumnya aktif
-      try {
-        document.querySelectorAll('video, audio').forEach(el => {
-          if (el.dataset.__wasPlaying === 'true') {
-            delete el.dataset.__wasPlaying;
-            el.play().catch(() => {});
-          }
-        });
-      } catch (e) { }
+      if (!isWhatsApp) {
+        try {
+          document.querySelectorAll('video, audio').forEach(el => {
+            if (el.dataset.__wasPlaying === 'true') {
+              delete el.dataset.__wasPlaying;
+              el.play().catch(() => {});
+            }
+          });
+        } catch (e) { }
+      }
     }
   });
 })();

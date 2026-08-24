@@ -368,6 +368,122 @@
   border-radius: 0 2px 2px 0;
 }
 
+/* Split Dual Session Items in Sidebar */
+.split-sessions-group {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.split-session-item {
+  position: relative;
+}
+
+.split-dual-avatar {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.split-avatar-half {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.split-avatar-half.left {
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.split-avatar-badge {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  font-size: 8px;
+  line-height: 1;
+  background: var(--accent-primary, #DF1683);
+  color: #fff;
+  border-radius: 3px;
+  padding: 1px 2px;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.btn-fav-split-session {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-left: auto;
+  margin-right: 2px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-fav-split-session.favorited {
+  display: flex;
+  color: #f59e0b;
+}
+
+.store-item.split-session-item:hover .btn-fav-split-session {
+  display: flex;
+}
+
+.btn-fav-split-session:hover {
+  transform: scale(1.2);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.btn-remove-split-session {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.store-item.split-session-item:hover .btn-remove-split-session {
+  display: flex;
+}
+
+.btn-remove-split-session:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.sidebar.collapsed .btn-fav-split-session,
+.sidebar.collapsed .btn-remove-split-session {
+  display: none !important;
+}
+
 .store-favicon {
   position: relative;
   width: 28px;

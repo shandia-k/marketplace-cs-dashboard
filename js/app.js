@@ -919,17 +919,17 @@ window.initApp = async function() {
   }
   checkAndHibernateIfNeeded(); // langsung cek pertama kali
 
-  // Mulai background ping berkala untuk toko yang dihibernasi
-  if (typeof startStaggeredBackgroundPing === 'function') {
-    startStaggeredBackgroundPing();
-  }
-
   // Sinkronisasi otomatis label versi aplikasi dari VERSIONS_REGISTRY
   syncAppVersionLabels();
 
   // Inisialisasi Onboarding & Interactive Tour Guide (v1.0.6)
   if (window.OnboardingManager && typeof window.OnboardingManager.init === 'function') {
     window.OnboardingManager.init();
+  }
+
+  // Inisialisasi Side-by-Side Split View Resizer & Event Listeners
+  if (typeof initSplitResizer === 'function') {
+    initSplitResizer();
   }
 
   // Setup Lifecycle Pemulihan Fokus, Visibilitas, & Anti-Blank Crash Guard (v1.0.10)
@@ -1038,7 +1038,16 @@ function setupFocusAndCrashRecoveryLifecycle() {
 
   // Listener IPC Trigger Universal Find in Page (Ctrl+F) dari Native Chromium Main Process
   if (window.electronAPI && typeof window.electronAPI.onTriggerFindInPage === 'function') {
-    window.electronAPI.onTriggerFindInPage(() => {
+    window.electronAPI.onTriggerFindInPage((data) => {
+      const senderWcId = (typeof data === 'object' && data !== null) ? data.wcId : (typeof data === 'number' ? data : null);
+      if (senderWcId && typeof isSplitViewActive !== 'undefined' && isSplitViewActive) {
+        if (splitRightTabId && webviewMap[splitRightTabId]?.wcId === senderWcId) {
+          if (typeof setFocusedPane === 'function') setFocusedPane('right');
+        } else {
+          if (typeof setFocusedPane === 'function') setFocusedPane('left');
+        }
+      }
+
       // 1. Jika Scratchpad sedang terbuka, aktifkan search dedicated Scratchpad
       const spWindow = document.getElementById('scratchpad-window');
       if (spWindow && spWindow.style.display !== 'none') {

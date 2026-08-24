@@ -1,4 +1,26 @@
 function activateStore(storeId) {
+  if (typeof setFocusedPane === 'function') {
+    setFocusedPane('left');
+  }
+
+  // Jika sebelumnya mode split aktif, keluar dari mode split saat memilih toko tunggal
+  if (isSplitViewActive) {
+    isSplitViewActive = false;
+    activeSplitSessionId = null;
+    const wvContainer = document.getElementById('webview-container');
+    if (wvContainer) wvContainer.classList.remove('split-active');
+    const rightBodyEl = document.getElementById('split-right-body');
+    if (rightBodyEl) {
+      rightBodyEl.style.display = 'none';
+      rightBodyEl.querySelectorAll('webview.store-webview').forEach(el => {
+        el.classList.remove('visible');
+        el.style.display = 'none';
+      });
+    }
+    const pickerEl = document.getElementById('split-tab-picker');
+    if (pickerEl) pickerEl.style.display = 'none';
+  }
+
   // Tutup & isolasi Find in Page agar tidak bocor saat berpindah toko
   if (typeof closeFindInPage === 'function') {
     closeFindInPage({ skipFocus: true });
@@ -32,7 +54,9 @@ function activateStore(storeId) {
   }
 
   renderTabBar();
-  renderSidebar(getFilteredStores());
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
 
   // Sinkronkan clipboard global & templates ke webview toko yang baru aktif
   if (typeof broadcastTemplatesToWebviews === 'function') {
@@ -176,12 +200,6 @@ function ensureTabBarShell() {
           <path d="M3 3v5h5"/>
         </svg>
       </button>
-      <button class="tab-nav-btn" id="btn-nav-home" title="Beranda Toko (Kembali ke URL Awal)" aria-label="Kembali ke beranda toko">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-      </button>
     </div>
     <div class="tab-address-bar-wrap" id="tab-address-bar-wrap" title="Ketik URL (e.g. cekresi.com, maps, atau link produk)">
       <div class="tab-address-icon" id="tab-address-icon" aria-hidden="true">
@@ -228,25 +246,6 @@ function ensureTabBarShell() {
       }
     }
   });
-  document.getElementById('btn-nav-home')?.addEventListener('click', () => {
-    if (window.AppTelemetry) {
-      window.AppTelemetry.track('tab_nav_home_clicked');
-    }
-    const store = stores.find(s => s.id === activeStoreId);
-    const cfg = store ? ((typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom) : null;
-    const tabEntry = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
-    const homeUrl = tabEntry?.initialUrl || store?.url || cfg?.url || '';
-    if (homeUrl) {
-      const wv = getActiveWebview();
-      if (wv) {
-        try {
-          wv.loadURL(homeUrl);
-        } catch (e) {
-          wv.src = homeUrl;
-        }
-      }
-    }
-  });
 
   // Bind Address Bar events
   const addrInput = document.getElementById('tab-address-input');
@@ -279,11 +278,11 @@ function ensureTabBarShell() {
   addrInput?.addEventListener('focus', () => {
     if (isMouseDownOnAddr) {
       setTimeout(() => {
-        addrInput.select();
+        if (typeof addrInput.select === 'function') addrInput.select();
         isMouseDownOnAddr = false;
       }, 0);
     } else {
-      addrInput.select();
+      if (typeof addrInput.select === 'function') addrInput.select();
     }
   });
   addrInput?.addEventListener('mouseup', (e) => {
@@ -304,16 +303,112 @@ function ensureTabBarShell() {
 }
 
 function renderTabBar() {
-  if (!activeStoreId || !storeTabs[activeStoreId]) {
-    tabBar.style.display = 'none';
+  if (typeof stores === 'undefined' || !Array.isArray(stores) || stores.length === 0) {
+    if (tabBar) tabBar.style.display = 'none';
     return;
   }
 
-  const store = stores.find(s => s.id === activeStoreId);
-  if (!store) return;
-
   ensureTabBarShell();
   tabBar.style.display = 'flex';
+
+  const tabItemsContainer = document.getElementById('tab-items-container');
+  if (!tabItemsContainer) return;
+
+  // ── 1. RENDER SYMMETRICAL DUAL SPLIT TABS (Jika Mode Split Aktif) ──────────
+  if (isSplitViewActive && splitRightStoreId && splitRightTabId) {
+    const sLeft = stores.find(s => s.id === activeStoreId);
+    const sRight = stores.find(s => s.id === splitRightStoreId);
+    const tLeft = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
+    const tRight = storeTabs[splitRightStoreId]?.find(t => t.id === splitRightTabId);
+
+    const cfgLeft = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[sLeft?.marketplace] : null) || MARKETPLACE_CONFIG?.custom || { faviconClass: 'fav-custom' };
+    const cfgRight = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[sRight?.marketplace] : null) || MARKETPLACE_CONFIG?.custom || { faviconClass: 'fav-custom' };
+
+    const initLeft = (sLeft?.initials || sLeft?.name?.substring(0, 2) || 'L').toUpperCase();
+    const initRight = (sRight?.initials || sRight?.name?.substring(0, 2) || 'R').toUpperCase();
+
+    const activeTabObj = (activeFocusedPane === 'right') ? tRight : tLeft;
+    const activeStoreObj = (activeFocusedPane === 'right') ? sRight : sLeft;
+    let activeTabUrl = activeTabObj?.url || activeStoreObj?.url || '';
+    const activeWv = getActiveWebview();
+    if (activeWv && typeof activeWv.getURL === 'function') {
+      try {
+        const cur = activeWv.getURL();
+        if (cur && cur !== 'about:blank') activeTabUrl = cur;
+      } catch (e) {}
+    }
+
+    const addrInput = document.getElementById('tab-address-input');
+    if (addrInput && document.activeElement !== addrInput) {
+      addrInput.value = activeTabUrl;
+    }
+
+    tabItemsContainer.setAttribute('aria-label', `Daftar tab split berdampingan`);
+
+    const curSession = activeSplitSessionId ? splitSessions.find(s => s.id === activeSplitSessionId) : null;
+    const isFav = !!curSession?.isFavorite;
+
+    const fullTabsHtml = `
+      <div class="tab-item split-dual-tab ${activeFocusedPane === 'left' ? 'active' : ''}" data-pane="left" title="Panel Kiri: ${escapeHtml(sLeft?.name || '')} — ${escapeHtml(tLeft?.title || '')}">
+        <div class="tab-favicon-mini ${cfgLeft.faviconClass}" style="background: ${escapeHtml(sLeft?.color || '')}">${escapeHtml(initLeft)}</div>
+        <span class="tab-title"><b>${escapeHtml(sLeft?.name || 'Toko Kiri')}</b> — ${escapeHtml(tLeft?.title || 'Chat')}</span>
+      </div>
+      <div class="tab-item split-dual-tab ${activeFocusedPane === 'right' ? 'active' : ''}" data-pane="right" title="Panel Kanan: ${escapeHtml(sRight?.name || '')} — ${escapeHtml(tRight?.title || '')}">
+        <div class="tab-favicon-mini ${cfgRight.faviconClass}" style="background: ${escapeHtml(sRight?.color || '')}">${escapeHtml(initRight)}</div>
+        <span class="tab-title"><b>${escapeHtml(sRight?.name || 'Toko Kanan')}</b> — ${escapeHtml(tRight?.title || 'Chat')}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px; margin-left: 6px;">
+        <button type="button" class="tab-split-action-btn favorite ${isFav ? 'active' : ''}" id="btn-split-toggle-fav" title="${isFav ? 'Hapus dari Split View Favorit' : 'Simpan sebagai Split View Favorit (⭐)'}">
+          <span>${isFav ? '⭐ Tersimpan' : '☆ Favorit'}</span>
+        </button>
+        <button type="button" class="tab-split-action-btn" id="btn-split-toggle-mode" title="Ganti Mode Tampilan (Fit / Scroll)">
+          <span>${splitViewDisplayMode === 'scroll' ? '📜 Scroll' : '↔ Fit'}</span>
+        </button>
+        <button type="button" class="tab-split-action-btn" id="btn-split-swap-tabs" title="Tukar Posisi Kiri & Kanan">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>
+          </svg>
+        </button>
+        <button type="button" class="tab-split-action-btn" id="btn-split-change-tab" title="Ganti Tab Panel Kanan">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          <span>Ganti</span>
+        </button>
+        <button type="button" class="tab-split-action-btn close" id="btn-split-close-dual" title="Tutup Sesi Split">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    if (tabItemsContainer.dataset.lastHtml === fullTabsHtml) {
+      updateNavButtonStates();
+      return;
+    }
+
+    tabItemsContainer.dataset.lastHtml = fullTabsHtml;
+    tabItemsContainer.innerHTML = fullTabsHtml;
+
+    tabItemsContainer.querySelector('.split-dual-tab[data-pane="left"]')?.addEventListener('click', () => setFocusedPane('left'));
+    tabItemsContainer.querySelector('.split-dual-tab[data-pane="right"]')?.addEventListener('click', () => setFocusedPane('right'));
+    document.getElementById('btn-split-toggle-fav')?.addEventListener('click', () => {
+      if (activeSplitSessionId) toggleFavoriteSplitSession(activeSplitSessionId);
+    });
+    document.getElementById('btn-split-toggle-mode')?.addEventListener('click', () => toggleSplitDisplayMode());
+    document.getElementById('btn-split-swap-tabs')?.addEventListener('click', () => swapSplitPanes());
+    document.getElementById('btn-split-change-tab')?.addEventListener('click', () => openSplitTabPicker());
+    document.getElementById('btn-split-close-dual')?.addEventListener('click', () => closeSplitView());
+
+    updateNavButtonStates();
+    return;
+  }
+
+  // ── 2. RENDER REGULAR SINGLE STORE TABS ─────────────────────────────────────
+  const store = stores.find(s => s.id === activeStoreId);
+  if (!store) return;
 
   const cfg      = (typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom;
   const tabs     = storeTabs[activeStoreId];
@@ -336,9 +431,6 @@ function renderTabBar() {
   if (addrInput && document.activeElement !== addrInput) {
     addrInput.value = activeTabUrl;
   }
-
-  const tabItemsContainer = document.getElementById('tab-items-container');
-  if (!tabItemsContainer) return;
 
   tabItemsContainer.setAttribute('aria-label', `Daftar tab toko ${escapeHtml(store.name)}`);
 
@@ -388,7 +480,15 @@ function renderTabBar() {
       </svg>
     </button>`;
 
-  const fullTabsHtml = tabsHtml + addBtnHtml;
+  const splitBtnHtml = `
+    <button class="tab-split-btn ${isSplitViewActive ? 'active' : ''}" id="btn-toggle-split" title="${isSplitViewActive ? 'Tutup Tampilan Berdampingan (Split View)' : 'Buka Tampilan Berdampingan (Side-by-Side View)'}" aria-label="Buka Tampilan Berdampingan">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="12" y1="3" x2="12" y2="21"/>
+      </svg>
+    </button>`;
+
+  const fullTabsHtml = tabsHtml + addBtnHtml + splitBtnHtml;
   if (tabItemsContainer.dataset.lastHtml === fullTabsHtml) {
     updateNavButtonStates();
     return;
@@ -400,6 +500,7 @@ function renderTabBar() {
   tabItemsContainer.querySelectorAll('.tab-item').forEach(el => {
     el.addEventListener('click', e => {
       if (!e.target.closest('.tab-close') && !e.target.closest('.tab-sync-badge')) {
+        if (typeof setFocusedPane === 'function') setFocusedPane('left');
         switchTab(activeStoreId, el.dataset.tabId);
       }
     });
@@ -425,6 +526,9 @@ function renderTabBar() {
 
   // Bind add tab button
   document.getElementById('btn-add-tab')?.addEventListener('click', () => addTab(activeStoreId));
+
+  // Bind split view toggle button
+  document.getElementById('btn-toggle-split')?.addEventListener('click', () => toggleSplitView());
 
   // Update nav button states
   updateNavButtonStates();
@@ -472,10 +576,17 @@ window.navigateFromAddressBar = navigateFromAddressBar;
 
 // ── Helper: ambil webview aktif saat ini ──────────────────────────────────────
 function getActiveWebview() {
+  if (isSplitViewActive && activeFocusedPane === 'right' && splitRightTabId) {
+    const entry = webviewMap[splitRightTabId];
+    if (entry && entry.webview && (entry.webview.isConnected !== false)) {
+      return entry.webview;
+    }
+  }
+
   if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
     const tabId = activeTabMap[activeStoreId];
     const entry = webviewMap[tabId];
-    if (entry && entry.webview && entry.webview.isConnected) {
+    if (entry && entry.webview && (entry.webview.isConnected !== false)) {
       return entry.webview;
     }
   }
@@ -489,7 +600,9 @@ function getActiveWcId() {
     try {
       const liveId = wv.getWebContentsId();
       if (typeof liveId === 'number' && liveId > 0) {
-        if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
+        if (isSplitViewActive && activeFocusedPane === 'right' && splitRightTabId) {
+          if (webviewMap[splitRightTabId]) webviewMap[splitRightTabId].wcId = liveId;
+        } else if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
           const tabId = activeTabMap[activeStoreId];
           if (webviewMap[tabId]) webviewMap[tabId].wcId = liveId;
         }
@@ -498,6 +611,10 @@ function getActiveWcId() {
     } catch (e) { }
   }
 
+  if (isSplitViewActive && activeFocusedPane === 'right' && splitRightTabId) {
+    const entry = webviewMap[splitRightTabId];
+    if (entry && entry.wcId) return entry.wcId;
+  }
   if (typeof activeStoreId !== 'undefined' && activeStoreId && activeTabMap[activeStoreId]) {
     const tabId = activeTabMap[activeStoreId];
     const entry = webviewMap[tabId];
@@ -507,6 +624,562 @@ function getActiveWcId() {
 }
 window.getActiveWcId = getActiveWcId;
 window.getActiveWebview = getActiveWebview;
+
+// ── Side-by-Side (Split View) Controller Functions ───────────────────────────
+function toggleSplitView(forceState) {
+  const nextState = typeof forceState === 'boolean' ? forceState : !isSplitViewActive;
+  const webviewContainer = document.getElementById('webview-container');
+
+  if (nextState) {
+    isSplitViewActive = true;
+    if (webviewContainer) {
+      webviewContainer.classList.add('split-active');
+      webviewContainer.style.setProperty('--split-ratio', `${splitRatio}%`);
+    }
+
+    if (!splitRightTabId || !splitRightStoreId) {
+      openSplitTabPicker();
+    } else {
+      const store = stores.find(s => s.id === splitRightStoreId);
+      const tab = store ? storeTabs[splitRightStoreId]?.find(t => t.id === splitRightTabId) : null;
+      if (store && tab) {
+        selectRightSplitTab(splitRightStoreId, splitRightTabId);
+      } else {
+        openSplitTabPicker();
+      }
+    }
+  } else {
+    closeSplitView();
+  }
+
+  renderTabBar();
+}
+window.toggleSplitView = toggleSplitView;
+
+function openSplitTabPicker() {
+  isSplitViewActive = true;
+  activeFocusedPane = 'right';
+  const webviewContainer = document.getElementById('webview-container');
+  const pickerEl = document.getElementById('split-tab-picker');
+  const rightBodyEl = document.getElementById('split-right-body');
+
+  if (webviewContainer) {
+    webviewContainer.classList.add('split-active');
+    webviewContainer.style.setProperty('--split-ratio', `${splitRatio}%`);
+  }
+  if (pickerEl) pickerEl.style.display = 'flex';
+  if (rightBodyEl) rightBodyEl.style.display = 'none';
+
+  if (typeof renderSplitTabPicker === 'function') {
+    renderSplitTabPicker();
+  }
+  renderTabBar();
+  updatePaneFocusUI();
+
+  const searchInput = document.getElementById('split-picker-search-input');
+  if (searchInput) {
+    setTimeout(() => searchInput.focus(), 80);
+  }
+}
+window.openSplitTabPicker = openSplitTabPicker;
+
+function cancelSplitTabPicker() {
+  if (splitRightStoreId && splitRightTabId) {
+    const pickerEl = document.getElementById('split-tab-picker');
+    const rightBodyEl = document.getElementById('split-right-body');
+    if (pickerEl) pickerEl.style.display = 'none';
+    if (rightBodyEl) rightBodyEl.style.display = 'flex';
+    setFocusedPane('right');
+  } else {
+    closeSplitView();
+  }
+}
+window.cancelSplitTabPicker = cancelSplitTabPicker;
+
+function selectRightSplitTab(storeId, tabId) {
+  const store = stores.find(s => s.id === storeId);
+  if (!store) return;
+  ensureStoreTabs(store);
+  const tab = storeTabs[storeId]?.find(t => t.id === tabId);
+  if (!tab) return;
+
+  const leftStoreId = activeStoreId;
+  const leftTabId = activeTabMap[activeStoreId];
+  const sLeft = stores.find(s => s.id === leftStoreId);
+
+  // Buat atau perbarui Split Session
+  let session = activeSplitSessionId ? splitSessions.find(s => s.id === activeSplitSessionId) : null;
+  if (!session) {
+    const sessionId = `split-${Date.now()}`;
+    session = {
+      id: sessionId,
+      name: `${sLeft ? sLeft.name : 'Toko A'} + ${store.name}`,
+      leftStoreId,
+      leftTabId,
+      rightStoreId: storeId,
+      rightTabId: tabId,
+      ratio: splitRatio || 50,
+      mode: splitViewDisplayMode || 'responsive',
+      isFavorite: false
+    };
+    splitSessions.push(session);
+    activeSplitSessionId = sessionId;
+  } else {
+    session.rightStoreId = storeId;
+    session.rightTabId = tabId;
+    session.name = `${sLeft ? sLeft.name : 'Toko A'} + ${store.name}`;
+    if (session.isFavorite) {
+      saveFavoriteSplitSessions();
+    }
+  }
+
+  splitRightStoreId = storeId;
+  splitRightTabId = tabId;
+  isSplitViewActive = true;
+  activeFocusedPane = 'right';
+
+  const pickerEl = document.getElementById('split-tab-picker');
+  const rightBodyEl = document.getElementById('split-right-body');
+  const webviewContainer = document.getElementById('webview-container');
+
+  if (pickerEl) pickerEl.style.display = 'none';
+  if (rightBodyEl) rightBodyEl.style.display = 'flex';
+  if (webviewContainer) {
+    webviewContainer.classList.add('split-active');
+    webviewContainer.style.setProperty('--split-ratio', `${splitRatio}%`);
+  }
+  if (typeof showTabInRightPane === 'function') {
+    showTabInRightPane(store, tab);
+  }
+
+  renderTabBar();
+  applySplitDisplayModeUI();
+  updatePaneFocusUI();
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('split_view_opened');
+  }
+}
+window.selectRightSplitTab = selectRightSplitTab;
+
+function saveFavoriteSplitSessions() {
+  try {
+    const favorites = splitSessions
+      .filter(s => s.isFavorite)
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        leftStoreId: s.leftStoreId,
+        leftTabId: s.leftTabId,
+        rightStoreId: s.rightStoreId,
+        rightTabId: s.rightTabId,
+        ratio: s.ratio || 50,
+        mode: s.mode || 'responsive',
+        isFavorite: true
+      }));
+    localStorage.setItem('antigravity_favorite_split_sessions', JSON.stringify(favorites));
+  } catch (e) {
+    console.error('Error saving favorite split sessions:', e);
+  }
+}
+window.saveFavoriteSplitSessions = saveFavoriteSplitSessions;
+
+function loadFavoriteSplitSessions() {
+  try {
+    const raw = localStorage.getItem('antigravity_favorite_split_sessions');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      parsed.forEach(saved => {
+        if (!splitSessions.some(s => s.id === saved.id)) {
+          splitSessions.push({ ...saved, isFavorite: true });
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Error loading favorite split sessions:', e);
+  }
+}
+window.loadFavoriteSplitSessions = loadFavoriteSplitSessions;
+
+function toggleFavoriteSplitSession(sessionId) {
+  let session = splitSessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  session.isFavorite = !session.isFavorite;
+  saveFavoriteSplitSessions();
+
+  if (session.isFavorite) {
+    if (typeof showToast === 'function') showToast(`⭐ Sesi split "${session.name}" disimpan ke Favorit!`, 'success');
+  } else {
+    if (typeof showToast === 'function') showToast(`Sesi split dihapus dari Favorit`, '');
+  }
+
+  renderTabBar();
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
+}
+window.toggleFavoriteSplitSession = toggleFavoriteSplitSession;
+
+function deleteFavoriteSplitSession(sessionId) {
+  const idx = splitSessions.findIndex(s => s.id === sessionId);
+  if (idx !== -1) {
+    splitSessions.splice(idx, 1);
+    saveFavoriteSplitSessions();
+  }
+
+  if (activeSplitSessionId === sessionId) {
+    activeSplitSessionId = null;
+    closeSplitView();
+  } else {
+    if (typeof renderSidebar === 'function') {
+      renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+    }
+  }
+}
+window.deleteFavoriteSplitSession = deleteFavoriteSplitSession;
+
+function activateSplitSession(sessionId) {
+  const session = splitSessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  activeSplitSessionId = session.id;
+  isSplitViewActive = true;
+  activeFocusedPane = 'left';
+
+  activeStoreId = session.leftStoreId;
+  const sLeft = stores.find(s => s.id === session.leftStoreId);
+  if (sLeft) {
+    ensureStoreTabs(sLeft);
+    const leftTabExists = storeTabs[sLeft.id]?.some(t => t.id === session.leftTabId);
+    if (!leftTabExists && storeTabs[sLeft.id]?.length > 0) {
+      session.leftTabId = storeTabs[sLeft.id][0].id;
+    }
+    if (session.leftTabId) {
+      activeTabMap[session.leftStoreId] = session.leftTabId;
+    }
+  }
+
+  splitRightStoreId = session.rightStoreId;
+  const sRight = stores.find(s => s.id === session.rightStoreId);
+  if (sRight) {
+    ensureStoreTabs(sRight);
+    const rightTabExists = storeTabs[sRight.id]?.some(t => t.id === session.rightTabId);
+    if (!rightTabExists && storeTabs[sRight.id]?.length > 0) {
+      session.rightTabId = storeTabs[sRight.id][0].id;
+    }
+    splitRightTabId = session.rightTabId;
+  }
+
+  splitRatio = session.ratio || 50;
+  if (session.mode) {
+    splitViewDisplayMode = session.mode;
+  }
+
+  const webviewContainer = document.getElementById('webview-container');
+  if (webviewContainer) {
+    webviewContainer.classList.add('split-active');
+    webviewContainer.style.setProperty('--split-ratio', `${splitRatio}%`);
+  }
+
+  const pickerEl = document.getElementById('split-tab-picker');
+  const rightBodyEl = document.getElementById('split-right-body');
+  if (pickerEl) pickerEl.style.display = 'none';
+  if (rightBodyEl) rightBodyEl.style.display = 'flex';
+
+  if (sLeft && session.leftTabId) {
+    showTab(session.leftStoreId, session.leftTabId);
+  }
+
+  const tRight = sRight && session.rightTabId ? storeTabs[session.rightStoreId]?.find(t => t.id === session.rightTabId) : null;
+  if (sRight && tRight && typeof showTabInRightPane === 'function') {
+    showTabInRightPane(sRight, tRight);
+  }
+
+  renderTabBar();
+  applySplitDisplayModeUI();
+  updatePaneFocusUI();
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
+}
+window.activateSplitSession = activateSplitSession;
+
+function closeSplitSession(sessionId) {
+  const session = splitSessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  if (session.isFavorite) {
+    // Sesi favorit: jika sedang aktif di layar, tutup view layar saja (tetap tersimpan di sidebar sebagai favorit)
+    if (activeSplitSessionId === sessionId) {
+      activeSplitSessionId = null;
+      closeSplitView();
+    } else {
+      // Jika diklik hapus saat tidak sedang aktif di layar, hapus dari favorit
+      deleteFavoriteSplitSession(sessionId);
+    }
+  } else {
+    // Sesi sementara: hapus dari daftar
+    const idx = splitSessions.findIndex(s => s.id === sessionId);
+    if (idx !== -1) {
+      splitSessions.splice(idx, 1);
+    }
+    if (activeSplitSessionId === sessionId) {
+      activeSplitSessionId = null;
+      closeSplitView();
+    } else {
+      if (typeof renderSidebar === 'function') {
+        renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+      }
+    }
+  }
+}
+window.closeSplitSession = closeSplitSession;
+
+function closeSplitView() {
+  isSplitViewActive = false;
+  activeSplitSessionId = null;
+  activeFocusedPane = 'left';
+
+  const webviewContainer = document.getElementById('webview-container');
+  if (webviewContainer) {
+    webviewContainer.classList.remove('split-active');
+  }
+
+  const pickerEl = document.getElementById('split-tab-picker');
+  const rightBodyEl = document.getElementById('split-right-body');
+
+  if (pickerEl) pickerEl.style.display = 'none';
+  if (rightBodyEl) {
+    rightBodyEl.style.display = 'none';
+    rightBodyEl.querySelectorAll('webview.store-webview').forEach(wv => {
+      wv.classList.remove('visible');
+      wv.style.display = 'none';
+    });
+  }
+
+  updatePaneFocusUI();
+  renderTabBar();
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('split_view_closed');
+  }
+}
+window.closeSplitView = closeSplitView;
+
+function swapSplitPanes() {
+  if (!isSplitViewActive || !splitRightStoreId || !splitRightTabId || !activeStoreId) return;
+
+  const leftStoreId = activeStoreId;
+  const leftTabId = activeTabMap[activeStoreId];
+
+  const rightStoreId = splitRightStoreId;
+  const rightTabId = splitRightTabId;
+
+  // 1. Set toko kanan menjadi toko aktif utama di sisi kiri
+  activeStoreId = rightStoreId;
+  if (rightTabId) {
+    activeTabMap[rightStoreId] = rightTabId;
+  }
+
+  // 2. Set toko kiri lama menjadi toko sisi kanan
+  splitRightStoreId = leftStoreId;
+  splitRightTabId = leftTabId;
+
+  // Update Split Session jika ada
+  if (activeSplitSessionId) {
+    const curSession = splitSessions.find(s => s.id === activeSplitSessionId);
+    if (curSession) {
+      curSession.leftStoreId = rightStoreId;
+      curSession.leftTabId = rightTabId;
+      curSession.rightStoreId = leftStoreId;
+      curSession.rightTabId = leftTabId;
+      const sLeft = stores.find(s => s.id === rightStoreId);
+      const sRight = stores.find(s => s.id === leftStoreId);
+      if (sLeft && sRight) curSession.name = `${sLeft.name} + ${sRight.name}`;
+    }
+  }
+
+  // 3. Tampilkan tab baru di pane kiri
+  const rightStoreObj = stores.find(s => s.id === rightStoreId);
+  const rightTabObj = storeTabs[rightStoreId]?.find(t => t.id === rightTabId);
+  if (rightStoreObj && rightTabObj) {
+    showTab(rightStoreId, rightTabId);
+  }
+
+  // 4. Tampilkan tab lama di pane kanan
+  const leftStoreObj = stores.find(s => s.id === leftStoreId);
+  const leftTabObj = storeTabs[leftStoreId]?.find(t => t.id === leftTabId);
+  if (leftStoreObj && leftTabObj && typeof showTabInRightPane === 'function') {
+    showTabInRightPane(leftStoreObj, leftTabObj);
+  }
+
+  saveStoreTabsState();
+  renderTabBar();
+  if (typeof renderSidebar === 'function') {
+    renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
+  }
+  updatePaneFocusUI();
+
+  showToast('⇄ Posisi tampilan kiri dan kanan ditukar!', 'success');
+}
+window.swapSplitPanes = swapSplitPanes;
+
+function setFocusedPane(pane) {
+  activeFocusedPane = pane;
+  updatePaneFocusUI();
+}
+window.setFocusedPane = setFocusedPane;
+
+function updatePaneFocusUI() {
+  const leftPane = document.getElementById('split-pane-left');
+  const rightPane = document.getElementById('split-pane-right');
+
+  if (leftPane) {
+    if (isSplitViewActive && activeFocusedPane === 'left') {
+      leftPane.classList.add('focused');
+    } else {
+      leftPane.classList.remove('focused');
+    }
+  }
+
+  if (rightPane) {
+    if (isSplitViewActive && activeFocusedPane === 'right') {
+      rightPane.classList.add('focused');
+    } else {
+      rightPane.classList.remove('focused');
+    }
+  }
+
+  // 1. Update visual tab active highlight pada Dual Tab Bar di atas
+  const tabItemsContainer = document.getElementById('tab-items-container');
+  if (tabItemsContainer) {
+    const leftTabEl = tabItemsContainer.querySelector('.split-dual-tab[data-pane="left"]');
+    const rightTabEl = tabItemsContainer.querySelector('.split-dual-tab[data-pane="right"]');
+    if (leftTabEl && rightTabEl) {
+      if (activeFocusedPane === 'left') {
+        leftTabEl.classList.add('active');
+        leftTabEl.setAttribute('aria-selected', 'true');
+        rightTabEl.classList.remove('active');
+        rightTabEl.setAttribute('aria-selected', 'false');
+      } else {
+        rightTabEl.classList.add('active');
+        rightTabEl.setAttribute('aria-selected', 'true');
+        leftTabEl.classList.remove('active');
+        leftTabEl.setAttribute('aria-selected', 'false');
+      }
+    }
+  }
+
+  // 2. Update URL pada Address Bar sesuai panel yang aktif
+  let targetUrl = '';
+  if (isSplitViewActive) {
+    const sLeft = stores.find(s => s.id === activeStoreId);
+    const sRight = stores.find(s => s.id === splitRightStoreId);
+    const tLeft = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
+    const tRight = storeTabs[splitRightStoreId]?.find(t => t.id === splitRightTabId);
+
+    const activeTabObj = (activeFocusedPane === 'right') ? tRight : tLeft;
+    const activeStoreObj = (activeFocusedPane === 'right') ? sRight : sLeft;
+    targetUrl = activeTabObj?.url || activeStoreObj?.url || '';
+  } else {
+    const store = stores.find(s => s.id === activeStoreId);
+    const tab = storeTabs[activeStoreId]?.find(t => t.id === activeTabMap[activeStoreId]);
+    targetUrl = tab?.url || store?.url || '';
+  }
+
+  const activeWv = typeof getActiveWebview === 'function' ? getActiveWebview() : null;
+  if (activeWv && typeof activeWv.getURL === 'function') {
+    try {
+      const cur = activeWv.getURL();
+      if (cur && cur !== 'about:blank') targetUrl = cur;
+    } catch (e) {}
+  }
+
+  const addrInput = document.getElementById('tab-address-input');
+  if (addrInput && document.activeElement !== addrInput && targetUrl) {
+    addrInput.value = targetUrl;
+  }
+
+  // 3. Update status tombol navigasi Back / Forward
+  if (typeof updateNavButtonStates === 'function') {
+    updateNavButtonStates();
+  }
+}
+window.updatePaneFocusUI = updatePaneFocusUI;
+
+// ── Side-by-Side View Display Mode (Responsive Fit vs Horizontal Scroll) ─────
+function setSplitDisplayMode(mode) {
+  splitViewDisplayMode = mode === 'scroll' ? 'scroll' : 'responsive';
+  try {
+    localStorage.setItem('split_view_display_mode', splitViewDisplayMode);
+  } catch (e) {}
+
+  applySplitDisplayModeUI();
+
+  if (splitViewDisplayMode === 'scroll') {
+    showToast('📜 Mode: Scroll Horizontal (Tampilan Desktop Penuh)', 'info');
+  } else {
+    showToast('↔ Mode: Lebar Otomatis (Responsive Auto-Fit)', 'info');
+  }
+
+  if (window.AppTelemetry) {
+    window.AppTelemetry.track('split_display_mode_changed', { mode: splitViewDisplayMode });
+  }
+}
+window.setSplitDisplayMode = setSplitDisplayMode;
+
+function toggleSplitDisplayMode() {
+  const nextMode = splitViewDisplayMode === 'responsive' ? 'scroll' : 'responsive';
+  setSplitDisplayMode(nextMode);
+}
+window.toggleSplitDisplayMode = toggleSplitDisplayMode;
+
+function applySplitDisplayModeUI() {
+  const wvContainer = document.getElementById('webview-container');
+  if (wvContainer) {
+    wvContainer.classList.remove('split-mode-responsive', 'split-mode-scroll');
+    wvContainer.classList.add(`split-mode-${splitViewDisplayMode}`);
+  }
+
+  const iconResp = document.getElementById('split-mode-icon-responsive');
+  const iconScroll = document.getElementById('split-mode-icon-scroll');
+  const modeLabel = document.getElementById('split-mode-label');
+  const toggleBtn = document.getElementById('btn-split-mode-toggle');
+
+  const pickerModeIcon = document.getElementById('split-picker-mode-icon');
+  const pickerModeText = document.getElementById('split-picker-mode-text');
+
+  if (splitViewDisplayMode === 'scroll') {
+    if (iconResp) iconResp.style.display = 'none';
+    if (iconScroll) iconScroll.style.display = '';
+    if (modeLabel) modeLabel.textContent = 'Scroll';
+    if (toggleBtn) {
+      toggleBtn.title = 'Mode saat ini: Scroll Horizontal (Klik untuk ubah ke Lebar Otomatis)';
+      toggleBtn.classList.add('active');
+    }
+    if (pickerModeIcon) pickerModeIcon.textContent = '📜';
+    if (pickerModeText) pickerModeText.textContent = 'Scroll';
+  } else {
+    if (iconResp) iconResp.style.display = '';
+    if (iconScroll) iconScroll.style.display = 'none';
+    if (modeLabel) modeLabel.textContent = 'Fit';
+    if (toggleBtn) {
+      toggleBtn.title = 'Mode saat ini: Lebar Otomatis (Klik untuk ubah ke Scroll Horizontal)';
+      toggleBtn.classList.remove('active');
+    }
+    if (pickerModeIcon) pickerModeIcon.textContent = '↔';
+    if (pickerModeText) pickerModeText.textContent = 'Fit';
+  }
+}
+window.applySplitDisplayModeUI = applySplitDisplayModeUI;
 
 // ── Update state tombol back/forward ─────────────────────────────────────────
 function updateNavButtonStates() {
@@ -609,9 +1282,11 @@ function switchTab(storeId, tabId) {
 
   // Hide previous active webview
   const prevTabId = activeTabMap[storeId];
-  if (prevTabId && webviewMap[prevTabId] && !webviewMap[prevTabId].hibernated) {
-    webviewMap[prevTabId].webview?.classList.remove('visible');
-    if (webviewMap[prevTabId].loading) webviewMap[prevTabId].loading.style.display = 'none';
+  if (prevTabId && prevTabId !== tabId && webviewMap[prevTabId] && !webviewMap[prevTabId].hibernated) {
+    if (!isSplitViewActive || prevTabId !== splitRightTabId) {
+      webviewMap[prevTabId].webview?.classList.remove('visible');
+      if (webviewMap[prevTabId].loading) webviewMap[prevTabId].loading.style.display = 'none';
+    }
   }
 
   activeTabMap[storeId] = tabId;
@@ -626,9 +1301,14 @@ function showTab(storeId, tabId) {
   const tab   = storeTabs[storeId]?.find(t => t.id === tabId);
   if (!store || !tab) return;
 
-  // Batalkan pending background ping untuk tab ini jika ada
-  if (typeof cancelPendingPing === 'function') {
-    cancelPendingPing(tabId);
+  const leftPane = document.getElementById('split-pane-left') || webviewCont;
+
+  // Sembunyikan webview lain yang ada di leftPane
+  if (leftPane) {
+    leftPane.querySelectorAll('webview.store-webview').forEach(el => {
+      el.classList.remove('visible');
+      el.style.display = 'none';
+    });
   }
 
   lastAccessed[tabId] = Date.now();
@@ -640,7 +1320,11 @@ function showTab(storeId, tabId) {
 
   if (entry?.hibernated) {
     if (entry.webview && !isCrashedOrDead) {
-      // Soft wake (Dual-Layer State Retention): webview tetap di DOM, unhide seketika (<30ms)
+      // Pastikan elemen berada di leftPane jika sebelumnya ada di right pane
+      if (leftPane && !leftPane.contains(entry.webview)) {
+        leftPane.appendChild(entry.webview);
+        if (entry.loading) leftPane.appendChild(entry.loading);
+      }
       entry.webview.style.display = '';
       entry.webview.classList.add('visible');
       if (entry.loading) {
@@ -652,7 +1336,7 @@ function showTab(storeId, tabId) {
         try { entry.webview.setAudioMuted(false); } catch (e) { }
       }
       renderTabBar();
-      renderSidebar(getFilteredStores());
+      if (typeof renderSidebar === 'function') renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
       return;
     } else {
       // Hard wake or dead webview recovery: reconstruct it cleanly
@@ -661,10 +1345,10 @@ function showTab(storeId, tabId) {
         try { entry.loading?.remove(); } catch (e) {}
         delete webviewMap[tabId];
       }
-      createWebview(store, tab);
+      createWebview(store, tab, 'left');
       if (typeof manageHotWebviewPool === 'function') manageHotWebviewPool();
       renderTabBar();
-      renderSidebar(getFilteredStores());
+      if (typeof renderSidebar === 'function') renderSidebar(typeof getFilteredStores === 'function' ? getFilteredStores() : stores);
       return;
     }
   }
@@ -676,8 +1360,13 @@ function showTab(storeId, tabId) {
       try { entry.loading?.remove(); } catch (e) {}
       delete webviewMap[tabId];
     }
-    createWebview(store, tab);
+    createWebview(store, tab, 'left');
   } else {
+    // Pastikan elemen berada di leftPane jika sebelumnya ada di right pane
+    if (leftPane && !leftPane.contains(entry.webview)) {
+      leftPane.appendChild(entry.webview);
+      if (entry.loading) leftPane.appendChild(entry.loading);
+    }
     entry.webview.style.display = '';
     entry.webview.classList.add('visible');
     if (entry.loading) {

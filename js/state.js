@@ -9,14 +9,39 @@ let appPath       = ''; // Path ke direktori app (untuk webview preload)
 // storeTabs:    storeId → [{ id, title, url, zoom }]
 // activeTabMap: storeId → tabId
 // webviewMap:   tabId   → { webview: el, loading: el, hibernated: bool, hasDraft: bool }
-// tabSnapshots: tabId   → base64 preview snapshot dataUrl (0ms Ghost Tab Illusion)
 const storeTabs    = {};
 const activeTabMap = {};
 const webviewMap   = {};
-const tabSnapshots = {};
 
 // Unread messages tracking: storeId → total unread count
 const unreadMap = {};
+
+// Side-by-Side (Split View / Dual Workspace) state
+let splitSessions = []; // Array of { id, name, leftStoreId, leftTabId, rightStoreId, rightTabId, ratio, mode, isFavorite }
+let activeSplitSessionId = null;
+let isSplitViewActive = false;
+let splitRatio = 50; // % lebar pane kiri
+let splitRightStoreId = null;
+let splitRightTabId = null;
+let activeFocusedPane = 'left'; // 'left' | 'right'
+let splitPickerFilter = '';
+let splitPickerMarketplace = 'all';
+let splitViewDisplayMode = 'responsive'; // 'responsive' (Auto-Resize) | 'scroll' (Horizontal Scroll Desktop)
+
+// Restore saved split view mode & favorite sessions
+try {
+  const savedMode = localStorage.getItem('split_view_display_mode');
+  if (savedMode === 'scroll' || savedMode === 'responsive') {
+    splitViewDisplayMode = savedMode;
+  }
+  const savedFavs = localStorage.getItem('antigravity_favorite_split_sessions');
+  if (savedFavs) {
+    const parsed = JSON.parse(savedFavs);
+    if (Array.isArray(parsed)) {
+      splitSessions = parsed.map(s => ({ ...s, isFavorite: true }));
+    }
+  }
+} catch (e) {}
 
 // Zoom indicator timer
 let zoomIndicatorTimer = null;

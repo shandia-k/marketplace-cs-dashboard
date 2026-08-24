@@ -177,7 +177,7 @@ function setupWebContentsSecurity(contents, getMainWindow) {
         const electron = require('electron');
         const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : (electron.BrowserWindow.getAllWindows()[0] || null);
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('trigger-find-in-page');
+          mainWindow.webContents.send('trigger-find-in-page', { wcId: contents.id });
         }
       } catch (e) { }
     }
@@ -481,18 +481,16 @@ async function pruneBackgroundMemory() {
   try {
     const electron = require('electron');
 
-    // 1. Bersihkan memory cache & shader cache pada defaultSession & semua partisi aktif
+    // 1. Bersihkan memory HTTP & Image Cache in-memory pada defaultSession & semua partisi aktif
     if (session.defaultSession) {
       try { 
         await session.defaultSession.clearCache(); 
-        await session.defaultSession.clearStorageData({ storages: ['shadercache', 'cachestorage'] });
       } catch (e) { }
     }
 
     for (const s of activeStealthSessions) {
       try { 
         await s.clearCache(); 
-        await s.clearStorageData({ storages: ['shadercache', 'cachestorage'] });
       } catch (e) { }
     }
 

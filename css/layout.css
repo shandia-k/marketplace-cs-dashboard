@@ -452,12 +452,12 @@
   gap: 10px;
 }
 
-/* ==============
-   GLOBAL SLEEK SCROLLBAR
+/* =============================================
+   GLOBAL MODERN SLEEK SCROLLBAR
    ============================================= */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -465,12 +465,19 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
+  background: rgba(145, 145, 165, 0.4);
   border-radius: 99px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  transition: background-color var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--accent-primary, #DF1683);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent-hover, #be106e);
 }
 
 ::-webkit-scrollbar-corner {
@@ -479,5 +486,5 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-hover) transparent;
+  scrollbar-color: rgba(145, 145, 165, 0.4) transparent;
 }
