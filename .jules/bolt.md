@@ -1,0 +1,3 @@
+## 2024-10-24 - Debouncing Synchronous LocalStorage Saves
+**Learning:** In a vanilla JS environment without a Virtual DOM, synchronous operations like writing large state to `localStorage` via `JSON.stringify` on every keystroke (e.g., `saveScratchpadState` during textarea input) block the main thread and cause significant UI thrashing.
+**Action:** When capturing UI state, immediately read the DOM value, but wrap the expensive synchronous `localStorage` I/O operation in a debounce (`setTimeout`) to prevent main thread blocking. Always complement this with a `beforeunload` event listener attached to `window` to synchronously flush any pending saves, ensuring no data loss occurs if the user closes the application before the timeout fires.
