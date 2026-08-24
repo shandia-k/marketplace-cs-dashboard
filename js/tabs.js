@@ -217,7 +217,26 @@ function ensureTabBarShell() {
     </div>
     <div class="tab-nav-separator" aria-hidden="true"></div>
     <div class="tab-items-container" id="tab-items-container" role="tablist"></div>
+    <div class="tab-bar-actions" id="tab-bar-actions">
+      <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru" aria-label="Buka tab baru">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+      <button class="tab-split-btn" id="btn-toggle-split" title="Buka Tampilan Berdampingan (Side-by-Side View)" aria-label="Buka Tampilan Berdampingan">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="12" y1="3" x2="12" y2="21"/>
+        </svg>
+      </button>
+    </div>
   `;
+
+  // Bind Add Tab & Split view buttons (fixed on screen)
+  document.getElementById('btn-add-tab')?.addEventListener('click', () => {
+    if (activeStoreId) addTab(activeStoreId);
+  });
+  document.getElementById('btn-toggle-split')?.addEventListener('click', () => toggleSplitView());
 
   // Bind navigation buttons
   document.getElementById('btn-nav-back')?.addEventListener('click', () => {
@@ -344,6 +363,9 @@ function renderTabBar() {
     }
 
     tabItemsContainer.setAttribute('aria-label', `Daftar tab split berdampingan`);
+
+    const actionsEl = document.getElementById('tab-bar-actions');
+    if (actionsEl) actionsEl.style.display = 'none';
 
     const curSession = activeSplitSessionId ? splitSessions.find(s => s.id === activeSplitSessionId) : null;
     const isFav = !!curSession?.isFavorite;
@@ -473,28 +495,28 @@ function renderTabBar() {
     </div>`;
   }).join('');
 
-  const addBtnHtml = `
-    <button class="tab-add-btn" id="btn-add-tab" title="Buka tab baru untuk ${escapeHtml(store.name)}" aria-label="Buka tab baru untuk ${escapeHtml(store.name)}">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>
-    </button>`;
+  // Update fixed Action Buttons (Add Tab & Split View) di sebelah kanan tab bar
+  const actionsEl = document.getElementById('tab-bar-actions');
+  if (actionsEl) actionsEl.style.display = 'flex';
 
-  const splitBtnHtml = `
-    <button class="tab-split-btn ${isSplitViewActive ? 'active' : ''}" id="btn-toggle-split" title="${isSplitViewActive ? 'Tutup Tampilan Berdampingan (Split View)' : 'Buka Tampilan Berdampingan (Side-by-Side View)'}" aria-label="Buka Tampilan Berdampingan">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-        <line x1="12" y1="3" x2="12" y2="21"/>
-      </svg>
-    </button>`;
+  const addBtn = document.getElementById('btn-add-tab');
+  if (addBtn) {
+    addBtn.title = `Buka tab baru untuk ${escapeHtml(store.name)}`;
+    addBtn.setAttribute('aria-label', `Buka tab baru untuk ${escapeHtml(store.name)}`);
+  }
 
-  const fullTabsHtml = tabsHtml + addBtnHtml + splitBtnHtml;
-  if (tabItemsContainer.dataset.lastHtml === fullTabsHtml) {
+  const splitBtn = document.getElementById('btn-toggle-split');
+  if (splitBtn) {
+    splitBtn.className = `tab-split-btn ${isSplitViewActive ? 'active' : ''}`;
+    splitBtn.title = isSplitViewActive ? 'Tutup Tampilan Berdampingan (Split View)' : 'Buka Tampilan Berdampingan (Side-by-Side View)';
+  }
+
+  if (tabItemsContainer.dataset.lastHtml === tabsHtml) {
     updateNavButtonStates();
     return;
   }
-  tabItemsContainer.dataset.lastHtml = fullTabsHtml;
-  tabItemsContainer.innerHTML = fullTabsHtml;
+  tabItemsContainer.dataset.lastHtml = tabsHtml;
+  tabItemsContainer.innerHTML = tabsHtml;
 
   // Bind tab click (not close)
   tabItemsContainer.querySelectorAll('.tab-item').forEach(el => {
@@ -523,12 +545,6 @@ function renderTabBar() {
       closeTab(activeStoreId, el.dataset.tabId);
     });
   });
-
-  // Bind add tab button
-  document.getElementById('btn-add-tab')?.addEventListener('click', () => addTab(activeStoreId));
-
-  // Bind split view toggle button
-  document.getElementById('btn-toggle-split')?.addEventListener('click', () => toggleSplitView());
 
   // Update nav button states
   updateNavButtonStates();
@@ -1196,7 +1212,7 @@ function updateNavButtonStates() {
   }
 }
 
-function addTab(storeId, url, title) {
+function addTab(storeId, url, title, loadOptions) {
   const store = stores.find(s => s.id === storeId);
   if (!store) return;
   const cfg   = ((typeof MARKETPLACE_CONFIG !== 'undefined' ? MARKETPLACE_CONFIG[store.marketplace] : null) || MARKETPLACE_CONFIG.custom);
@@ -1210,6 +1226,12 @@ function addTab(storeId, url, title) {
     initialUrl: targetUrl,
     zoom: 1.0
   };
+
+  if (loadOptions) {
+    newTab.loadOptions = loadOptions;
+    if (loadOptions.postBody) newTab.postBody = loadOptions.postBody;
+    if (loadOptions.referrer) newTab.referrer = loadOptions.referrer;
+  }
 
   const currentTabId = activeTabMap[storeId];
   const curIdx = storeTabs[storeId].findIndex(t => t.id === currentTabId);
@@ -1228,16 +1250,68 @@ function addTab(storeId, url, title) {
   if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
     window.OnboardingManager.notifyAction('open_tab');
   }
+  return newTab;
 }
 
-// Buka URL sebagai tab baru — dipanggil dari Ctrl+Click atau new-window event
-function openUrlInNewTab(store, url) {
-  if (!url || url === 'about:blank') return;
+// Buka URL sebagai tab baru — dipanggil dari Ctrl+Click, new-window event, atau window.open
+function openUrlInNewTab(store, urlOrPayload) {
+  if (!urlOrPayload) return;
   if (!store || !store.id) return;
+
+  let targetUrl = '';
+  let loadOptions = null;
+
+  if (typeof urlOrPayload === 'string') {
+    targetUrl = urlOrPayload.trim();
+  } else if (typeof urlOrPayload === 'object') {
+    targetUrl = (urlOrPayload.url || '').trim();
+    if (urlOrPayload.postBody || urlOrPayload.referrer) {
+      loadOptions = {
+        postBody: urlOrPayload.postBody,
+        referrer: urlOrPayload.referrer,
+        disposition: urlOrPayload.disposition
+      };
+    }
+  }
+
+  if (!targetUrl) return;
   if (!storeTabs[store.id]) ensureStoreTabs(store);
-  addTab(store.id, url, url.length > 40 ? url.substring(0, 38) + '…' : url);
+
+  let tabTitle = 'Tab Baru';
+  if (targetUrl === 'about:blank') {
+    tabTitle = 'Memuat…';
+  } else if (targetUrl.length > 40) {
+    tabTitle = targetUrl.substring(0, 38) + '…';
+  } else {
+    tabTitle = targetUrl;
+  }
+
+  return addTab(store.id, targetUrl, tabTitle, loadOptions);
 }
 window.openUrlInNewTab = openUrlInNewTab;
+
+function destroyWebview(tabId) {
+  if (!tabId || !webviewMap[tabId]) return;
+  const entry = webviewMap[tabId];
+  if (entry.webview) {
+    try {
+      if (typeof entry.webview.stop === 'function') entry.webview.stop();
+      if (typeof entry.webview.setAudioMuted === 'function') entry.webview.setAudioMuted(true);
+      entry.webview.src = 'about:blank';
+    } catch (e) {}
+    try {
+      entry.webview.remove();
+    } catch (e) {}
+  }
+  if (entry.loading) {
+    try {
+      entry.loading.remove();
+    } catch (e) {}
+  }
+  delete webviewMap[tabId];
+  delete lastAccessed[tabId];
+}
+window.destroyWebview = destroyWebview;
 
 function closeTab(storeId, tabId) {
   const tabs = storeTabs[storeId];
@@ -1249,13 +1323,8 @@ function closeTab(storeId, tabId) {
   const idx = tabs.findIndex(t => t.id === tabId);
   if (idx === -1) return;
 
-  // Remove webview DOM element
-  if (webviewMap[tabId]) {
-    webviewMap[tabId].webview?.remove();
-    webviewMap[tabId].loading?.remove();
-    delete webviewMap[tabId];
-  }
-  delete lastAccessed[tabId];
+  // Hancurkan webview secara bersih dan bebaskan V8 resource
+  destroyWebview(tabId);
 
   storeTabs[storeId] = tabs.filter(t => t.id !== tabId);
   saveStoreTabsState();
@@ -1395,4 +1464,21 @@ function retryTab(storeId, tabId) {
   }
 }
 window.retryTab = retryTab;
+
+// ── App.Tabs Module Interface ───────────────────────────────────────────────
+window.App = window.App || {};
+window.App.Tabs = {
+  activateStore,
+  render: renderTabBar,
+  addTab,
+  closeTab,
+  destroyWebview,
+  switchTab,
+  showTab,
+  createWebview,
+  getActiveWebview,
+  openUrlInNewTab,
+  saveTabsState: saveStoreTabsState,
+  retryTab
+};
 

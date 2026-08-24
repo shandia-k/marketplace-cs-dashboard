@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * js/versions-registry.js
  * Modular Version History & Release Changelog Registry
@@ -31,10 +32,187 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.18',
+      version: '1.0.19',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.18 🚀',
+      pillTag: 'v1.0.19 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Pusat Pemulihan Darurat, Rollback Versi Mandiri, Full Chromium Mimicry & Standarisasi Arsitektur Modular',
+      tagline: 'Pembaruan v1.0.19: Menghadirkan sistem Emergency Rollback & Version Recovery mandiri (zero-dependency) dengan 3 jalur pemicu darurat (Ikon Titlebar, Footer Login, dan Hotkey Ctrl+Alt+R), pelacakan jejak versi pengguna (Version Trail) untuk rekomendasi rollback cerdas saat melompati versi update, pencadangan snapshot lokal otomatis sebelum downgrade, freeze auto-update anti-looping; suite Chromium Mimicry lengkap (Sec-CH-UA Client Hints komprehensif, preservasi payload Form POST & HTTP Referrer saat membuka tab baru, dukungan protokol dokumen blob/data/about:blank); standarisasi struktur layout fixed tab actions; serta refactoring menyeluruh namespace modular (window.App.Utils, window.App.Modals, window.App.Onboarding, window.App.Webview) dan perbaikan zero-delay window exit.',
+      highlights: [
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Pusat Pemulihan & Rollback Darurat',
+          desc: 'Kembalikan aplikasi ke versi stabil sebelumnya secara mandiri langsung dari GitHub Releases atau local registry tanpa perlu download manual dari browser.'
+        },
+        {
+          icon: '🌐',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Chromium Mimicry & POST Preservation',
+          desc: 'Injeksi Client Hints Sec-CH-UA resmi Chrome 126 dan preservasi utuh data Form POST serta HTTP Referrer saat membuka invoice/label resi di tab baru.'
+        },
+        {
+          icon: '⭐',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Version Jump Tracking & Rekomendasi Cerdas',
+          desc: 'Sistem otomatis melacak versi stabil terakhir yang Anda gunakan dan memberikan highlight emas rekomendasi jika Anda melompati beberapa versi pembaruan.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Auto-Snapshot & Zero-Delay Window Close',
+          desc: 'Pencadangan otomatis data toko dan preferensi akun sebelum downgrade, serta perbaikan tombol close window yang merespons seketika dalam 0ms.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Sistem Pemulihan Darurat & Rollback Versi Mandiri',
+          tag: 'Rollback & Recovery',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 11, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Automated Rollback',
+              badgeColor: '#f59e0b',
+              text: 'Mekanisme unduh dan pasang installer versi lama secara otomatis dengan pelaporan progress bar real-time dan transisi restart aplikasi yang mulus.'
+            },
+            {
+              type: 'feature',
+              badge: '3 Fail-Safe Triggers',
+              badgeColor: '#e11d48',
+              text: 'Tiga jalur pemicu independen: Ikon Titlebar di pojok kanan atas, link darurat di Footer Layar Login, dan Global Keyboard Shortcut (Ctrl+Alt+R atau Ctrl+Shift+R).'
+            },
+            {
+              type: 'security',
+              badge: 'Emergency Snapshot',
+              badgeColor: '#10b981',
+              text: 'Pencadangan database lokal otomatis (users.json, stores.json, feedback_tickets.json) ke direktori rollback_backups/ sebelum proses downgrade dimulai.'
+            },
+            {
+              type: 'feature',
+              badge: 'Version Jump Trail',
+              badgeColor: '#8b5cf6',
+              text: 'Pelacakan jejak versi lokal (version_trail.json) dengan banner rekomendasi emas khusus untuk versi stabil terakhir yang sebelumnya berjalan di komputer pengguna.'
+            },
+            {
+              type: 'security',
+              badge: 'Auto-Update Freeze',
+              badgeColor: '#0284c7',
+              text: 'Penguncian target auto-update sementara (skip_update_target) agar setelah rollback berhasil, aplikasi tidak langsung memperbarui diri kembali ke versi bermasalah.'
+            }
+          ]
+        },
+        {
+          category: 'Chromium Mimicry, Form POST Preservation & Navigation Security Suite',
+          tag: 'Chromium Mimicry',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Sec-CH-UA Suite',
+              badgeColor: '#3b82f6',
+              text: 'Injeksi header Client Hints Chromium komprehensif (Sec-CH-UA, Sec-CH-UA-Mobile, Sec-CH-UA-Platform, Sec-CH-UA-Platform-Version, Sec-CH-UA-Arch, Sec-CH-UA-Bitness, Sec-CH-UA-Model) yang 100% identik dengan Google Chrome resmi Windows.'
+            },
+            {
+              type: 'feature',
+              badge: 'Form POST Preservation',
+              badgeColor: '#10b981',
+              text: 'Preservasi utuh payload form POST (data binary/raw bytes, contentType) dan HTTP Referrer saat toko membuka tab cetak faktur/label pengiriman via window.open handler.'
+            },
+            {
+              type: 'security',
+              badge: 'Multi-Protocol Schemes',
+              badgeColor: '#0284c7',
+              text: 'Filter navigasi cerdas yang mendukung protokol http:, https:, about:, blob:, dan data: tanpa memblokir faktur PDF dan preview dokumen invoice marketplace.'
+            },
+            {
+              type: 'feature',
+              badge: 'Webview Mimicry',
+              badgeColor: '#8b5cf6',
+              text: 'Konfigurasi webview standar Chromium dengan allowpopups="true" dan webpreferences plugins=true untuk aktivasi PDF Viewer bawaan.'
+            }
+          ]
+        },
+        {
+          category: 'Refactoring Arsitektur, Code Health & Standarisasi Namespace',
+          tag: 'Codebase Modernization',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            {
+              type: 'perf',
+              badge: 'App.Utils',
+              badgeColor: '#df1683',
+              text: 'Deduplikasi helper string sanitasi (escapeHtml, generateId) ke dalam modul terpusat js/utils.js dengan namespace window.App.Utils.'
+            },
+            {
+              type: 'perf',
+              badge: 'App.Modals',
+              badgeColor: '#3b82f6',
+              text: 'Standarisasi pembersihan memori webview pada modal toko (destroyWebview) dan modularisasi namespace window.App.Modals.'
+            },
+            {
+              type: 'perf',
+              badge: 'App.Onboarding',
+              badgeColor: '#10b981',
+              text: 'Modularisasi panduan onboarding pengguna baru ke namespace window.App.Onboarding.'
+            },
+            {
+              type: 'perf',
+              badge: 'App.Webview',
+              badgeColor: '#0284c7',
+              text: 'Registrasi interface modul terpadu window.App.Webview untuk manajemen hibernasi dan validasi navigasi.'
+            },
+            {
+              type: 'fix',
+              badge: 'Instant Window Close',
+              badgeColor: '#ec4899',
+              text: 'Menghilangkan blocking await pada telemetri flush saat tombol close titlebar diklik, memastikan aplikasi menutup seketika pada klik pertama (0 ms).'
+            },
+            {
+              type: 'feature',
+              badge: 'Fixed Tab Actions',
+              badgeColor: '#f59e0b',
+              text: 'Pemisahan tombol aksi permanen (+ Add Tab, Split View) ke dalam wadah fixed terpisah (#tab-bar-actions) dan penataan flexbox scrollable dengan wheel scrolling.'
+            }
+          ]
+        },
+        {
+          category: 'Integritas Tipe TypeScript & Guardrails Anti-Regresi',
+          tag: 'Type Safety & Testing',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            {
+              type: 'security',
+              badge: 'app-contracts.d.ts',
+              badgeColor: '#3b82f6',
+              text: 'Definisi kontrak tipe TypeScript lengkap untuk antarmuka IPC, ReleaseItem, RollbackPayload, RollbackProgress, dan VersionTrail.'
+            },
+            {
+              type: 'security',
+              badge: '[REG-018 - REG-020]',
+              badgeColor: '#10b981',
+              text: 'Penambahan suite pengujian otomatis katalog regresi REG-018 (Chromium Mimicry), REG-019 (Layout Invariants), dan REG-020 (Rollback & Version Trail).'
+            },
+            {
+              type: 'maintenance',
+              badge: 'Git Cleanliness',
+              badgeColor: '#64748b',
+              text: 'Restrukturisasi .gitignore untuk mengabaikan artefak build, cache partisi Electron, log pengujian, dan file sementara OS.'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.18',
+      badge: 'Stabil 🏢',
+      badgeColor: '#3b82f6',
+      pillTag: 'v1.0.18 🏢',
       releaseDate: 'Agustus 2026',
       title: 'Side-by-Side Dual Workspace (Split View), Ketahanan WhatsApp Web & Modern Sleek Scrollbars',
       tagline: 'Pembaruan v1.0.18: Hadirnya fitur Side-by-Side Split View (Dual Workspace) untuk membuka dan memantau 2 toko/tab sekaligus secara berdampingan dengan resizer fleksibel (20:80 s/d 80:20), interactive thumbnail tab picker, sesi favorit persisten (⭐) di sidebar, tombol tukar posisi instan (⇆), dan mode tampilan Responsive vs Horizontal Scroll; penguatan arsitektur ketahanan WhatsApp Web (V8 1024MB Heap, background anti-throttling bypass, proteksi antrean IndexedDB & WebSocket saat sync, preservasi shader cache WebGL, bebas putus koneksi); serta injeksi kustom Modern Sleek Scrollbars 6px beraksen CS Magenta pada seluruh tampilan webview toko.',

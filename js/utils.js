@@ -7,10 +7,12 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+window.escapeHtml = escapeHtml;
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
 }
+window.generateId = generateId;
 
 // ── Debounce Utility ─────────────────────────────────────────────────────────
 function debounce(func, wait = 180) {
@@ -396,3 +398,16 @@ function showPromptDialog(options = {}) {
 }
 
 window.showPromptDialog = showPromptDialog;
+
+// ── App.Utils Module Interface ──────────────────────────────────────────────
+window.App = window.App || {};
+window.App.Utils = {
+  escapeHtml,
+  generateId,
+  debounce,
+  showToast,
+  showZoomIndicator,
+  playNotificationSound,
+  showConfirmDialog,
+  showPromptDialog
+};

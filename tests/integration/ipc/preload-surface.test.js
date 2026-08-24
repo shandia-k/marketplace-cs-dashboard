@@ -48,7 +48,7 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
 
   test('should contain all required Store and User management methods', () => {
     const requiredMethods = [
-      'getStores', 'saveStores', 'getAppPath', 'getAppMemoryMB', 'getAppMetricsDetails',
+      'getStores', 'saveStores', 'getAppPath', 'getAppMemoryMB', 'getAppMetricsDetails', 'getDevMimicryInfo',
       'submitFeedback', 'captureScreen', 'sendTelemetry', 'getUsers', 'getUserProfile',
       'createUser', 'updateUserProfile', 'deleteUser', 'verifyUserPin', 'loginUser',
       'logoutUser', 'getSecurityQuestion', 'resetUserPassword', 'updateSecurityQuestion',
@@ -77,7 +77,8 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
       'loadScratchpadFile', 'saveScratchpadFile', 'readClipboard', 'writeClipboard',
       'onClipboardChanged', 'getCacheSize', 'clearSafeCache', 'clearStoreCache',
       'deepCleanStore', 'deepCleanAll', 'pruneBackgroundMemory', 'getAppVersion', 'checkForUpdates',
-      'restartToUpdate', 'onUpdaterMessage', 'onUpdaterProgress'
+      'restartToUpdate', 'onUpdaterMessage', 'onUpdaterProgress',
+      'getReleaseHistory', 'getVersionTrail', 'startVersionRollback', 'onRollbackProgress'
     ];
 
     utilityMethods.forEach(method => {

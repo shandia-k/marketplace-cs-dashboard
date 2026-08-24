@@ -356,5 +356,116 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     // 2. Pastikan memory trimmer service mengekspos fungsi trimWorkingSet
     assert.equal(typeof memoryTrimmer.trimWorkingSet, 'function', 'memory-trimmer.service must export trimWorkingSet');
   });
+
+  test('[REG-018] Chromium Mimicry: Form POST Payload Preservation, Sec-CH-UA Client Hints, and about:blank Async Lifecycle', () => {
+    const constants = require('../../src/main/config/constants');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+    const tabsCode = fs.readFileSync(path.join(__dirname, '../../js/tabs.js'), 'utf8');
+    const webviewCode = fs.readFileSync(path.join(__dirname, '../../js/webview.js'), 'utf8');
+    const appCode = fs.readFileSync(path.join(__dirname, '../../js/app.js'), 'utf8');
+
+    // 1. Pastikan konstanta Client Hints Chrome didefinisikan secara lengkap
+    assert.ok(constants.CHROME_CLIENT_HINTS, 'constants.js must define and export CHROME_CLIENT_HINTS');
+    assert.ok(constants.CHROME_CLIENT_HINTS['Sec-CH-UA'].includes('Chromium'), 'Sec-CH-UA must contain Chromium');
+    assert.equal(constants.CHROME_CLIENT_HINTS['Sec-CH-UA-Mobile'], '?0');
+    assert.equal(constants.CHROME_CLIENT_HINTS['Sec-CH-UA-Platform'], '"Windows"');
+
+    // 2. Pastikan session.service.js menyuntikkan Client Hints dan mengekstrak postBody & referrer
+    assert.ok(sessionServiceCode.includes('CHROME_CLIENT_HINTS'), 'session.service.js must use CHROME_CLIENT_HINTS');
+    assert.ok(sessionServiceCode.includes('serializedPostBody'), 'session.service.js must serialize postBody');
+    assert.ok(sessionServiceCode.includes('referrer: referrer'), 'session.service.js must forward referrer');
+
+    // 3. Pastikan app.js meneruskan data payload ke openUrlInNewTab
+    assert.ok(appCode.includes('openUrlInNewTab(targetStore, data)'), 'app.js must pass full data payload to openUrlInNewTab');
+
+    // 4. Pastikan tabs.js menangani loadOptions, postBody, referrer, dan about:blank
+    assert.ok(tabsCode.includes('loadOptions'), 'tabs.js must support loadOptions');
+    assert.ok(tabsCode.includes('urlOrPayload.postBody'), 'tabs.js must extract postBody from payload');
+
+    // 5. Pastikan webview.js mengeksekusi loadURL dengan postData saat ada payload POST
+    assert.ok(webviewCode.includes('hasPostOrReferrer'), 'webview.js must detect POST payload or referrer');
+    assert.ok(webviewCode.includes('loadOpts.postData'), 'webview.js must set postData in load options');
+    assert.ok(webviewCode.includes('loadOpts.extraHeaders'), 'webview.js must set extraHeaders for Content-Type');
+
+    // 6. Pastikan webview mengaktifkan allowpopups, plugins (PDF viewer), dan skema blob/data
+    assert.ok(webviewCode.includes("setAttribute('allowpopups', 'true')"), 'webview.js must enable allowpopups attribute');
+    assert.ok(webviewCode.includes('plugins=true'), 'webview.js must enable Chromium plugins for PDF/invoice rendering');
+    assert.ok(webviewCode.includes('blob:'), 'webview.js must support blob URLs');
+    assert.ok(sessionServiceCode.includes('blob:'), 'session.service.js must permit blob scheme in window open handler');
+  });
+
+  test('[REG-019] DOM & Layout Invariants: Fixed Tab Actions, Scrollbar Suppression, and Scratchpad Wheel Scrolling', () => {
+    const tabsCss = fs.readFileSync(path.join(__dirname, '../../css/tabs.css'), 'utf8');
+    const componentsCss = fs.readFileSync(path.join(__dirname, '../../css/components.css'), 'utf8');
+    const tabsJs = fs.readFileSync(path.join(__dirname, '../../js/tabs.js'), 'utf8');
+    const scratchpadJs = fs.readFileSync(path.join(__dirname, '../../js/scratchpad.js'), 'utf8');
+
+    // 1. Tab Bar Actions Invariant (Add & Split buttons must be in dedicated fixed container, outside tab-items-container)
+    assert.ok(tabsJs.includes('tab-bar-actions'), 'tabs.js must render action buttons inside #tab-bar-actions');
+    assert.ok(!tabsJs.includes('tabsHtml + addBtnHtml'), 'tabs.js must not concatenate action buttons inside scrollable tab items container');
+    assert.ok(tabsCss.includes('.tab-bar-actions'), 'tabs.css must define .tab-bar-actions styling');
+
+    // 2. Tab Bar Scrollbar Invariant (Zero scrollbar height on parent tab bar)
+    assert.ok(tabsCss.includes('.tab-bar::-webkit-scrollbar'), 'tabs.css must suppress .tab-bar scrollbar');
+    assert.ok(tabsCss.includes('scrollbar-width: none'), 'tabs.css must declare W3C scrollbar-width: none');
+
+    // 3. Scratchpad Flexbox & Horizontal Wheel Scrolling Invariants
+    assert.ok(componentsCss.includes('.scratchpad-tabs'), 'components.css must define .scratchpad-tabs');
+    assert.ok(componentsCss.includes('min-width: 0'), 'components.css .scratchpad-tabs must have min-width: 0 for proper flex shrinking');
+    assert.ok(componentsCss.includes('.scratchpad-tab'), 'components.css must define .scratchpad-tab');
+    assert.ok(scratchpadJs.includes('scrollLeft +='), 'scratchpad.js must implement mouse wheel listener for horizontal scrolling');
+    assert.ok(scratchpadJs.includes('scrollIntoView'), 'scratchpad.js must auto-scroll active tab into view');
+  });
+
+  test('[REG-020] Application Version Rollback: Pre-Downgrade Safety Snapshot, Release Parser, and Non-Looping Auto-Update Freeze', () => {
+    const storageService = require('../../src/main/services/storage.service');
+    const updaterService = require('../../src/main/services/updater.service');
+    const registerIpcCode = fs.readFileSync(path.join(__dirname, '../../src/main/ipc/register-ipc.js'), 'utf8');
+    const preloadCode = fs.readFileSync(path.join(__dirname, '../../preload.js'), 'utf8');
+    const updaterJsCode = fs.readFileSync(path.join(__dirname, '../../js/updater.js'), 'utf8');
+
+    // 1. Pastikan fungsi createEmergencyRollbackSnapshot & recordVersionLaunch tersedia di storage.service.js
+    assert.equal(typeof storageService.createEmergencyRollbackSnapshot, 'function', 'storage.service.js must export createEmergencyRollbackSnapshot');
+    assert.equal(typeof storageService.recordVersionLaunch, 'function', 'storage.service.js must export recordVersionLaunch');
+    assert.equal(typeof storageService.getVersionTrail, 'function', 'storage.service.js must export getVersionTrail');
+
+    const snapshotRes = storageService.createEmergencyRollbackSnapshot('1.0.18', '1.0.17');
+    assert.ok(snapshotRes.success, 'createEmergencyRollbackSnapshot must succeed');
+    assert.ok(snapshotRes.snapshotPath, 'createEmergencyRollbackSnapshot must return snapshotPath');
+
+    // Test version trail recording with teardown restoration
+    const origTrail = storageService.getVersionTrail();
+    try {
+      storageService.recordVersionLaunch('1.0.15');
+      const trailUpdated = storageService.recordVersionLaunch('1.0.18');
+      assert.equal(trailUpdated.currentVersion, '1.0.18', 'Current version must be 1.0.18');
+      assert.equal(trailUpdated.previousStableVersion, '1.0.15', 'Previous stable version must track 1.0.15');
+    } finally {
+      storageService.recordVersionLaunch('1.0.18');
+      storageService.recordVersionLaunch('1.0.19');
+    }
+
+    // 2. Pastikan updater.service.js mengekspos fetchReleaseHistory dan executeRollback
+    assert.equal(typeof updaterService.fetchReleaseHistory, 'function', 'updater.service.js must export fetchReleaseHistory');
+    assert.equal(typeof updaterService.executeRollback, 'function', 'updater.service.js must export executeRollback');
+
+    // 3. Pastikan register-ipc.js dan preload.js memiliki channel rollback lengkap
+    assert.ok(registerIpcCode.includes("'get-release-history'"), 'register-ipc.js must register get-release-history handler');
+    assert.ok(registerIpcCode.includes("'get-version-trail'"), 'register-ipc.js must register get-version-trail handler');
+    assert.ok(registerIpcCode.includes("'start-version-rollback'"), 'register-ipc.js must register start-version-rollback handler');
+    assert.ok(preloadCode.includes('getReleaseHistory:'), 'preload.js must expose getReleaseHistory');
+    assert.ok(preloadCode.includes('getVersionTrail:'), 'preload.js must expose getVersionTrail');
+    assert.ok(preloadCode.includes('startVersionRollback:'), 'preload.js must expose startVersionRollback');
+    assert.ok(preloadCode.includes('onRollbackProgress:'), 'preload.js must expose onRollbackProgress');
+
+    // 4. Pastikan updater.js menerapkan freeze update dan deteksi versi sebelumnya
+    assert.ok(updaterJsCode.includes('skip_update_target'), 'updater.js must set skip_update_target in localStorage during rollback');
+    assert.ok(updaterJsCode.includes('buildReleaseCardsHtml'), 'updater.js must build release cards with previous version highlight');
+    assert.ok(updaterJsCode.includes('Versi Terakhir yang Anda Gunakan'), 'updater.js must show previous user version recommendation banner');
+    assert.ok(updaterJsCode.includes('openEmergencyRollbackModal'), 'updater.js must export openEmergencyRollbackModal');
+    assert.ok(updaterJsCode.includes('confirmAndRollback'), 'updater.js must export confirmAndRollback');
+  });
 });
+
+
 

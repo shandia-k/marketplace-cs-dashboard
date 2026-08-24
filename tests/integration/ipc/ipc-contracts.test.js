@@ -77,7 +77,10 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
       if (mod === '../services/updater.service') {
         return {
           getAppVersion: () => '1.0.14',
-          checkForUpdates: () => {}
+          checkForUpdates: () => {},
+          restartToUpdate: () => {},
+          fetchReleaseHistory: async () => [],
+          executeRollback: async () => ({ success: true })
         };
       }
       if (mod === '../services/search.service') {
@@ -132,7 +135,8 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
     const essentialChannels = [
       'get-stores', 'save-stores', 'login-user', 'logout-user',
       'verify-user-pin', 'get-users', 'get-user-profile', 'create-user',
-      'submit-feedback', 'capture-screen', 'send-telemetry',
+      'submit-feedback', 'capture-screen', 'send-telemetry', 'get-dev-mimicry-info',
+      'get-release-history', 'get-version-trail', 'start-version-rollback',
       'feedback:get-tickets', 'feedback:get-ticket', 'feedback:create-ticket',
       'feedback:add-reply', 'feedback:update-status', 'feedback:sync',
       'feedback:mark-read', 'feedback:get-unread-count'

@@ -4,24 +4,24 @@
 .tab-bar {
   height: 36px;
   min-height: 36px;
+  max-height: 36px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   gap: 2px;
   padding: 0 6px;
   flex-shrink: 0;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .tab-bar::-webkit-scrollbar {
-  height: 2px;
-}
-
-.tab-bar::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 99px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Nav Controls (Back, Forward, Refresh) */
@@ -152,12 +152,17 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
+  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .tab-items-container::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Tab Item */
@@ -277,6 +282,16 @@
   color: #f87171;
 }
 
+/* Tab Bar Fixed Actions (Add Tab & Split View) */
+.tab-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding-left: 2px;
+}
+
 /* Add New Tab Button */
 .tab-add-btn {
   width: 26px;
@@ -292,7 +307,7 @@
   flex-shrink: 0;
   font-size: 16px;
   line-height: 1;
-  margin-left: 2px;
+  margin-left: 0;
   transition: all var(--transition-fast);
 }
 

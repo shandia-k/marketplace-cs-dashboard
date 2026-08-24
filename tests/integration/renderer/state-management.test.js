@@ -60,4 +60,39 @@ describe('Level 5: Renderer State Management Tests (js/state.js)', () => {
     assert.equal(stateContext.activeTabMap[storeId], 'tab-1');
     assert.equal(stateContext.unreadMap[storeId], 5);
   });
+
+  test('should expose clean window.App.State module interface', () => {
+    const stateCode = fs.readFileSync(path.join(__dirname, '../../../js/state.js'), 'utf8');
+    const fn = new Function('window', 'document', 'localStorage', `${stateCode}; return window.App;`);
+    const appNamespace = fn(sandbox.window, sandbox.document, sandbox.localStorage);
+
+    assert.ok(appNamespace, 'window.App must be defined');
+    assert.ok(appNamespace.State, 'window.App.State must be defined');
+    assert.equal(typeof appNamespace.State.getStores, 'function');
+    assert.equal(typeof appNamespace.State.getActiveStoreId, 'function');
+    assert.equal(typeof appNamespace.State.getStoreTabs, 'function');
+    assert.equal(typeof appNamespace.State.subscribe, 'function');
+    assert.equal(typeof appNamespace.State.dispatch, 'function');
+  });
+
+  test('should dispatch events and notify subscribers in reactive state store', () => {
+    const stateCode = fs.readFileSync(path.join(__dirname, '../../../js/state.js'), 'utf8');
+    const fn = new Function('window', 'document', 'localStorage', `${stateCode}; return window.App.State;`);
+    const state = fn(sandbox.window, sandbox.document, sandbox.localStorage);
+
+    let storeActivatedPayload = null;
+    const unsub = state.subscribe('STORE_ACTIVATED', (payload) => {
+      storeActivatedPayload = payload;
+    });
+
+    state.dispatch('STORE_ACTIVATED', { storeId: 'shopee-123' });
+    assert.deepEqual(storeActivatedPayload, { storeId: 'shopee-123' });
+    assert.equal(state.getActiveStoreId(), 'shopee-123');
+
+    // Test unsubscribe
+    unsub();
+    state.dispatch('STORE_ACTIVATED', { storeId: 'tokopedia-456' });
+    assert.deepEqual(storeActivatedPayload, { storeId: 'shopee-123' }, 'Callback must not be invoked after unsubscribe');
+    assert.equal(state.getActiveStoreId(), 'tokopedia-456', 'State must still be updated by dispatch');
+  });
 });

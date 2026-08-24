@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false,
+    "noEmit": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "types/*"]
+    }
+  },
+  "include": [
+    "js/**/*",
+    "src/**/*",
+    "types/**/*",
+    "main.js",
+    "preload.js",
+    "webview-preload.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

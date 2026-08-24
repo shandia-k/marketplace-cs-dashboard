@@ -538,12 +538,14 @@ async function deleteStore(storeId) {
   });
   if (!confirmed) return;
 
-  // Remove all tab webviews for this store
+  // Remove all tab webviews for this store safely
   const tabs = storeTabs[storeId] || [];
   tabs.forEach(tab => {
-    if (webviewMap[tab.id]) {
-      webviewMap[tab.id].webview?.remove();
-      webviewMap[tab.id].loading?.remove();
+    if (typeof destroyWebview === 'function') {
+      destroyWebview(tab.id);
+    } else if (webviewMap[tab.id]) {
+      try { webviewMap[tab.id].webview?.remove(); } catch (e) {}
+      try { webviewMap[tab.id].loading?.remove(); } catch (e) {}
       delete webviewMap[tab.id];
     }
   });
@@ -589,6 +591,8 @@ function openSettings(defaultTab = 'stores') {
     document.getElementById('tab-btn-account')?.click();
   } else if (defaultTab === 'cache') {
     document.getElementById('tab-btn-cache')?.click();
+  } else if (defaultTab === 'versions') {
+    document.getElementById('tab-btn-versions')?.click();
   } else if (defaultTab === 'superadmin') {
     document.getElementById('tab-btn-superadmin')?.click();
   } else {
@@ -1436,9 +1440,13 @@ async function importConfig() {
     
     // 1. Bersihkan seluruh webview lama dari DOM & state untuk mencegah memory leak
     Object.keys(webviewMap).forEach(tabId => {
-      webviewMap[tabId]?.webview?.remove();
-      webviewMap[tabId]?.loading?.remove();
-      delete webviewMap[tabId];
+      if (typeof destroyWebview === 'function') {
+        destroyWebview(tabId);
+      } else {
+        try { webviewMap[tabId]?.webview?.remove(); } catch (e) {}
+        try { webviewMap[tabId]?.loading?.remove(); } catch (e) {}
+        delete webviewMap[tabId];
+      }
     });
     Object.keys(storeTabs).forEach(sid => delete storeTabs[sid]);
     Object.keys(activeTabMap).forEach(sid => delete activeTabMap[sid]);
@@ -1661,4 +1669,20 @@ document.getElementById('btn-ocr-result-done')?.addEventListener('click', closeO
 
 window.showOcrResultModal = showOcrResultModal;
 window.closeOcrResultModal = closeOcrResultModal;
+
+// ── App.Modals Module Interface ─────────────────────────────────────────────
+window.App = window.App || {};
+window.App.Modals = {
+  openAddStore: openAddModal,
+  openEditStore: openEditModal,
+  closeStoreModal: closeModal,
+  saveStore,
+  deleteStore,
+  openSettings,
+  closeSettings,
+  renderSettingsAccountTab,
+  renderSuperAdminPanel,
+  showOcrResultModal,
+  closeOcrResultModal
+};
 

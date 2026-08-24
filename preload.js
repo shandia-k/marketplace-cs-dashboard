@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getAppMemoryMB: () => ipcRenderer.invoke('get-app-memory-mb'),
   getAppMetricsDetails: () => ipcRenderer.invoke('get-app-metrics-details'),
+  getDevMimicryInfo: () => ipcRenderer.invoke('get-dev-mimicry-info'),
   submitFeedback: (data) => ipcRenderer.invoke('submit-feedback', data),
   
   // 2-Way Interactive Feedback & Ticketing
@@ -69,12 +70,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deepCleanAll: (username) => ipcRenderer.invoke('deep-clean-all', username),
   pruneBackgroundMemory: () => ipcRenderer.invoke('prune-background-memory'),
 
-  // Auto Updater
+  // Auto Updater & Version Rollback
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   restartToUpdate: () => ipcRenderer.send('restart-to-update'),
   onUpdaterMessage: (callback) => ipcRenderer.on('updater-message', (_event, value) => callback(value)),
   onUpdaterProgress: (callback) => ipcRenderer.on('updater-progress', (_event, value) => callback(value)),
+  getReleaseHistory: () => ipcRenderer.invoke('get-release-history'),
+  getVersionTrail: () => ipcRenderer.invoke('get-version-trail'),
+  startVersionRollback: (payload) => ipcRenderer.invoke('start-version-rollback', payload),
+  onRollbackProgress: (callback) => ipcRenderer.on('rollback-progress', (_event, value) => callback(value)),
 
   // Crash Guard Lifecycle & Tab Manager
   onWebviewRenderProcessGone: (callback) => ipcRenderer.on('webview-render-process-gone', (_event, value) => callback(value)),

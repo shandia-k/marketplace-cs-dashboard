@@ -244,6 +244,103 @@ function safeDeletePartitionDisk(part) {
   }
 }
 
+function createEmergencyRollbackSnapshot(currentVersion, targetVersion) {
+  try {
+    const userData = getUserDataPath();
+    const backupDir = path.join(userData, 'rollback_backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const snapshot = {
+      timestamp: Date.now(),
+      createdAt: new Date().toISOString(),
+      fromVersion: currentVersion || 'unknown',
+      toVersion: targetVersion || 'unknown',
+      files: {}
+    };
+
+    // Backup all critical json files
+    const fileNames = ['users.json', 'stores.json', 'feedback_tickets.json'];
+    // Check if there are user-specific stores
+    try {
+      const allFiles = fs.readdirSync(userData);
+      allFiles.forEach(f => {
+        if (f.startsWith('stores_') && f.endsWith('.json')) {
+          fileNames.push(f);
+        }
+      });
+    } catch (e) {}
+
+    fileNames.forEach(fn => {
+      const p = path.join(userData, fn);
+      if (fs.existsSync(p)) {
+        try {
+          snapshot.files[fn] = JSON.parse(fs.readFileSync(p, 'utf8'));
+        } catch (e) {
+          snapshot.files[fn] = fs.readFileSync(p, 'utf8');
+        }
+      }
+    });
+
+    const safeTarget = String(targetVersion || 'old').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const snapshotFileName = `snapshot_v${currentVersion}_to_v${safeTarget}_${Date.now()}.json`;
+    const snapshotPath = path.join(backupDir, snapshotFileName);
+
+    atomicWriteJsonSync(snapshotPath, snapshot);
+    return { success: true, snapshotPath, snapshotFileName };
+  } catch (err) {
+    console.error('Failed to create emergency rollback snapshot:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+function getVersionTrailFilePath() {
+  return path.join(getUserDataPath(), 'version_trail.json');
+}
+
+function getVersionTrail() {
+  try {
+    const p = getVersionTrailFilePath();
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error reading version_trail.json:', e);
+  }
+  return { currentVersion: null, previousStableVersion: null, history: [] };
+}
+
+function recordVersionLaunch(currentVersion) {
+  try {
+    if (!currentVersion) return getVersionTrail();
+    const trail = getVersionTrail();
+    if (!Array.isArray(trail.history)) {
+      trail.history = [];
+    }
+
+    if (!trail.currentVersion) {
+      trail.currentVersion = currentVersion;
+      if (!trail.history.includes(currentVersion)) {
+        trail.history.push(currentVersion);
+      }
+    } else if (trail.currentVersion !== currentVersion) {
+      trail.previousStableVersion = trail.currentVersion;
+      trail.currentVersion = currentVersion;
+      if (!trail.history.includes(currentVersion)) {
+        trail.history.push(currentVersion);
+      }
+    }
+
+    trail.updatedAt = new Date().toISOString();
+    atomicWriteJsonSync(getVersionTrailFilePath(), trail);
+    return trail;
+  } catch (e) {
+    console.error('Error recording version launch:', e);
+    return { currentVersion, previousStableVersion: null, history: [currentVersion] };
+  }
+}
+
 module.exports = {
   getUserDataPath,
   getUsersFilePath,
@@ -257,5 +354,9 @@ module.exports = {
   readUsers,
   saveUsers,
   isValidPartition,
-  safeDeletePartitionDisk
+  safeDeletePartitionDisk,
+  createEmergencyRollbackSnapshot,
+  getVersionTrail,
+  recordVersionLaunch
 };
+

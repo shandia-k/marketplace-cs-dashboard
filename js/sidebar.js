@@ -480,6 +480,16 @@ window.expandSidebar                 = expandSidebar;
 window.collapseSidebar               = collapseSidebar;
 window.initSidebarHoverAndPin        = initSidebarHoverAndPin;
 
+// ── App.Sidebar Module Interface ────────────────────────────────────────────
+window.App = window.App || {};
+window.App.Sidebar = {
+  render: renderSidebar,
+  toggle: toggleSidebar,
+  expand: expandSidebar,
+  collapse: collapseSidebar,
+  togglePin: togglePinSidebar
+};
+
 function initSidebarModules() {
   initSidebarScrollAffordance();
   initSidebarHoverAndPin();

@@ -8,7 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const {
   cleanChromeUserAgent,
-  cleanFirefoxUserAgent
+  cleanFirefoxUserAgent,
+  CHROME_CLIENT_HINTS
 } = require('../config/constants');
 const {
   getUserDataPath,
@@ -123,13 +124,24 @@ function setupSessionStealthGuard(sess, getMainWindow) {
         delete requestHeaders['Sec-CH-UA-Platform'];
         delete requestHeaders['Sec-CH-UA-Platform-Version'];
         delete requestHeaders['Sec-CH-UA-Full-Version-List'];
+        delete requestHeaders['Sec-CH-UA-Arch'];
+        delete requestHeaders['Sec-CH-UA-Bitness'];
+        delete requestHeaders['Sec-CH-UA-Model'];
         delete requestHeaders['sec-ch-ua'];
         delete requestHeaders['sec-ch-ua-mobile'];
         delete requestHeaders['sec-ch-ua-platform'];
         delete requestHeaders['sec-ch-ua-platform-version'];
         delete requestHeaders['sec-ch-ua-full-version-list'];
+        delete requestHeaders['sec-ch-ua-arch'];
+        delete requestHeaders['sec-ch-ua-bitness'];
+        delete requestHeaders['sec-ch-ua-model'];
       } else {
         requestHeaders['User-Agent'] = cleanChromeUserAgent;
+        if (CHROME_CLIENT_HINTS) {
+          Object.entries(CHROME_CLIENT_HINTS).forEach(([k, v]) => {
+            requestHeaders[k] = v;
+          });
+        }
       }
 
       delete requestHeaders['X-Requested-With'];
@@ -233,27 +245,41 @@ function setupWebContentsSecurity(contents, getMainWindow) {
   contents.on('will-navigate', (event, url) => {
     try {
       const parsed = new URL(url);
-      if (['file:', 'javascript:', 'data:', 'vbscript:'].includes(parsed.protocol)) {
+      if (['file:', 'javascript:', 'vbscript:'].includes(parsed.protocol)) {
         console.warn('Blocked dangerous webview navigation scheme:', url);
         event.preventDefault();
         return;
       }
     } catch (e) {
-      event.preventDefault();
+      if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+        event.preventDefault();
+      }
     }
   });
 
-  contents.setWindowOpenHandler(({ url, disposition, features }) => {
+  contents.setWindowOpenHandler((details) => {
     try {
-      const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return { action: 'deny' };
+      const { url, disposition, features, referrer, postBody } = details || {};
+      const isAboutBlank = !url || url === 'about:blank';
+      
+      if (!isAboutBlank) {
+        try {
+          const parsed = new URL(url);
+          if (!['http:', 'https:', 'about:', 'blob:', 'data:'].includes(parsed.protocol)) {
+            return { action: 'deny' };
+          }
+        } catch (errUrl) {
+          if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+            return { action: 'deny' };
+          }
+        }
       }
-      if (url.includes('/widget/hovercard') || url.includes('contacts.google.com/widget')) {
+
+      if (url && (url.includes('/widget/hovercard') || url.includes('contacts.google.com/widget'))) {
         return { action: 'deny' };
       }
 
-      const lowerUrl = url.toLowerCase();
+      const lowerUrl = (url || '').toLowerCase();
       const isOAuth = lowerUrl.includes('accounts.google.com') ||
         lowerUrl.includes('accounts.youtube.com') ||
         lowerUrl.includes('appleid.apple.com') ||
@@ -290,13 +316,43 @@ function setupWebContentsSecurity(contents, getMainWindow) {
         };
       }
 
+      let serializedPostBody = null;
+      if (postBody) {
+        let serializedData = null;
+        if (Array.isArray(postBody.data)) {
+          serializedData = postBody.data.map(item => {
+            if (item && item.bytes) {
+              return {
+                type: item.type || 'rawData',
+                bytes: Buffer.isBuffer(item.bytes) ? item.bytes : Buffer.from(item.bytes)
+              };
+            }
+            return item;
+          });
+        } else if (Buffer.isBuffer(postBody.data)) {
+          serializedData = [{ type: 'rawData', bytes: postBody.data }];
+        } else if (typeof postBody.data === 'string') {
+          serializedData = [{ type: 'rawData', bytes: Buffer.from(postBody.data) }];
+        }
+
+        serializedPostBody = {
+          contentType: postBody.contentType || 'application/x-www-form-urlencoded',
+          data: serializedData
+        };
+      }
+
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('webview-open-new-tab', {
           wcId: contents.id,
-          url: url
+          url: url || 'about:blank',
+          referrer: referrer || null,
+          postBody: serializedPostBody,
+          disposition: disposition || 'default'
         });
       }
-    } catch (e) { }
+    } catch (e) {
+      console.warn('[Window Open Guard] Error handling window open:', e);
+    }
     return { action: 'deny' };
   });
 

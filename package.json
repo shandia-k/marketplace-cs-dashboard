@@ -1,6 +1,6 @@
 {
   "name": "marketplace-cs-dashboard",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "Dashboard CS Multi-Marketplace - Kelola semua akun chat marketplace dalam 1 jendela",
   "main": "main.js",
   "scripts": {
@@ -16,6 +16,7 @@
     "test:smoke": "node tests/run-all-tests.js --smoke",
     "test:e2e": "playwright test",
     "test:all": "node tests/run-all-tests.js && playwright test",
+    "check": "node scripts/anti-regression-guard.js",
     "guard": "node scripts/anti-regression-guard.js",
     "validate": "node scripts/validate-version.js",
     "build": "node scripts/anti-regression-guard.js && electron-builder --win --x64"

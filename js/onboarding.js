@@ -3117,8 +3117,11 @@ const OnboardingManager = {
   }
 };
 
-// Expose OnboardingManager to Window
+// Expose OnboardingManager to Window & App Namespace
 window.OnboardingManager = OnboardingManager;
+window.App = window.App || {};
+window.App.Onboarding = OnboardingManager;
+
 window.startOnboardingTour = () => OnboardingManager.startTour();
 window.startTaskGuide = (taskId) => OnboardingManager.startTaskGuide(taskId);
 window.reopenOnboardingChecklist = () => OnboardingManager.reopenChecklist();

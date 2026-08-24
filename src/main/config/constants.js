@@ -1,11 +1,23 @@
+// @ts-check
 /**
  * src/main/config/constants.js
  * Centralized constants for Main Process
  */
 
 const chromeVersion = process.versions.chrome || '126.0.0.0';
+const chromeMajorVersion = chromeVersion.split('.')[0] || '126';
 const cleanChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
 const cleanFirefoxUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0`;
+
+const CHROME_CLIENT_HINTS = {
+  'Sec-CH-UA': `"Not/A)Brand";v="8", "Chromium";v="${chromeMajorVersion}", "Google Chrome";v="${chromeMajorVersion}"`,
+  'Sec-CH-UA-Mobile': '?0',
+  'Sec-CH-UA-Platform': '"Windows"',
+  'Sec-CH-UA-Platform-Version': '"15.0.0"',
+  'Sec-CH-UA-Arch': '"x86"',
+  'Sec-CH-UA-Bitness': '"64"',
+  'Sec-CH-UA-Model': '""'
+};
 
 const ROLE_INTEGRITY_SALT = 'cs_marketplace_role_hmac_secret_v2_99a8b7c6';
 
@@ -65,6 +77,7 @@ module.exports = {
   chromeVersion,
   cleanChromeUserAgent,
   cleanFirefoxUserAgent,
+  CHROME_CLIENT_HINTS,
   ROLE_INTEGRITY_SALT,
   defaultStores,
   POPULAR_MARKETPLACE_PRESETS

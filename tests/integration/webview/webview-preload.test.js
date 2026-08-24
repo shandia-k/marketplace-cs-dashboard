@@ -37,7 +37,7 @@ function shouldOpenInNewTab(linkAttributes, isCtrlOrMiddle, currentHref) {
   if (isBlank || isCtrlOrMiddle) {
     try {
       const fullUrl = new URL(href, currentHref).href;
-      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) {
+      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://') || fullUrl.startsWith('blob:') || fullUrl.startsWith('data:')) {
         // OAuth links must NOT be intercepted to a new separate tab to keep cookie handshake
         if (isOAuthUrl(fullUrl)) {
           return false;
@@ -83,6 +83,15 @@ describe('Level 6: Webview Preload & Anti-Detection Tests', () => {
       const shouldIntercept = shouldOpenInNewTab(
         { href: '/portal/order/999', target: '' },
         true, // Ctrl pressed
+        baseUrl
+      );
+      assert.equal(shouldIntercept, true);
+    });
+
+    test('should intercept blob invoice / document links with target="_blank"', () => {
+      const shouldIntercept = shouldOpenInNewTab(
+        { href: 'blob:https://seller.shopee.co.id/1234-5678', target: '_blank' },
+        false,
         baseUrl
       );
       assert.equal(shouldIntercept, true);

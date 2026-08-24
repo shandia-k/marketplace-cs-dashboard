@@ -126,8 +126,24 @@ function renderScratchpadTabs() {
     };
     
     scratchpadTabsContainer.appendChild(tabEl);
+
+    if (tab.id === activeScratchpadTabId) {
+      setTimeout(() => {
+        if (typeof tabEl.scrollIntoView === 'function') {
+          tabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+      }, 0);
+    }
   });
 }
+
+// Enable smooth horizontal scrolling on mouse wheel for scratchpad tabs
+scratchpadTabsContainer?.addEventListener('wheel', (e) => {
+  if (e.deltaY !== 0) {
+    scratchpadTabsContainer.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
+}, { passive: false });
 
 function switchScratchpadTab(tabId) {
   if (tabId === activeScratchpadTabId) return; // Prevent re-render on same tab to allow dblclick
@@ -738,3 +754,14 @@ function initScratchpadResizer() {
 }
 
 initScratchpadResizer();
+
+// ── App.Scratchpad Module Interface ─────────────────────────────────────────
+window.App = window.App || {};
+window.App.Scratchpad = {
+  render: renderScratchpadTabs,
+  addTab: addScratchpadTab,
+  closeTab: closeScratchpadTab,
+  switchTab: switchScratchpadTab,
+  executeSearch: executeScratchpadSearch,
+  closeSearch: closeScratchpadSearch
+};

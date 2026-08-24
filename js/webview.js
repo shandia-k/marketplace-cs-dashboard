@@ -141,8 +141,8 @@ function isValidTopNavigationUrl(url) {
   const clean = url.trim();
   if (!clean || clean === 'about:blank') return false;
 
-  // Harus diawali dengan protokol http atau https
-  if (!/^https?:\/\//i.test(clean)) return false;
+  // Harus diawali dengan protokol http, https, blob:, atau data:
+  if (!/^(?:https?|blob|data):/i.test(clean) && !clean.startsWith('blob:') && !clean.startsWith('data:')) return false;
 
   // Filter universal untuk sub-widget, iframe popup, auth frames, captcha, traffic error, dan RPC endpoints
   const invalidSubFrameSignatures = [
@@ -186,10 +186,10 @@ function createWebview(store, tab, targetPane = 'left') {
     }
   }
 
-  if (!isValidTopNavigationUrl(tab.url)) {
+  if (tab.url !== 'about:blank' && !isValidTopNavigationUrl(tab.url)) {
     tab.url = defaultFallbackUrl;
   }
-  if (!tab.initialUrl || !isValidTopNavigationUrl(tab.initialUrl)) {
+  if (!tab.initialUrl || (tab.initialUrl !== 'about:blank' && !isValidTopNavigationUrl(tab.initialUrl))) {
     tab.initialUrl = defaultFallbackUrl;
   }
 
@@ -217,9 +217,39 @@ function createWebview(store, tab, targetPane = 'left') {
   wv.setAttribute('partition', actualPartition);
   wv.setAttribute('preload', preloadUrl);
   wv.setAttribute('useragent', cleanUa);
+  wv.setAttribute('allowpopups', 'true');
+  wv.allowpopups = true;
   const isWhatsApp = store.marketplace === 'whatsapp' || (store.url || '').toLowerCase().includes('whatsapp.com') || (tab.url || '').toLowerCase().includes('whatsapp.com');
   const bgThrottling = isWhatsApp ? 'false' : 'true';
-  wv.setAttribute('webpreferences', `backgroundThrottling=${bgThrottling},sandbox=false`);
+  wv.setAttribute('webpreferences', `backgroundThrottling=${bgThrottling},sandbox=false,plugins=true`);
+
+  // Preservasi Form POST & Referrer Transport
+  const hasPostOrReferrer = Boolean(tab.postBody || tab.referrer || tab.loadOptions?.postBody || tab.loadOptions?.referrer);
+  if (hasPostOrReferrer) {
+    const postPayload = tab.postBody || tab.loadOptions?.postBody;
+    const referrerPayload = tab.referrer || tab.loadOptions?.referrer;
+    const loadOpts = {};
+    if (referrerPayload) {
+      loadOpts.httpReferrer = referrerPayload;
+    }
+    if (postPayload) {
+      if (postPayload.data) {
+        loadOpts.postData = postPayload.data;
+      }
+      if (postPayload.contentType) {
+        loadOpts.extraHeaders = `Content-Type: ${postPayload.contentType}\n`;
+      }
+    }
+    wv.addEventListener('did-attach', () => {
+      try {
+        if (typeof wv.loadURL === 'function' && tab.url && tab.url !== 'about:blank') {
+          wv.loadURL(tab.url, loadOpts);
+        }
+      } catch (e) {
+        console.warn('[Webview POST Load Warning]:', e);
+      }
+    }, { once: true });
+  }
 
   // -- IPC: Ctrl+Click, Zoom, Nav, Unread dari webview-preload.js
   wv.addEventListener('ipc-message', (event) => {
@@ -402,7 +432,7 @@ function createWebview(store, tab, targetPane = 'left') {
   // ── new-window: target=_blank / window.open() → buka sebagai tab baru di dalam dashboard toko ────
   wv.addEventListener('new-window', (e) => {
     const rawUrl = e.url || '';
-    if (!rawUrl || rawUrl === 'about:blank') return;
+    if (!rawUrl) return;
 
     const lowerUrl = rawUrl.toLowerCase();
     const isOAuth = lowerUrl.includes('accounts.google.com') ||
@@ -433,8 +463,8 @@ function createWebview(store, tab, targetPane = 'left') {
       e.preventDefault();
     }
 
-    // Pastikan URL valid dan buka sebagai tab baru di toko ini
-    if (isValidTopNavigationUrl(rawUrl)) {
+    // Pastikan URL valid atau about:blank untuk async SPA navigation
+    if (rawUrl === 'about:blank' || isValidTopNavigationUrl(rawUrl)) {
       openUrlInNewTab(store, rawUrl);
     }
   });
@@ -1020,3 +1050,12 @@ function initSplitResizer() {
   });
 }
 window.initSplitResizer = initSplitResizer;
+
+// ── App.Webview Module Interface ────────────────────────────────────────────
+window.App = window.App || {};
+window.App.Webview = {
+  hibernateTab,
+  checkAndHibernateIfNeeded,
+  hibernateAll,
+  isValidTopNavigationUrl
+};

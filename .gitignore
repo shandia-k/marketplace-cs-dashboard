@@ -1,28 +1,75 @@
-# Dependencies
-node_modules/
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🙈 .gitignore - Marketplace CS Dashboard
+# Menjaga repository GitHub tetap bersih dan hanya berisi kode sumber penting.
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# Production & Build Outputs
+# 📦 Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# 🏗️ Production & Build Outputs (Electron Builder & Packager)
 dist/
 build/
 out/
 release/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.blockmap
+latest*.yml
 
-# Environment & Local Secrets
+# 🔑 Environment, Credentials & Local Secrets
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
 
-# Backend / Scripts Local
-scripts/google-apps-script/
+# 🧪 Test, E2E & Coverage Artifacts (Playwright, NYC, Coverage)
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
-# Logs & Debug Dumps
+# 🌐 Electron Runtime, Webview Partitions & Cache Dumps
+Session Storage/
+Local Storage/
+IndexedDB/
+GPUCache/
+Code Cache/
+DawnCache/
+blob_storage/
+Service Worker/
+Partitions/
+crash-dumps/
+minidumps/
+*.dmp
+user-data/
+userData/
+local-data/
+temp/
+tmp/
+downloads/
+
+# 📜 Logs & Debug Dumps
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# OS-Generated Files
+# 💻 OS-Generated Files
 .DS_Store
 .DS_Store?
 ._*
@@ -34,7 +81,7 @@ ehthumbs.db
 ehthumbs_vista.db
 Desktop.ini
 
-# IDE & Editor Configs
+# 🛠️ IDE, Editor & Workspace Caches
 .idea/
 *.swp
 *.swo
@@ -42,14 +89,17 @@ Desktop.ini
 *.ntvs*
 *.njsproj
 *.sln
+*.code-workspace
+.history/
+.eslintcache
+.tsbuildinfo
 
-# Temporary & Backup Files
+# 🗄️ Temporary, Scratchpad & Backup Files
 *.tmp
 *.bak
 *.backup
 *.old
+*.crswap
 
-# Test Coverage & Crash Dumps
-coverage/
-.nyc_output/
-crash-dumps/
+# 🔒 Backend / Private Automation Scripts
+scripts/google-apps-script/

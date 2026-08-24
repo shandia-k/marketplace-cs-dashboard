@@ -3,10 +3,10 @@ function bindEvents() {
   // Window controls
   document.getElementById('btn-minimize').addEventListener('click', () => window.electronAPI.windowMinimize());
   document.getElementById('btn-maximize').addEventListener('click', () => window.electronAPI.windowMaximize());
-  document.getElementById('btn-close').addEventListener('click', async () => {
+  document.getElementById('btn-close').addEventListener('click', () => {
     if (window.AppTelemetry) {
       try {
-        await window.AppTelemetry.flush(true);
+        window.AppTelemetry.flush(true);
       } catch (e) {}
     }
     window.electronAPI.windowClose();
@@ -193,6 +193,9 @@ function bindEvents() {
         if (window.OnboardingManager && typeof window.OnboardingManager.notifyAction === 'function') {
           window.OnboardingManager.notifyAction('open_settings_cache');
         }
+      }
+      if (tabName === 'versions') {
+        if (typeof renderVersionsRollbackTab === 'function') renderVersionsRollbackTab();
       }
     });
   });
@@ -1013,7 +1016,7 @@ function setupFocusAndCrashRecoveryLifecycle() {
         targetStore = stores.find(s => s.id === activeStoreId);
       }
       if (targetStore && typeof openUrlInNewTab === 'function') {
-        openUrlInNewTab(targetStore, data.url);
+        openUrlInNewTab(targetStore, data);
       }
     });
   }

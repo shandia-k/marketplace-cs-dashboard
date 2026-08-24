@@ -168,6 +168,18 @@ function registerIpcHandlers(getMainWindow) {
     return systemService.getAppMetricsDetails();
   });
 
+  ipcMain.handle('get-dev-mimicry-info', () => {
+    const { chromeVersion, cleanChromeUserAgent, cleanFirefoxUserAgent, CHROME_CLIENT_HINTS } = require('../config/constants');
+    return {
+      isDev: !app.isPackaged,
+      chromeVersion,
+      cleanChromeUserAgent,
+      cleanFirefoxUserAgent,
+      clientHints: CHROME_CLIENT_HINTS,
+      activeStealthSessionsCount: sessionService && sessionService.activeStealthSessions ? sessionService.activeStealthSessions.size : 0
+    };
+  });
+
   ipcMain.handle('submit-feedback', (event, data) => {
     return feedbackService.createTicket(data);
   });
@@ -349,7 +361,7 @@ function registerIpcHandlers(getMainWindow) {
     }
   });
 
-  // ── Auto Updater IPC ───────────────────────────────────────────────────────
+  // ── Auto Updater & Version Rollback IPC ──────────────────────────────────
   ipcMain.handle('get-app-version', () => {
     return app.getVersion();
   });
@@ -360,6 +372,20 @@ function registerIpcHandlers(getMainWindow) {
 
   ipcMain.on('restart-to-update', () => {
     updaterService.restartToUpdate();
+  });
+
+  ipcMain.handle('get-release-history', async () => {
+    return updaterService.fetchReleaseHistory();
+  });
+
+  ipcMain.handle('get-version-trail', () => {
+    return storageService.recordVersionLaunch(app.getVersion());
+  });
+
+  ipcMain.handle('start-version-rollback', async (event, payload) => {
+    const targetVer = payload?.version;
+    const downloadUrl = payload?.downloadUrl;
+    return updaterService.executeRollback(targetVer, downloadUrl, getMainWindow);
   });
 }
 

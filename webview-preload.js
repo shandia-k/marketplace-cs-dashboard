@@ -193,7 +193,7 @@ document.addEventListener('click', (e) => {
   if (target === '_blank' || isCtrlOrMiddle) {
     try {
       const fullUrl = new URL(href, window.location.href).href;
-      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) {
+      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://') || fullUrl.startsWith('blob:') || fullUrl.startsWith('data:')) {
         const lowerUrl = fullUrl.toLowerCase();
         const isOAuth = lowerUrl.includes('accounts.google.com') ||
           lowerUrl.includes('accounts.youtube.com') ||

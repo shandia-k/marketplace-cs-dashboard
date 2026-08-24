@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * src/main/config/app.config.js
  * Chromium command-line switches and application configuration
