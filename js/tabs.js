@@ -364,19 +364,19 @@ function renderTabBar() {
         <button type="button" class="tab-split-action-btn" id="btn-split-toggle-mode" title="Ganti Mode Tampilan (Fit / Scroll)">
           <span>${splitViewDisplayMode === 'scroll' ? '📜 Scroll' : '↔ Fit'}</span>
         </button>
-        <button type="button" class="tab-split-action-btn" id="btn-split-swap-tabs" title="Tukar Posisi Kiri & Kanan">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" class="tab-split-action-btn" id="btn-split-swap-tabs" title="Tukar Posisi Kiri & Kanan" aria-label="Tukar Posisi Kiri & Kanan">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>
           </svg>
         </button>
         <button type="button" class="tab-split-action-btn" id="btn-split-change-tab" title="Ganti Tab Panel Kanan">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <path d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
           <span>Ganti</span>
         </button>
-        <button type="button" class="tab-split-action-btn close" id="btn-split-close-dual" title="Tutup Sesi Split">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" class="tab-split-action-btn close" id="btn-split-close-dual" title="Tutup Sesi Split" aria-label="Tutup Sesi Split">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
