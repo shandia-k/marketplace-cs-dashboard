@@ -441,8 +441,8 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
       assert.equal(trailUpdated.currentVersion, '1.0.18', 'Current version must be 1.0.18');
       assert.equal(trailUpdated.previousStableVersion, '1.0.15', 'Previous stable version must track 1.0.15');
     } finally {
-      storageService.recordVersionLaunch('1.0.18');
       storageService.recordVersionLaunch('1.0.19');
+      storageService.recordVersionLaunch('1.0.20');
     }
 
     // 2. Pastikan updater.service.js mengekspos fetchReleaseHistory dan executeRollback

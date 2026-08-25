@@ -1,6 +1,6 @@
 {
   "name": "marketplace-cs-dashboard",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "Dashboard CS Multi-Marketplace - Kelola semua akun chat marketplace dalam 1 jendela",
   "main": "main.js",
   "scripts": {

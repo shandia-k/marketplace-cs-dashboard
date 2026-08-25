@@ -21,21 +21,140 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
+/**
+ * @param {any} root
+ * @param {() => any} factory
+ */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     // Node.js Environment (main.js & scripts/validate-version.js)
     module.exports = factory();
   } else {
     // Browser / Renderer Environment (index.html)
-    root.VERSIONS_REGISTRY = factory();
+    /** @type {any} */ (root).VERSIONS_REGISTRY = factory();
   }
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.19',
+      version: '1.0.20',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.19 🚀',
+      pillTag: 'v1.0.20 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Preservasi Aksi Copy Pesanan Marketplace, Main Process Exception Guard & Hardening Siklus WebFrame',
+      tagline: 'Pembaruan v1.0.20: Menghadirkan perbaikan cerdas pada universal link interceptor yang mempreservasi tombol salin (copy button) nomor pesanan dan kontrol interaktif marketplace tanpa membajak navigasi ke tab baru; integrasi dual-layer Main Process Exception & Rejection Guard di main.js untuk meredam race condition internal Chromium dan mencegah dialog modal error OS; serta penolakan window open ephemeral about:blank tanpa Form POST di session service.',
+      highlights: [
+        {
+          icon: '📋',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: 'Preservasi Tombol Copy Pesanan',
+          desc: 'Klik ikon salin di samping nomor pesanan/resi marketplace (Shopee, Tokopedia, Lazada, dll.) langsung menyalin ke clipboard seketika tanpa membuka tab baru.'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Main Process Exception Guard',
+          desc: 'Perlindungan global unhandled exception & rejection di main process untuk menyerap race condition frame disposed Chromium secara aman tanpa crash dialog.'
+        },
+        {
+          icon: '⚡',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Ephemeral Frame & Window Open Sanitizer',
+          desc: 'Filter cerdas setWindowOpenHandler yang menolak popup dummy about:blank tanpa payload POST agar tidak memicu tab kosong atau kebocoran memori.'
+        },
+        {
+          icon: '🚀',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Zero-Collision Quick Reply Capture',
+          desc: 'Sinkronisasi real-time nomor pesanan hasil klik copy langsung terdeteksi ke riwayat clipboard CS dan variabel smart template {clipboard} secara instan.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Perbaikan Navigasi & Preservasi Salin Pesanan Marketplace',
+          tag: 'Link Interceptor & Copy',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Copy Button Exemption',
+              badgeColor: '#10b981',
+              text: 'Pengecualian selektif pada Universal Link Interceptor untuk seluruh kontrol interaktif dan tombol copy (.copy-btn, [data-copy], [class*="copy" i], [title*="salin" i], dll.) di dalam tautan ber-target _blank.'
+            },
+            {
+              type: 'feature',
+              badge: 'Zero-Tab Hijack',
+              badgeColor: '#df1683',
+              text: 'Mencegah pembajakan event klik tombol salin nomor pesanan pada Shopee Seller Center (Pengembalian/Pembatalan & Pesanan Saya) agar tidak memicu navigasi tab baru.'
+            },
+            {
+              type: 'perf',
+              badge: 'Deduplikasi Listener',
+              badgeColor: '#3b82f6',
+              text: 'Pembersihan dan konsolidasi listener Ctrl+Click di webview-preload.js untuk efisiensi eksekusi event loop DOM.'
+            }
+          ]
+        },
+        {
+          category: 'Stabilitas Main Process & Pengamanan Siklus Hidup WebFrame',
+          tag: 'Main Process Guard',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            {
+              type: 'security',
+              badge: 'Uncaught Exception Guard',
+              badgeColor: '#3b82f6',
+              text: 'Penyematan handler process.on("uncaughtException") di main.js untuk menyerap race condition internal Chromium saat WebFrameMain dihancurkan oleh script halaman.'
+            },
+            {
+              type: 'security',
+              badge: 'Unhandled Rejection Guard',
+              badgeColor: '#f59e0b',
+              text: 'Penyematan handler process.on("unhandledRejection") untuk penanganan asinkron Promise tak tertangani di level main process tanpa memunculkan dialog error OS.'
+            },
+            {
+              type: 'feature',
+              badge: 'Ephemeral Window Filter',
+              badgeColor: '#10b981',
+              text: 'Filter setWindowOpenHandler di session.service.js menolak pembukaan tab baru untuk request about:blank tanpa Form POST.'
+            },
+            {
+              type: 'security',
+              badge: 'WebContents Safety Guard',
+              badgeColor: '#8b5cf6',
+              text: 'Pemeriksaan status kehancuran contents.isDestroyed() sebelum memproses event handler window open.'
+            }
+          ]
+        },
+        {
+          category: 'Integritas Suite Pengujian & Regresi (Zero-Regression Guarantee)',
+          tag: 'Automated Testing',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 11, 0.12)',
+          items: [
+            {
+              type: 'security',
+              badge: 'REG-021 Test Guard',
+              badgeColor: '#10b981',
+              text: 'Penambahan suite uji regresi terdedikasi [REG-021] untuk memverifikasi proteksi tombol salin, filter ephemeral window, dan exception guard main process.'
+            },
+            {
+              type: 'feature',
+              badge: 'Preload Link Unit Tests',
+              badgeColor: '#3b82f6',
+              text: 'Pembaruan Level 6 integration test webview-preload.test.js untuk memvalidasi pemisahan klik kontrol interaktif di dalam tautan ber-target _blank.'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.19',
+      badge: 'Stabil ✅',
+      badgeColor: '#10b981',
+      pillTag: 'v1.0.19',
       releaseDate: 'Agustus 2026',
       title: 'Pusat Pemulihan Darurat, Rollback Versi Mandiri, Full Chromium Mimicry & Standarisasi Arsitektur Modular',
       tagline: 'Pembaruan v1.0.19: Menghadirkan sistem Emergency Rollback & Version Recovery mandiri (zero-dependency) dengan 3 jalur pemicu darurat (Ikon Titlebar, Footer Login, dan Hotkey Ctrl+Alt+R), pelacakan jejak versi pengguna (Version Trail) untuk rekomendasi rollback cerdas saat melompati versi update, pencadangan snapshot lokal otomatis sebelum downgrade, freeze auto-update anti-looping; suite Chromium Mimicry lengkap (Sec-CH-UA Client Hints komprehensif, preservasi payload Form POST & HTTP Referrer saat membuka tab baru, dukungan protokol dokumen blob/data/about:blank); standarisasi struktur layout fixed tab actions; serta refactoring menyeluruh namespace modular (window.App.Utils, window.App.Modals, window.App.Onboarding, window.App.Webview) dan perbaikan zero-delay window exit.',
