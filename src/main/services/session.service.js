@@ -12,6 +12,11 @@ const {
   CHROME_CLIENT_HINTS
 } = require('../config/constants');
 const {
+  isOAuthUrl,
+  isDangerousProtocol,
+  isAllowedProtocol
+} = require('../config/url-rules');
+const {
   getUserDataPath,
   readStores,
   isValidPartition,
@@ -244,11 +249,13 @@ function setupWebContentsSecurity(contents, getMainWindow) {
 
   contents.on('will-navigate', (event, url) => {
     try {
-      const parsed = new URL(url);
-      if (['file:', 'javascript:', 'vbscript:'].includes(parsed.protocol)) {
+      if (isDangerousProtocol(url)) {
         console.warn('Blocked dangerous webview navigation scheme:', url);
         event.preventDefault();
         return;
+      }
+      if (!isAllowedProtocol(url)) {
+        event.preventDefault();
       }
     } catch (e) {
       if (!url.startsWith('blob:') && !url.startsWith('data:')) {
@@ -265,46 +272,21 @@ function setupWebContentsSecurity(contents, getMainWindow) {
       const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : (BrowserWindow?.getAllWindows()[0] || null);
       const { url, disposition, features, referrer, postBody } = details || {};
       const isAboutBlank = !url || url === 'about:blank';
-      
+
       // Jika about:blank tanpa postBody (ephemeral popup / dummy iframe / polyfill copy), tolak pembukaan tab baru
       if (isAboutBlank && !postBody) {
         return { action: 'deny' };
       }
-      
-      if (!isAboutBlank) {
-        try {
-          const parsed = new URL(url);
-          if (!['http:', 'https:', 'about:', 'blob:', 'data:'].includes(parsed.protocol)) {
-            return { action: 'deny' };
-          }
-        } catch (errUrl) {
-          if (!url.startsWith('blob:') && !url.startsWith('data:')) {
-            return { action: 'deny' };
-          }
-        }
+
+      if (!isAboutBlank && !isAllowedProtocol(url)) {
+        return { action: 'deny' };
       }
 
       if (url && (url.includes('/widget/hovercard') || url.includes('contacts.google.com/widget'))) {
         return { action: 'deny' };
       }
 
-      const lowerUrl = (url || '').toLowerCase();
-      const isOAuth = lowerUrl.includes('accounts.google.com') ||
-        lowerUrl.includes('accounts.youtube.com') ||
-        lowerUrl.includes('appleid.apple.com') ||
-        lowerUrl.includes('login.live.com') ||
-        lowerUrl.includes('login.microsoftonline.com') ||
-        lowerUrl.includes('facebook.com/dialog/oauth') ||
-        lowerUrl.includes('facebook.com/login') ||
-        lowerUrl.includes('github.com/login') ||
-        lowerUrl.includes('github.com/sessions') ||
-        lowerUrl.includes('gitlab.com/oauth') ||
-        lowerUrl.includes('oauth') ||
-        lowerUrl.includes('/auth/') ||
-        lowerUrl.includes('/authorize') ||
-        lowerUrl.includes('/sso/') ||
-        lowerUrl.includes('response_type=code') ||
-        lowerUrl.includes('client_id=');
+      const isOAuth = isOAuthUrl(url);
 
       if (isOAuth) {
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -558,14 +540,14 @@ async function pruneBackgroundMemory() {
 
     // 1. Bersihkan memory HTTP & Image Cache in-memory pada defaultSession & semua partisi aktif
     if (session.defaultSession) {
-      try { 
-        await session.defaultSession.clearCache(); 
+      try {
+        await session.defaultSession.clearCache();
       } catch (e) { }
     }
 
     for (const s of activeStealthSessions) {
-      try { 
-        await s.clearCache(); 
+      try {
+        await s.clearCache();
       } catch (e) { }
     }
 
@@ -575,7 +557,7 @@ async function pruneBackgroundMemory() {
       for (const wc of allWc) {
         if (!wc.isDestroyed() && wc.getType() === 'webview') {
           try {
-            wc.executeJavaScript('if (typeof window !== "undefined" && typeof window.gc === "function") { try { window.gc(); } catch (e) {} }').catch(() => {});
+            wc.executeJavaScript('if (typeof window !== "undefined" && typeof window.gc === "function") { try { window.gc(); } catch (e) {} }').catch(() => { });
           } catch (e) { }
         }
       }

@@ -397,7 +397,37 @@ function showPromptDialog(options = {}) {
   });
 }
 
-window.showPromptDialog = showPromptDialog;
+function isOAuthUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  const lowerUrl = rawUrl.trim().toLowerCase();
+  if (
+    lowerUrl.includes('accounts.google.com/o/oauth2') ||
+    lowerUrl.includes('accounts.google.com/v3/signin') ||
+    lowerUrl.includes('accounts.google.com/signin/oauth') ||
+    lowerUrl.includes('accounts.google.com/serviceauth') ||
+    lowerUrl.includes('accounts.youtube.com/accounts') ||
+    lowerUrl.includes('login.live.com') ||
+    lowerUrl.includes('login.microsoftonline.com') ||
+    lowerUrl.includes('appleid.apple.com') ||
+    lowerUrl.includes('facebook.com/dialog/oauth') ||
+    (lowerUrl.includes('facebook.com/v') && lowerUrl.includes('/dialog/oauth')) ||
+    lowerUrl.includes('github.com/login/oauth') ||
+    lowerUrl.includes('github.com/sessions/two-factor') ||
+    lowerUrl.includes('gitlab.com/oauth') ||
+    lowerUrl.includes('/login/sso') ||
+    lowerUrl.includes('/sso/callback') ||
+    lowerUrl.includes('/sso/login')
+  ) {
+    return true;
+  }
+  const hasResponseType = lowerUrl.includes('response_type=code') || lowerUrl.includes('response_type=token');
+  const hasClientId = lowerUrl.includes('client_id=');
+  const hasRedirectUri = lowerUrl.includes('redirect_uri=');
+  if (hasResponseType && hasClientId) return true;
+  if (hasClientId && hasRedirectUri && (lowerUrl.includes('/oauth') || lowerUrl.includes('/authorize') || lowerUrl.includes('/auth/'))) return true;
+  return false;
+}
+window.isOAuthUrl = isOAuthUrl;
 
 // ── App.Utils Module Interface ──────────────────────────────────────────────
 window.App = window.App || {};
@@ -409,5 +439,6 @@ window.App.Utils = {
   showZoomIndicator,
   playNotificationSound,
   showConfirmDialog,
-  showPromptDialog
+  showPromptDialog,
+  isOAuthUrl
 };

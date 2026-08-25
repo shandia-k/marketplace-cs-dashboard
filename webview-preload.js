@@ -11,14 +11,84 @@
  * 7. Navigasi & Zoom Shortcuts
  */
 const { ipcRenderer } = require('electron');
-
-// ── ANTI-AUTOMATION & STEALTH BROWSER MASKING ──────────────────────────────────
-// Biarkan DOM prototype native murni agar verifikasi Google Botguard & WAF tidak mendeteksi tampering
+const crypto = require('crypto');
+let isOAuthUrl;
 try {
-  if (typeof navigator !== 'undefined' && 'webdriver' in navigator) {
+  const urlRules = require('./src/main/config/url-rules');
+  isOAuthUrl = urlRules.isOAuthUrl;
+} catch (e) {
+  isOAuthUrl = function(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return false;
+    const lowerUrl = rawUrl.trim().toLowerCase();
+    if (
+      lowerUrl.includes('accounts.google.com/o/oauth2') ||
+      lowerUrl.includes('accounts.google.com/v3/signin') ||
+      lowerUrl.includes('accounts.google.com/signin/oauth') ||
+      lowerUrl.includes('accounts.google.com/serviceauth') ||
+      lowerUrl.includes('accounts.youtube.com/accounts') ||
+      lowerUrl.includes('login.live.com') ||
+      lowerUrl.includes('login.microsoftonline.com') ||
+      lowerUrl.includes('appleid.apple.com') ||
+      lowerUrl.includes('facebook.com/dialog/oauth') ||
+      (lowerUrl.includes('facebook.com/v') && lowerUrl.includes('/dialog/oauth')) ||
+      lowerUrl.includes('github.com/login/oauth') ||
+      lowerUrl.includes('github.com/sessions/two-factor') ||
+      lowerUrl.includes('gitlab.com/oauth') ||
+      lowerUrl.includes('/login/sso') ||
+      lowerUrl.includes('/sso/callback') ||
+      lowerUrl.includes('/sso/login')
+    ) {
+      return true;
+    }
+    const hasResponseType = lowerUrl.includes('response_type=code') || lowerUrl.includes('response_type=token');
+    const hasClientId = lowerUrl.includes('client_id=');
+    const hasRedirectUri = lowerUrl.includes('redirect_uri=');
+    if (hasResponseType && hasClientId) return true;
+    if (hasClientId && hasRedirectUri && (lowerUrl.includes('/oauth') || lowerUrl.includes('/authorize') || lowerUrl.includes('/auth/'))) return true;
+    return false;
+  };
+}
+
+// ── ANTI-AUTOMATION & AUTHENTIC CHROMIUM STEALTH MASKING ──────────────────────
+try {
+  // 1. Sanitasi navigator.webdriver tanpa prototype tampering yang mencolok
+  if (typeof navigator !== 'undefined') {
+    if ('webdriver' in navigator) {
+      try {
+        delete Object.getPrototypeOf(navigator).webdriver;
+      } catch (e) { }
+    }
     try {
-      delete Object.getPrototypeOf(navigator).webdriver;
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+        configurable: true,
+        enumerable: true
+      });
     } catch (e) { }
+  }
+
+  // 2. Mocking window.chrome ekosistem standar (diperlukan Cloudflare Turnstile / Akamai Bot Manager)
+  if (typeof window !== 'undefined') {
+    window.chrome = window.chrome || {};
+    if (!window.chrome.app) {
+      window.chrome.app = {
+        isInstalled: false,
+        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+        getIsInstalled: () => false,
+        getDetails: () => null
+      };
+    }
+    if (!window.chrome.runtime) {
+      window.chrome.runtime = {
+        OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+        OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+        PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+        PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+        PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+        RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
+      };
+    }
   }
 } catch (e) { }
 
@@ -300,23 +370,7 @@ document.addEventListener('click', (e) => {
         if (!isInteractiveOrCopy) {
           const fullUrl = safeResolveUrl(rawHref, window.location.href);
           if (fullUrl && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://') || fullUrl.startsWith('blob:') || fullUrl.startsWith('data:'))) {
-            const lowerUrl = fullUrl.toLowerCase();
-            const isOAuth = lowerUrl.includes('accounts.google.com') ||
-              lowerUrl.includes('accounts.youtube.com') ||
-              lowerUrl.includes('appleid.apple.com') ||
-              lowerUrl.includes('login.live.com') ||
-              lowerUrl.includes('login.microsoftonline.com') ||
-              lowerUrl.includes('facebook.com/dialog/oauth') ||
-              lowerUrl.includes('facebook.com/login') ||
-              lowerUrl.includes('github.com/login') ||
-              lowerUrl.includes('github.com/sessions') ||
-              lowerUrl.includes('gitlab.com/oauth') ||
-              lowerUrl.includes('oauth') ||
-              lowerUrl.includes('/auth/') ||
-              lowerUrl.includes('/authorize') ||
-              lowerUrl.includes('/sso/') ||
-              lowerUrl.includes('response_type=code') ||
-              lowerUrl.includes('client_id=');
+            const isOAuth = isOAuthUrl(fullUrl);
 
             if (!isOAuth) {
               e.preventDefault();
@@ -497,63 +551,145 @@ function captureClipboardFromDOM() {
 document.addEventListener('copy', captureClipboardFromDOM, true);
 document.addEventListener('cut', captureClipboardFromDOM, true);
 
-// ── CUSTOMER / BUYER NAME AUTO-DETECTOR ──────────────────────────────────────
-function detectActiveCustomerName() {
-  const selectors = [
-    // WhatsApp Web
-    '#main header span[dir="auto"]',
-    'header span[data-testid="conversation-info-header-chat-title"]',
-    'header [data-testid="chat-title"]',
-    'header span[title]',
-    // Tokopedia Seller
-    '[data-testid="chat-header-name"]',
-    '[data-testid="header-chat-name"]',
-    '[data-testid*="chat-header"] [class*="name" i]',
-    'h6[data-testid*="name" i]',
-    '.css-header-name',
-    // Shopee Seller Centre
-    '.chat-header-title',
-    '.chat-header .user-name',
-    '.shopee-chat-header__name',
-    '.conversation-header-name',
-    '[class*="chat-header"] [class*="name" i]',
-    '[class*="conversation-header"] [class*="title" i]',
-    // TikTok Shop Seller Center
-    '[class*="chat-header"] [class*="user-name" i]',
-    '[class*="session-header"] [class*="title" i]',
-    '.im-chat-header__title',
-    // Lazada Seller Center
-    '.im-header-title',
-    '.chat-header-user',
-    '.chat-user-name',
-    // Active chat conversation item fallback
-    '[class*="chat-item"][class*="active" i] [class*="name" i]',
-    '[class*="conversation-item"][class*="selected" i] [class*="name" i]'
-  ];
+// ── SMART CUSTOMER / BUYER NAME AUTO-DETECTOR ───────────────────────────────
+function cleanCustomerNameText(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let text = raw.trim();
+  if (!text || text.length < 2 || text.length > 65) return '';
 
-  for (const sel of selectors) {
-    try {
-      const list = document.querySelectorAll(sel);
-      for (const el of list) {
-        if (el.offsetParent !== null) {
-          let text = (el.getAttribute('title') || el.innerText || el.textContent || '').trim();
-          if (text && text.length > 0 && text.length < 50) {
-            const lower = text.toLowerCase();
-            if (lower.includes('search') || lower.includes('cari') || lower.includes('online') || lower.includes('ketik')) {
-              continue;
-            }
-            // Bersihkan format nama: ambil baris pertama jika multi-baris
-            text = text.split('\n')[0].replace(/[\r\t]+/g, ' ').trim();
-            // Jika ada format "Budi (Buyer VIP)" atau "Andi - Jakarta", ambil nama utama jika terlalu panjang
-            if (text.length > 25 && text.includes('(')) {
-              text = text.split('(')[0].trim();
-            }
-            if (text) return text;
+  const rawLower = text.toLowerCase();
+  if (
+    rawLower.includes('typing') ||
+    rawLower.includes('mengetik') ||
+    rawLower.includes('last seen') ||
+    rawLower.includes('terakhir dilihat')
+  ) {
+    return '';
+  }
+
+  // 1. Bersihkan format multi-baris: ambil baris pertama
+  text = text.split('\n')[0].replace(/[\r\t]+/g, ' ').trim();
+
+  // 2. Bersihkan status online/presence yang menempel di belakang (contoh: "Andi Wijaya Online")
+  text = text.replace(/\s+(?:online|offline|aktif|active)$/i, '').trim();
+
+  // 3. Bersihkan badge tanda kurung atau separator trailing (contoh: "Budi (Buyer VIP)" atau "Andi - Jakarta")
+  if (text.includes('(') && text.length > 20) {
+    text = text.split('(')[0].trim();
+  }
+  if (text.includes(' - ') && text.length > 25) {
+    text = text.split(' - ')[0].trim();
+  }
+
+  const lower = text.toLowerCase();
+  const noiseKeywords = [
+    'search', 'cari', 'online', 'ketik', 'typing', 'offline', 'terakhir',
+    'last seen', 'aktif', 'active', 'pesan', 'messages', 'chat', 'batal',
+    'cancel', 'kirim', 'send', 'status', 'kembali', 'back', 'filter',
+    'customer service', 'seller center', 'bantuan', 'help', 'sedang'
+  ];
+  if (noiseKeywords.some(k => lower === k || lower.startsWith(k + ' ') || lower.startsWith(k + ':') || lower.startsWith(k + '.'))) {
+    return '';
+  }
+
+  // 4. Jika berupa timestamp atau jam semata (misal: "18:30" atau "25/08/2026")
+  if (/^\d{1,2}[:.]\d{2}(?:\s*(?:am|pm|wib|wita|wit))?$/i.test(text) || /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(text)) {
+    return '';
+  }
+
+  return (text.length >= 2 && text.length <= 50) ? text : '';
+}
+
+function detectActiveCustomerName() {
+  try {
+    // ── LAYER 1: Fast Known Specific Selectors (Preservasi Selector Utama) ──
+    const primarySelectors = [
+      // WhatsApp Web
+      '#main header span[dir="auto"]',
+      'header span[data-testid="conversation-info-header-chat-title"]',
+      'header [data-testid="chat-title"]',
+      'header span[title]',
+      // Tokopedia Seller
+      '[data-testid="chat-header-name"]',
+      '[data-testid="header-chat-name"]',
+      '[data-testid*="chat-header"] [class*="name" i]',
+      'h6[data-testid*="name" i]',
+      '.css-header-name',
+      // Shopee Seller Centre
+      '.chat-header-title',
+      '.chat-header .user-name',
+      '.shopee-chat-header__name',
+      '.conversation-header-name',
+      '[class*="chat-header"] [class*="name" i]',
+      '[class*="conversation-header"] [class*="title" i]',
+      // TikTok Shop Seller Center
+      '[class*="chat-header"] [class*="user-name" i]',
+      '[class*="session-header"] [class*="title" i]',
+      '.im-chat-header__title',
+      // Lazada Seller Center
+      '.im-header-title',
+      '.chat-header-user',
+      '.chat-user-name'
+    ];
+
+    for (const sel of primarySelectors) {
+      try {
+        const list = document.querySelectorAll(sel);
+        for (const el of list) {
+          if (el.offsetParent !== null) {
+            const raw = el.getAttribute('title') || el.innerText || el.textContent || '';
+            const cleaned = cleanCustomerNameText(raw);
+            if (cleaned) return cleaned;
+          }
+        }
+      } catch (e) { }
+    }
+
+    // ── LAYER 2: Semantic Header & Conversation Proximity (Anti-Obfuscation) ─
+    const headerContainers = document.querySelectorAll(
+      '#main header, main header, section header, [role="main"] header, [data-testid*="chat-header"], [class*="chat-header" i], [class*="conversation-header" i], .chat-top'
+    );
+
+    for (const hContainer of headerContainers) {
+      if (hContainer.offsetParent !== null) {
+        const headingCandidates = hContainer.querySelectorAll(
+          '[role="heading"], h1, h2, h3, h4, h5, h6, [data-name], [dir="auto"], strong, b, [class*="title" i], [class*="name" i]'
+        );
+        for (const hEl of headingCandidates) {
+          if (hEl.offsetParent !== null) {
+            const raw = hEl.getAttribute('title') || hEl.getAttribute('aria-label') || hEl.innerText || hEl.textContent || '';
+            const cleaned = cleanCustomerNameText(raw);
+            if (cleaned) return cleaned;
           }
         }
       }
-    } catch (e) { }
-  }
+    }
+
+    // ── LAYER 3: Active / Selected Conversation Item Fallback ──────────────
+    const activeItemSelectors = [
+      '[aria-selected="true"]',
+      '[data-selected="true"]',
+      '[class*="chat-item"][class*="active" i]',
+      '[class*="conversation-item"][class*="selected" i]',
+      '[class*="conversation-item"][class*="active" i]',
+      '[data-testid*="chat-list-item"][aria-selected="true"]'
+    ];
+
+    for (const sel of activeItemSelectors) {
+      try {
+        const activeItems = document.querySelectorAll(sel);
+        for (const item of activeItems) {
+          if (item.offsetParent !== null) {
+            const nameEl = item.querySelector('[class*="name" i], [class*="title" i], [role="heading"], span[title], span[dir="auto"]');
+            const raw = (nameEl ? (nameEl.getAttribute('title') || nameEl.innerText || nameEl.textContent) : (item.getAttribute('title') || item.innerText || item.textContent)) || '';
+            const cleaned = cleanCustomerNameText(raw);
+            if (cleaned) return cleaned;
+          }
+        }
+      } catch (e) { }
+    }
+  } catch (err) { }
+
   return '';
 }
 
@@ -698,6 +834,20 @@ function findChatInput() {
       }
     } catch (e) { }
   }
+
+  // Layer 2: Semantic Compose/Footer Area Proximity
+  try {
+    const composeAreas = document.querySelectorAll('#main footer, footer, [role="main"] footer, [class*="compose" i], [class*="input-area" i], [class*="chat-bottom" i]');
+    for (const area of composeAreas) {
+      if (area.offsetParent !== null) {
+        const editable = area.querySelector('[contenteditable="true"]:not([contenteditable="false"]), textarea:not([disabled]):not([readonly]), input[type="text"]:not([disabled]):not([readonly])');
+        if (editable && editable.offsetParent !== null) {
+          return editable;
+        }
+      }
+    }
+  } catch (e) { }
+
   return null;
 }
 
@@ -1824,11 +1974,15 @@ function checkSyncStatus() {
       return;
     }
 
-    // 2. Cari progress bar sinkronisasi di mana saja di dalam halaman WhatsApp
-    const syncProgressEl = document.querySelector('progress, [role="progressbar"], [data-testid*="progress"], [data-testid="sync-progress"], [data-testid*="sync"]');
+    // 2. Deteksi Elemen Terstruktur (Progressbar, SVG Spinners, ARIA attributes)
+    const syncProgressEl = document.querySelector(
+      'progress, [role="progressbar"], [data-testid*="progress"], [data-testid="sync-progress"], [data-testid*="sync"], svg[class*="progress" i], svg[class*="spinner" i]'
+    );
 
     // 3. Periksa seluruh elemen banner status, alert, drawer, dan modal popups
-    const alertBanners = document.querySelectorAll('[role="status"], [role="alert"], [data-testid*="sync"], [data-testid*="banner"], [data-testid*="drawer"], [data-animate-modal-popup], [data-animate-drawer-left]');
+    const alertBanners = document.querySelectorAll(
+      '[role="status"], [role="alert"], [data-testid*="sync"], [data-testid*="banner"], [data-testid*="drawer"], [data-animate-modal-popup], [data-animate-drawer-left]'
+    );
     let bannerText = '';
     alertBanners.forEach(b => { bannerText += ' ' + (b.textContent || ''); });
 
@@ -1838,10 +1992,11 @@ function checkSyncStatus() {
       bannerText += ' ' + (sidePane.textContent ? sidePane.textContent.substring(0, 1500) : '');
     }
 
-    const isSyncMatch = /mengunduh pesan|downloading messages|organizing messages|memuat obrolan|sinkronisasi riwayat|syncing older messages|downloading chats|sinkronisasi chat|sinkronisasi/i.test(bannerText);
+    // Kamus Multi-Bahasa (ID, EN, ES, PT, FR, ZH) untuk mendeteksi sinkronisasi aktif
+    const isSyncMatch = /(?:mengunduh|downloading|descargando|téléchargement|sincroniz|syncing|organizing|memuat|organizando|正在同步|正在下载)/i.test(bannerText);
 
-    // Cek teks yang menyatakan sinkronisasi telah selesai 100%
-    const isCompletedMatch = /terakhir disinkronkan|sinkronisasi selesai|all messages synced|last synced|riwayat pesan telah diunduh|riwayat chat selesai/i.test(bannerText);
+    // Kamus Multi-Bahasa untuk mendeteksi sinkronisasi selesai 100%
+    const isCompletedMatch = /(?:terakhir disinkronkan|sinkronisasi selesai|all messages synced|last synced|riwayat pesan telah diunduh|riwayat chat selesai|concluído|finalizado|terminé|同步完成)/i.test(bannerText);
 
     const isSyncingNow = !!(syncProgressEl || isSyncMatch);
 
@@ -1863,9 +2018,8 @@ function checkSyncStatus() {
         }
       }
       if (percent === null && bannerText) {
-        const match = bannerText.match(/(?:mengunduh|downloading|organizing|memuat|sinkronisasi|sync|messages|obrolan|chat)[^\n\r%]{0,40}?(\d{1,3})\s*%/i) ||
-          bannerText.match(/(\d{1,3})\s*%\s*(?:selesai|completed|mengunduh|downloading|sinkronisasi)/i) ||
-          bannerText.match(/(\d{1,3})\s*%/);
+        // Universal percentage matcher: cari pola angka persen di mana saja dalam konteks sinkronisasi
+        const match = bannerText.match(/(\d{1,3})\s*%/);
         if (match) {
           const p = parseInt(match[1], 10);
           if (p >= 0 && p <= 100) percent = p;
@@ -1940,32 +2094,81 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
       .replace(/'/g, '&#039;');
   }
 
-  // Obfuskasi lokal untuk penyimpanan partisi sesi toko
-  function obfuscatePass(raw) {
+  // ── VAULT KRIPTOGRAFIS AES-256-GCM UNTUK PASSWORD AUTOFILL ────────────────
+  const VAULT_PREFIX = 'enc:v1:';
+  const VAULT_SALT = 'cs_mkt_vault_partition_k99_' + HOST;
+
+  function deriveVaultKey(saltBuf) {
+    return crypto.scryptSync(VAULT_SALT, saltBuf, 32);
+  }
+
+  // Enkripsi Kriptografis AES-256-GCM untuk penyimpanan kredensial sesi toko
+  function encryptPass(raw) {
     if (!raw) return '';
     try {
-      return btoa(encodeURIComponent(raw));
+      const salt = crypto.randomBytes(16);
+      const iv = crypto.randomBytes(12); // 12-byte IV untuk standar AES-GCM
+      const key = deriveVaultKey(salt);
+      const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+      let encrypted = cipher.update(raw, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      const tag = cipher.getAuthTag();
+      return `${VAULT_PREFIX}${salt.toString('hex')}:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
     } catch (e) {
       return '';
     }
   }
 
-  function deobfuscatePass(enc) {
+  function decryptPass(enc) {
     if (!enc) return '';
     try {
+      if (typeof enc === 'string' && enc.startsWith(VAULT_PREFIX)) {
+        const parts = enc.slice(VAULT_PREFIX.length).split(':');
+        if (parts.length === 4) {
+          const [saltHex, ivHex, tagHex, cipherHex] = parts;
+          const salt = Buffer.from(saltHex, 'hex');
+          const iv = Buffer.from(ivHex, 'hex');
+          const tag = Buffer.from(tagHex, 'hex');
+          const key = deriveVaultKey(salt);
+          const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+          decipher.setAuthTag(tag);
+          let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+          decrypted += decipher.final('utf8');
+          return decrypted;
+        }
+      }
+      // Backward compatibility fallback untuk kredensial legacy Base64 lama
       return decodeURIComponent(atob(enc));
     } catch (e) {
       return '';
     }
   }
 
-  // Helper membaca riwayat form dari localStorage
+  const obfuscatePass = encryptPass;
+  const deobfuscatePass = decryptPass;
+
+  // Helper membaca riwayat form dari localStorage dengan in-place AES-GCM auto-migrasi
   function getStoredEntries() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+
+      let needsSave = false;
+      parsed.forEach(entry => {
+        if (entry && entry.pass && typeof entry.pass === 'string' && !entry.pass.startsWith(VAULT_PREFIX)) {
+          const plain = decryptPass(entry.pass);
+          if (plain) {
+            entry.pass = encryptPass(plain);
+            needsSave = true;
+          }
+        }
+      });
+      if (needsSave) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch (e) {
       return [];
     }

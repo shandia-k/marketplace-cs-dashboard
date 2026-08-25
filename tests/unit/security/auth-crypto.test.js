@@ -14,10 +14,8 @@ function generateSalt() {
 
 function hashPassword(password, salt) {
   if (!password) return '';
-  if (!salt) {
-    return crypto.createHash('sha256').update(password).digest('hex');
-  }
-  return crypto.scryptSync(password, salt, 32).toString('hex');
+  const effectiveSalt = salt || generateSalt();
+  return crypto.scryptSync(password, effectiveSalt, 32).toString('hex');
 }
 
 function verifyPassword(password, storedHash, storedSalt) {
@@ -25,16 +23,56 @@ function verifyPassword(password, storedHash, storedSalt) {
   try {
     if (storedSalt) {
       const computed = hashPassword(password, storedSalt);
-      return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(storedHash, 'hex'));
+      const computedBuf = Buffer.from(computed, 'hex');
+      const storedBuf = Buffer.from(storedHash, 'hex');
+      if (computedBuf.length !== storedBuf.length) return false;
+      return crypto.timingSafeEqual(computedBuf, storedBuf);
     }
+    // Fallback for legacy unsalted SHA-256 migration
     const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
-    if (legacyHash.length === storedHash.length) {
-      return crypto.timingSafeEqual(Buffer.from(legacyHash, 'hex'), Buffer.from(storedHash, 'hex'));
+    const legacyBuf = Buffer.from(legacyHash, 'hex');
+    const storedBuf = Buffer.from(storedHash, 'hex');
+    if (legacyBuf.length === storedBuf.length) {
+      return crypto.timingSafeEqual(legacyBuf, storedBuf);
     }
     return legacyHash === storedHash;
   } catch (e) {
     return false;
   }
+}
+
+// AES-256-GCM Vault logic
+const VAULT_PREFIX = 'enc:v1:';
+function encryptVaultPass(raw, host = 'seller.shopee.co.id') {
+  if (!raw) return '';
+  const salt = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12);
+  const key = crypto.scryptSync('cs_mkt_vault_partition_k99_' + host, salt, 32);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  let encrypted = cipher.update(raw, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const tag = cipher.getAuthTag();
+  return `${VAULT_PREFIX}${salt.toString('hex')}:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
+}
+
+function decryptVaultPass(enc, host = 'seller.shopee.co.id') {
+  if (!enc) return '';
+  if (typeof enc === 'string' && enc.startsWith(VAULT_PREFIX)) {
+    const parts = enc.slice(VAULT_PREFIX.length).split(':');
+    if (parts.length === 4) {
+      const [saltHex, ivHex, tagHex, cipherHex] = parts;
+      const salt = Buffer.from(saltHex, 'hex');
+      const iv = Buffer.from(ivHex, 'hex');
+      const tag = Buffer.from(tagHex, 'hex');
+      const key = crypto.scryptSync('cs_mkt_vault_partition_k99_' + host, salt, 32);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    }
+  }
+  return Buffer.from(enc, 'base64').toString('utf8');
 }
 
 describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
@@ -75,9 +113,60 @@ describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
     assert.equal(verifyPassword(null, hash, salt), false);
   });
 
-  test('should verify legacy unsalted SHA-256 passwords for backward compatibility', () => {
+  test('should verify legacy unsalted SHA-256 passwords for backward compatibility migration', () => {
     const legacyHash = crypto.createHash('sha256').update('legacyPass123').digest('hex');
     assert.equal(verifyPassword('legacyPass123', legacyHash, null), true);
     assert.equal(verifyPassword('wrongLegacy', legacyHash, null), false);
+  });
+
+  test('should encrypt and decrypt credentials with AES-256-GCM Vault', () => {
+    const originalPass = 'S4ngatR4h4sia!@2026';
+    const encrypted = encryptVaultPass(originalPass);
+    assert.ok(encrypted.startsWith(VAULT_PREFIX), 'Encrypted string must have version prefix');
+    assert.notEqual(encrypted, originalPass, 'Ciphertext must not be plaintext');
+    assert.notEqual(encrypted, Buffer.from(originalPass).toString('base64'), 'Must not be plain Base64');
+
+    const decrypted = decryptVaultPass(encrypted);
+    assert.equal(decrypted, originalPass, 'Decrypted password must match original exactly');
+  });
+
+  test('should decrypt legacy Base64 stored credentials gracefully', () => {
+    const legacyBase64 = Buffer.from('OldStorePassword123').toString('base64');
+    const decrypted = decryptVaultPass(legacyBase64);
+    assert.equal(decrypted, 'OldStorePassword123');
+  });
+});
+
+describe('Level 2: URL Rules & Centralized OAuth Detection Tests', () => {
+  const urlRules = require('../../../src/main/config/url-rules');
+
+  test('should accurately classify OAuth identity platform URLs', () => {
+    assert.equal(urlRules.isOAuthUrl('https://accounts.google.com/o/oauth2/v2/auth?client_id=123&response_type=code'), true);
+    assert.equal(urlRules.isOAuthUrl('https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=abc'), true);
+    assert.equal(urlRules.isOAuthUrl('https://appleid.apple.com/auth/authorize?client_id=app'), true);
+    assert.equal(urlRules.isOAuthUrl('https://github.com/login/oauth/authorize?client_id=gh123'), true);
+    assert.equal(urlRules.isOAuthUrl('https://www.facebook.com/v19.0/dialog/oauth?client_id=fb456&response_type=code'), true);
+  });
+
+  test('should NOT flag regular marketplace product / order URLs containing substring "auth"', () => {
+    assert.equal(urlRules.isOAuthUrl('https://seller.shopee.co.id/portal/product/author_book'), false);
+    assert.equal(urlRules.isOAuthUrl('https://seller.tokopedia.com/manage-order/authenticated'), false);
+    assert.equal(urlRules.isOAuthUrl('https://seller.tiktok.com/order/detail?order_id=98765'), false);
+  });
+
+  test('should detect dangerous navigation protocols', () => {
+    assert.equal(urlRules.isDangerousProtocol('javascript:alert(1)'), true);
+    assert.equal(urlRules.isDangerousProtocol('file:///C:/Windows/System32/calc.exe'), true);
+    assert.equal(urlRules.isDangerousProtocol('vbscript:msgbox'), true);
+    assert.equal(urlRules.isDangerousProtocol('https://seller.shopee.co.id/'), false);
+  });
+
+  test('should allow safe standard document/webview protocols', () => {
+    assert.equal(urlRules.isAllowedProtocol('https://seller.shopee.co.id/'), true);
+    assert.equal(urlRules.isAllowedProtocol('http://localhost:3000/'), true);
+    assert.equal(urlRules.isAllowedProtocol('blob:https://seller.shopee.co.id/1234-5678'), true);
+    assert.equal(urlRules.isAllowedProtocol('data:image/png;base64,iVBORw0KGgo='), true);
+    assert.equal(urlRules.isAllowedProtocol('about:blank'), true);
+    assert.equal(urlRules.isAllowedProtocol('file:///etc/passwd'), false);
   });
 });

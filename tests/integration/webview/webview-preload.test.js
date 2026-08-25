@@ -6,27 +6,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
-// Isolated OAuth URL detector mirroring webview-preload.js
-function isOAuthUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  const lowerUrl = url.toLowerCase();
-  return lowerUrl.includes('accounts.google.com') ||
-    lowerUrl.includes('accounts.youtube.com') ||
-    lowerUrl.includes('appleid.apple.com') ||
-    lowerUrl.includes('login.live.com') ||
-    lowerUrl.includes('login.microsoftonline.com') ||
-    lowerUrl.includes('facebook.com/dialog/oauth') ||
-    lowerUrl.includes('facebook.com/login') ||
-    lowerUrl.includes('github.com/login') ||
-    lowerUrl.includes('github.com/sessions') ||
-    lowerUrl.includes('gitlab.com/oauth') ||
-    lowerUrl.includes('oauth') ||
-    lowerUrl.includes('/auth/') ||
-    lowerUrl.includes('/authorize') ||
-    lowerUrl.includes('/sso/') ||
-    lowerUrl.includes('response_type=code') ||
-    lowerUrl.includes('client_id=');
-}
+const { isOAuthUrl } = require('../../../src/main/config/url-rules');
 
 // Isolated Link Interceptor Decision Logic
 function shouldOpenInNewTab(linkAttributes, isCtrlOrMiddle, currentHref, clickedTargetType = 'text') {
@@ -138,8 +118,136 @@ describe('Level 6: Webview Preload & Anti-Detection Tests', () => {
       const mockNavigator = { webdriver: true };
       try {
         delete mockNavigator.webdriver;
+        Object.defineProperty(mockNavigator, 'webdriver', {
+          get: () => undefined,
+          configurable: true,
+          enumerable: true
+        });
       } catch (e) {}
-      assert.equal('webdriver' in mockNavigator, false);
+      assert.equal(mockNavigator.webdriver, undefined);
+    });
+
+    test('should provide standard Chromium window.chrome structure for WAF compliance', () => {
+      const mockWindow = {};
+      mockWindow.chrome = mockWindow.chrome || {};
+      if (!mockWindow.chrome.app) {
+        mockWindow.chrome.app = {
+          isInstalled: false,
+          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+          getIsInstalled: () => false,
+          getDetails: () => null
+        };
+      }
+      if (!mockWindow.chrome.runtime) {
+        mockWindow.chrome.runtime = {
+          OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' }
+        };
+      }
+
+      assert.equal(typeof mockWindow.chrome.app.getIsInstalled, 'function');
+      assert.equal(mockWindow.chrome.app.isInstalled, false);
+      assert.equal(mockWindow.chrome.runtime.OnInstalledReason.INSTALL, 'install');
+    });
+  });
+
+  describe('Semantic Customer Name Sanitization', () => {
+    function cleanCustomerNameText(raw) {
+      if (!raw || typeof raw !== 'string') return '';
+      let text = raw.trim();
+      if (!text || text.length < 2 || text.length > 65) return '';
+
+      const rawLower = text.toLowerCase();
+      if (
+        rawLower.includes('typing') ||
+        rawLower.includes('mengetik') ||
+        rawLower.includes('last seen') ||
+        rawLower.includes('terakhir dilihat')
+      ) {
+        return '';
+      }
+
+      // 1. Bersihkan format multi-baris: ambil baris pertama
+      text = text.split('\n')[0].replace(/[\r\t]+/g, ' ').trim();
+
+      // 2. Bersihkan status online/presence yang menempel di belakang (contoh: "Andi Wijaya Online")
+      text = text.replace(/\s+(?:online|offline|aktif|active)$/i, '').trim();
+
+      // 3. Bersihkan badge tanda kurung atau separator trailing (contoh: "Budi (Buyer VIP)" atau "Andi - Jakarta")
+      if (text.includes('(') && text.length > 20) {
+        text = text.split('(')[0].trim();
+      }
+      if (text.includes(' - ') && text.length > 25) {
+        text = text.split(' - ')[0].trim();
+      }
+
+      const lower = text.toLowerCase();
+      const noiseKeywords = [
+        'search', 'cari', 'online', 'ketik', 'typing', 'offline', 'terakhir',
+        'last seen', 'aktif', 'active', 'pesan', 'messages', 'chat', 'batal',
+        'cancel', 'kirim', 'send', 'status', 'kembali', 'back', 'filter',
+        'customer service', 'seller center', 'bantuan', 'help', 'sedang'
+      ];
+      if (noiseKeywords.some(k => lower === k || lower.startsWith(k + ' ') || lower.startsWith(k + ':') || lower.startsWith(k + '.'))) {
+        return '';
+      }
+
+      // 4. Jika berupa timestamp atau jam semata (misal: "18:30" atau "25/08/2026")
+      if (/^\d{1,2}[:.]\d{2}(?:\s*(?:am|pm|wib|wita|wit))?$/i.test(text) || /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(text)) {
+        return '';
+      }
+
+      return (text.length >= 2 && text.length <= 50) ? text : '';
+    }
+
+    test('should extract clean customer name from noisy DOM strings', () => {
+      assert.equal(cleanCustomerNameText('Budi Santoso Online'), 'Budi Santoso');
+      assert.equal(cleanCustomerNameText('Siti Rahma (Buyer Prioritas VIP)'), 'Siti Rahma');
+      assert.equal(cleanCustomerNameText('Andi Pratama - Jakarta Selatan'), 'Andi Pratama');
+      assert.equal(cleanCustomerNameText('Dewi Lestari\nOnline 1 jam lalu'), 'Dewi Lestari');
+    });
+
+    test('should reject status keywords, search prompts, and timestamps', () => {
+      assert.equal(cleanCustomerNameText('Online'), '');
+      assert.equal(cleanCustomerNameText('Sedang mengetik...'), '');
+      assert.equal(cleanCustomerNameText('18:45 WIB'), '');
+      assert.equal(cleanCustomerNameText('Cari kontak atau pesan'), '');
+      assert.equal(cleanCustomerNameText(''), '');
+    });
+  });
+
+  describe('Multi-Lingual WhatsApp Sync Status Detection', () => {
+    function testSyncDetection(bannerText) {
+      const isSyncMatch = /(?:mengunduh|downloading|descargando|téléchargement|sincroniz|syncing|organizing|memuat|organizando|正在同步|正在下载)/i.test(bannerText);
+      const isCompletedMatch = /(?:terakhir disinkronkan|sinkronisasi selesai|all messages synced|last synced|riwayat pesan telah diunduh|riwayat chat selesai|concluído|finalizado|terminé|同步完成)/i.test(bannerText);
+      const match = bannerText.match(/(\d{1,3})\s*%/);
+      const percent = match ? parseInt(match[1], 10) : null;
+      return { isSyncMatch, isCompletedMatch, percent };
+    }
+
+    test('should detect Indonesian, English, Spanish, French, and Chinese sync progress', () => {
+      const idSync = testSyncDetection('Sedang mengunduh pesan riwayat chat 45%');
+      assert.equal(idSync.isSyncMatch, true);
+      assert.equal(idSync.percent, 45);
+
+      const enSync = testSyncDetection('Downloading older messages 80%');
+      assert.equal(enSync.isSyncMatch, true);
+      assert.equal(enSync.percent, 80);
+
+      const esSync = testSyncDetection('Sincronizando mensajes antiguos 60%');
+      assert.equal(esSync.isSyncMatch, true);
+      assert.equal(esSync.percent, 60);
+
+      const zhSync = testSyncDetection('正在同步历史聊天记录 95%');
+      assert.equal(zhSync.isSyncMatch, true);
+      assert.equal(zhSync.percent, 95);
+    });
+
+    test('should detect sync completed in multiple languages', () => {
+      assert.equal(testSyncDetection('Riwayat chat selesai disinkronkan').isCompletedMatch, true);
+      assert.equal(testSyncDetection('All messages synced successfully').isCompletedMatch, true);
+      assert.equal(testSyncDetection('Sincronização concluído').isCompletedMatch, true);
+      assert.equal(testSyncDetection('同步完成').isCompletedMatch, true);
     });
   });
 });

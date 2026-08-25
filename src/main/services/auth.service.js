@@ -36,26 +36,36 @@ function generateSalt() {
   return crypto.randomBytes(16).toString('hex');
 }
 
+/**
+ * Hash password menggunakan Scrypt dengan cryptographic salt.
+ * Menjamin tidak ada hash baru yang dibuat tanpa salt.
+ */
 function hashPassword(password, salt) {
   if (!password) return '';
-  if (!salt) {
-    // Legacy unsalted SHA-256 fallback
-    return crypto.createHash('sha256').update(password).digest('hex');
-  }
-  return crypto.scryptSync(password, salt, 32).toString('hex');
+  const effectiveSalt = salt || generateSalt();
+  return crypto.scryptSync(password, effectiveSalt, 32).toString('hex');
 }
 
+/**
+ * Verifikasi password dengan timing-safe comparison.
+ * Mendukung hash scrypt bertabur salt dan legacy unsalted SHA-256 untuk auto-migrasi.
+ */
 function verifyPassword(password, storedHash, storedSalt) {
   if (!password || !storedHash) return false;
   try {
     if (storedSalt) {
       const computed = hashPassword(password, storedSalt);
-      return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(storedHash, 'hex'));
+      const computedBuf = Buffer.from(computed, 'hex');
+      const storedBuf = Buffer.from(storedHash, 'hex');
+      if (computedBuf.length !== storedBuf.length) return false;
+      return crypto.timingSafeEqual(computedBuf, storedBuf);
     }
-    // Fallback for legacy unsalted SHA-256
+    // Fallback verifikasi legacy unsalted SHA-256 (hanya untuk proses auto-migrasi ke scrypt saat login)
     const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
-    if (legacyHash.length === storedHash.length) {
-      return crypto.timingSafeEqual(Buffer.from(legacyHash, 'hex'), Buffer.from(storedHash, 'hex'));
+    const legacyBuf = Buffer.from(legacyHash, 'hex');
+    const storedBuf = Buffer.from(storedHash, 'hex');
+    if (legacyBuf.length === storedBuf.length) {
+      return crypto.timingSafeEqual(legacyBuf, storedBuf);
     }
     return legacyHash === storedHash;
   } catch (e) {
@@ -596,6 +606,11 @@ function verifyUserPin({ username, password }) {
   const user = users.find(u => u.username === username);
   if (!user) return { success: false, error: 'User tidak ditemukan' };
   if (verifyPassword(password, user.passwordHash, user.passwordSalt)) {
+    if (!user.passwordSalt) {
+      user.passwordSalt = generateSalt();
+      user.passwordHash = hashPassword(password, user.passwordSalt);
+      saveUsers(users);
+    }
     currentActiveSession = {
       username: user.username,
       isSuperAdmin: isUserSuperAdmin(user)

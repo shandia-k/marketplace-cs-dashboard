@@ -33,19 +33,39 @@ function getActiveAppPids() {
 }
 
 /**
+ * Memicu V8 Garbage Collector / Heap Compactor jika tersedia
+ */
+function compactV8Memory() {
+  try {
+    if (typeof global !== 'undefined' && typeof global.gc === 'function') {
+      global.gc();
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+/**
  * Pangkas Working Set memori proses Electron secara native di Windows
+ * atau jalankan V8 compaction pada Linux/macOS.
  * Bekerja 100% pada mode development maupun rilis produksi (ASAR packaged .exe).
  * @param {number} throttleMs Jeda minimal antar pemanggilan (default 15000ms / 15 detik)
- * @returns {Promise<{success: boolean, platform: string, trimmedPids?: number[]}>}
+ * @returns {Promise<{success: boolean, platform: string, trimmedPids?: number[], method?: string}>}
  */
 function trimWorkingSet(throttleMs = 15000) {
-  if (os.platform() !== 'win32') {
-    return Promise.resolve({ success: true, platform: os.platform() });
+  const currentPlatform = os.platform();
+  if (currentPlatform !== 'win32') {
+    const gcRan = compactV8Memory();
+    return Promise.resolve({
+      success: true,
+      platform: currentPlatform,
+      method: gcRan ? 'v8-gc' : 'noop'
+    });
   }
 
   const now = Date.now();
   if (now - lastTrimTimestamp < throttleMs) {
-    return Promise.resolve({ success: true, throttled: true });
+    return Promise.resolve({ success: true, throttled: true, platform: 'win32' });
   }
 
   if (isTrimming) {
@@ -107,9 +127,9 @@ try {
         isTrimming = false;
         if (error) {
           console.warn('[MemoryTrimmer] Working set trim warning:', error.message);
-          resolve({ success: false, error: error.message });
+          resolve({ success: false, error: error.message, platform: 'win32' });
         } else {
-          resolve({ success: true, trimmedPids: pids });
+          resolve({ success: true, trimmedPids: pids, platform: 'win32' });
         }
       }
     );

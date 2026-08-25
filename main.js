@@ -58,7 +58,7 @@ setInterval(sessionService.flushAllSessions, 30000);
 
 // Pangkas working set RAM secara otomatis setiap 45 detik untuk menjaga memori tetap ramping
 setInterval(() => {
-  sessionService.pruneBackgroundMemory().catch(() => {});
+  sessionService.pruneBackgroundMemory().catch(() => { });
 }, 45000);
 
 // Daftarkan seluruh IPC handler
@@ -99,7 +99,7 @@ function createWindow() {
     if (details.reason === 'crashed' || details.reason === 'oom' || details.reason === 'killed') {
       try {
         if (!mainWindow.isDestroyed()) mainWindow.reload();
-      } catch (e) {}
+      } catch (e) { }
     }
   });
 
@@ -122,7 +122,7 @@ function createWindow() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.invalidate();
       }
-    } catch (e) {}
+    } catch (e) { }
   });
 
   mainWindow.on('restore', () => {
@@ -130,7 +130,7 @@ function createWindow() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.invalidate();
       }
-    } catch (e) {}
+    } catch (e) { }
   });
 }
 
@@ -140,7 +140,7 @@ app.on('child-process-gone', (event, details) => {
   if (details.type === 'GPU' && mainWindow && !mainWindow.isDestroyed()) {
     try {
       mainWindow.webContents.invalidate();
-    } catch (e) {}
+    } catch (e) { }
   }
 });
 

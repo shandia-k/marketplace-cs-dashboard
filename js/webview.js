@@ -445,23 +445,7 @@ function createWebview(store, tab, targetPane = 'left') {
     const rawUrl = e.url || '';
     if (!rawUrl) return;
 
-    const lowerUrl = rawUrl.toLowerCase();
-    const isOAuth = lowerUrl.includes('accounts.google.com') ||
-      lowerUrl.includes('accounts.youtube.com') ||
-      lowerUrl.includes('appleid.apple.com') ||
-      lowerUrl.includes('login.live.com') ||
-      lowerUrl.includes('login.microsoftonline.com') ||
-      lowerUrl.includes('facebook.com/dialog/oauth') ||
-      lowerUrl.includes('facebook.com/login') ||
-      lowerUrl.includes('github.com/login') ||
-      lowerUrl.includes('github.com/sessions') ||
-      lowerUrl.includes('gitlab.com/oauth') ||
-      lowerUrl.includes('oauth') ||
-      lowerUrl.includes('/auth/') ||
-      lowerUrl.includes('/authorize') ||
-      lowerUrl.includes('/sso/') ||
-      lowerUrl.includes('response_type=code') ||
-      lowerUrl.includes('client_id=');
+    const isOAuth = (typeof isOAuthUrl === 'function') ? isOAuthUrl(rawUrl) : (typeof window.isOAuthUrl === 'function' ? window.isOAuthUrl(rawUrl) : false);
 
     // Jika ini adalah dialog popup autentikasi OAuth / SSO, jangan hijack menjadi tab baru
     // Biarkan setWindowOpenHandler di main process membukanya dengan window.opener & partisi yang sama

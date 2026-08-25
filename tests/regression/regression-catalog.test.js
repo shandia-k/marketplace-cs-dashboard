@@ -528,7 +528,63 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(feedbackJsCode.includes('Rekam Jejak Diagnostik'), 'feedback.js must render diagnostic accordion');
     assert.ok(feedbackServiceCode.includes('diagnostics:'), 'feedback.service.js must persist diagnostics');
   });
+
+  test('[REG-023] Priority 1 Security Hardening: AES-256-GCM Vault, Scrypt Auto-Migration, and Centralized URL Rules', () => {
+    const authServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/auth.service.js'), 'utf8');
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+    const urlRules = require('../../src/main/config/url-rules');
+
+    // 1. Verifikasi Scrypt auto-migration dan no-unsalted hashes
+    assert.ok(authServiceCode.includes('crypto.scryptSync'), 'auth.service.js must use scryptSync');
+    assert.ok(authServiceCode.includes('effectiveSalt = salt || generateSalt()'), 'auth.service.js must enforce salt generation');
+    assert.ok(authServiceCode.includes('user.passwordSalt = generateSalt()'), 'auth.service.js must auto-migrate legacy hashes');
+
+    // 2. Verifikasi AES-256-GCM Credential Vault di webview-preload.js
+    assert.ok(webviewPreloadCode.includes("'enc:v1:'"), 'webview-preload.js must use versioned AES-GCM vault prefix');
+    assert.ok(webviewPreloadCode.includes('aes-256-gcm'), 'webview-preload.js must use aes-256-gcm cipher');
+    assert.ok(webviewPreloadCode.includes('deriveVaultKey'), 'webview-preload.js must derive vault keys');
+
+    // 3. Verifikasi Single Source of Truth URL Rules
+    assert.equal(typeof urlRules.isOAuthUrl, 'function', 'url-rules must export isOAuthUrl');
+    assert.equal(typeof urlRules.isDangerousProtocol, 'function', 'url-rules must export isDangerousProtocol');
+    assert.equal(typeof urlRules.isAllowedProtocol, 'function', 'url-rules must export isAllowedProtocol');
+    assert.ok(sessionServiceCode.includes('url-rules'), 'session.service.js must consume centralized url-rules');
+  });
+
+  test('[REG-024] Priority 2 DOM Resilience: Multi-Layered Semantic Customer Name Detection & Multi-Lingual Sync', () => {
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+
+    // 1. Verifikasi Semantic Customer Name Detection & Noise Sanitization
+    assert.ok(webviewPreloadCode.includes('cleanCustomerNameText'), 'webview-preload.js must define cleanCustomerNameText');
+    assert.ok(webviewPreloadCode.includes('[role="heading"]'), 'webview-preload.js must search semantic heading roles');
+    assert.ok(webviewPreloadCode.includes('[aria-selected="true"]'), 'webview-preload.js must check active conversation items');
+
+    // 2. Verifikasi Semantic Chat Input Proximity
+    assert.ok(webviewPreloadCode.includes('composeAreas'), 'webview-preload.js must search compose areas in findChatInput');
+
+    // 3. Verifikasi Multi-Lingual WhatsApp Sync Matcher
+    assert.ok(webviewPreloadCode.includes('descargando'), 'webview-preload.js must support Spanish/Portuguese sync keywords');
+    assert.ok(webviewPreloadCode.includes('正在同步'), 'webview-preload.js must support Chinese sync keywords');
+    assert.ok(webviewPreloadCode.includes('téléchargement'), 'webview-preload.js must support French sync keywords');
+  });
+
+  test('[REG-025] Priority 3 Cross-Platform & Stealth Optimization: V8 GC Fallback & Chromium Mimicry', async () => {
+    const memoryTrimmer = require('../../src/main/services/memory-trimmer.service');
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+
+    // 1. Verifikasi Memory Trimmer mengeksekusi secara aman dan mengembalikan hasil platform yang tepat
+    const trimRes = await memoryTrimmer.trimWorkingSet(0);
+    assert.ok(trimRes && typeof trimRes.success === 'boolean');
+    assert.ok(trimRes.platform, 'Must return platform information');
+
+    // 2. Verifikasi webview-preload.js menyertakan authentic Chromium stealth & window.chrome mock
+    assert.ok(webviewPreloadCode.includes('window.chrome.app'), 'webview-preload.js must define window.chrome.app for bot defense');
+    assert.ok(webviewPreloadCode.includes('window.chrome.runtime'), 'webview-preload.js must define window.chrome.runtime for bot defense');
+    assert.ok(webviewPreloadCode.includes('Object.defineProperty(navigator, \'webdriver\''), 'webview-preload.js must mask navigator.webdriver with getter');
+  });
 });
+
 
 
 
