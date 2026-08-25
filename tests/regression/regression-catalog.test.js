@@ -340,8 +340,9 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(tabsCode.includes("entry.webview.classList.add('visible')"), 'tabs.js must unhide webview on soft wake');
     assert.ok(!tabsCode.includes('captureTabSnapshot'), 'tabs.js must not contain legacy captureTabSnapshot loop');
 
-    // 2. Pastikan webview.js tidak memiliki loop capturePage yang membebani GPU
+    // 2. Pastikan webview.js tidak memiliki loop capturePage atau sisa hideGhostSnapshot
     assert.ok(!webviewCode.includes('captureTabSnapshot('), 'webview.js must not execute legacy captureTabSnapshot');
+    assert.ok(!webviewCode.includes('hideGhostSnapshot'), 'webview.js must not contain legacy hideGhostSnapshot');
   });
 
   test('[REG-017] Dual-Layer State Retention: V8 GC Heap Tuning and Native Windows Working Set Trimmer', () => {
@@ -732,6 +733,25 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(preloadCode.includes('autofill-get-entries-sync'), 'webview-preload.js must fetch entries via IPC');
     assert.ok(preloadCode.includes('autofill-save-entry-sync'), 'webview-preload.js must save entries via IPC');
     assert.ok(preloadCode.includes('autofill-delete-entry-sync'), 'webview-preload.js must delete entries via IPC');
+  });
+
+  test('[REG-035] Resilient Network Connectivity Monitor: Multi-endpoint Probe, CSP Whitelisting, and Anti-Flapping False-Positive Guard', () => {
+    const mainCode = fs.readFileSync(path.join(__dirname, '../../main.js'), 'utf8');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+    const networkCode = fs.readFileSync(path.join(__dirname, '../../js/network.js'), 'utf8');
+
+    // 1. Verifikasi whitelist endpoint probe koneksi di CSP main.js & index.html
+    assert.ok(mainCode.includes('https://www.gstatic.com'), 'main.js CSP must whitelist https://www.gstatic.com in connect-src');
+    assert.ok(mainCode.includes('https://cloudflare.com'), 'main.js CSP must whitelist https://cloudflare.com in connect-src');
+    assert.ok(indexHtml.includes('https://www.gstatic.com'), 'index.html CSP must whitelist https://www.gstatic.com in connect-src');
+    assert.ok(indexHtml.includes('https://cloudflare.com'), 'index.html CSP must whitelist https://cloudflare.com in connect-src');
+
+    // 2. Verifikasi arsitektur probe multi-endpoint & anti-flapping di network.js
+    assert.ok(networkCode.includes('CONNECTIVITY_ENDPOINTS'), 'network.js must define robust CONNECTIVITY_ENDPOINTS list');
+    assert.ok(networkCode.includes('https://www.gstatic.com/generate_204'), 'network.js must include gstatic 204 probe');
+    assert.ok(networkCode.includes('https://cloudflare.com/cdn-cgi/trace'), 'network.js must include cloudflare trace probe');
+    assert.ok(networkCode.includes('MAX_CONSECUTIVE_FAILURES'), 'network.js must implement consecutive failure threshold to prevent flapping');
+    assert.ok(networkCode.includes('probeEndpoint'), 'network.js must encapsulate probe logic per endpoint');
   });
 });
 

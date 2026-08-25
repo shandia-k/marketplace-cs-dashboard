@@ -11,9 +11,18 @@
 (function () {
   'use strict';
 
-  let isOnline = navigator.onLine;
+  let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   let isTesting = false;
   let checkInterval = null;
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 2; // Membutuhkan 2x kegagalan berturut-turut sebelum menandai offline (mencegah flapping / glitch)
+
+  // Endpoint probe konektivitas yang super cepat, ringan (HTTP 204 / trace / favicon), dan terdaftar di CSP
+  const CONNECTIVITY_ENDPOINTS = [
+    { url: 'https://www.gstatic.com/generate_204', method: 'GET', timeout: 3500 },
+    { url: 'https://cloudflare.com/cdn-cgi/trace', method: 'GET', timeout: 3500 },
+    { url: 'https://www.google.com/favicon.ico', method: 'GET', timeout: 4000 }
+  ];
 
   // ── Inisialisasi Event Listener & Monitoring ─────────────────────────────────
   function initNetworkMonitor() {
@@ -33,57 +42,59 @@
     bindNetworkUIEvents();
   }
 
-  // ── Pemeriksaan Konektivitas Nyata (Ping Check) ──────────────────────────────
-  async function verifyConnectivity(manualTrigger = false) {
-    if (!navigator.onLine) {
-      updateNetworkUI(false, 0, manualTrigger);
-      return false;
-    }
-
+  // ── Probe Helper per Endpoint ───────────────────────────────────────────────
+  async function probeEndpoint(endpoint) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), endpoint.timeout || 3500);
     const startTime = Date.now();
     try {
-      // Gunakan endpoint yang sangat cepat & ringan dengan cache-busting
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
-
-      const response = await fetch(`https://1.1.1.1/cdn-cgi/trace?_t=${Date.now()}`, {
-        method: 'HEAD',
+      await fetch(`${endpoint.url}?_t=${startTime}`, {
+        method: endpoint.method || 'GET',
         mode: 'no-cors',
         cache: 'no-store',
         signal: controller.signal
       });
-
       clearTimeout(timeoutId);
-      const latency = Date.now() - startTime;
-      updateNetworkUI(true, latency, manualTrigger);
-      return true;
+      return { success: true, latency: Math.max(1, Date.now() - startTime) };
     } catch (e) {
-      // Fallback secondary check jika Cloudflare diblokir firewall lokal
-      try {
-        const controller2 = new AbortController();
-        const timeoutId2 = setTimeout(() => controller2.abort(), 4500);
-        await fetch(`https://www.google.com/favicon.ico?_t=${Date.now()}`, {
-          method: 'HEAD',
-          mode: 'no-cors',
-          cache: 'no-store',
-          signal: controller2.signal
-        });
-        clearTimeout(timeoutId2);
-        const latency = Date.now() - startTime;
-        updateNetworkUI(true, latency, manualTrigger);
-        return true;
-      } catch (err) {
+      clearTimeout(timeoutId);
+      return { success: false, error: e };
+    }
+  }
+
+  // ── Pemeriksaan Konektivitas Nyata (Multi-Endpoint Ping Check) ───────────────
+  async function verifyConnectivity(manualTrigger = false) {
+    let probeResult = null;
+
+    // Coba endpoint primer, jika gagal coba endpoint sekunder/tersier (failover cepat)
+    for (const ep of CONNECTIVITY_ENDPOINTS) {
+      probeResult = await probeEndpoint(ep);
+      if (probeResult.success) break;
+    }
+
+    if (probeResult && probeResult.success) {
+      consecutiveFailures = 0;
+      updateNetworkUI(true, probeResult.latency, manualTrigger);
+      return true;
+    } else {
+      consecutiveFailures++;
+      // Jika dipicu manual (klik tombol Cek Koneksi), langsung tampilkan status gagal.
+      // Jika di background, hanya ubah UI offline jika gagal berturut-turut >= MAX_CONSECUTIVE_FAILURES
+      if (manualTrigger || consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         updateNetworkUI(false, 0, manualTrigger);
-        return false;
       }
+      return false;
     }
   }
 
   function handleNetworkChange(online) {
     if (online) {
+      consecutiveFailures = 0;
       verifyConnectivity(false);
     } else {
-      updateNetworkUI(false, 0, false);
+      // Saat event offline Windows terpicu (sering kali transient/glitch adapter virtual),
+      // lakukan verifikasi konektivitas riil ke endpoint untuk memastikan status nyata.
+      verifyConnectivity(false);
     }
   }
 

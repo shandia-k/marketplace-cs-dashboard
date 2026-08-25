@@ -597,7 +597,6 @@ function createWebview(store, tab, targetPane = 'left') {
   wv.addEventListener('did-navigate-in-page', handleNavChange);
 
   wv.addEventListener('did-fail-load', e => {
-    if (tab) hideGhostSnapshot(tab.id, true);
     if (e.errorCode !== -3) {
       loadingEl.innerHTML = `
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5">
