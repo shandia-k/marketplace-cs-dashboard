@@ -651,6 +651,88 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     // 2. Verifikasi tidak ada lagi kode SHA-256 tanpa salt di auth.service.js
     assert.ok(!authCode.includes("createHash('sha256')"), 'auth.service.js must not contain unsalted createHash');
   });
+
+  test('[REG-030] H1 Security Hardening: Dynamic Machine-Bound Role Integrity Secret (Zero Static Salt in Constants)', () => {
+    const constants = require('../../src/main/config/constants');
+    const storageService = require('../../src/main/services/storage.service');
+    const constantsCode = fs.readFileSync(path.join(__dirname, '../../src/main/config/constants.js'), 'utf8');
+
+    // 1. Verifikasi ROLE_INTEGRITY_SALT statis telah dihapus dari constants.js
+    assert.equal(constants.ROLE_INTEGRITY_SALT, undefined, 'ROLE_INTEGRITY_SALT must not be exported from constants');
+    assert.ok(!constantsCode.includes('ROLE_INTEGRITY_SALT'), 'constants.js must not contain ROLE_INTEGRITY_SALT');
+
+    // 2. Verifikasi getRoleIntegritySecret membangkitkan dan mengembalikan dynamic secret
+    assert.equal(typeof storageService.getRoleIntegritySecret, 'function');
+    const secret = storageService.getRoleIntegritySecret();
+    assert.ok(typeof secret === 'string');
+    assert.ok(secret.length >= 32, 'Dynamic role secret must be at least 256-bit');
+  });
+
+  test('[REG-031] H2 Security Hardening: Strict Isolation & Sandboxing for OAuth Popup Windows', () => {
+    const sessionCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+
+    // 1. Verifikasi contextIsolation diaktifkan pada popup OAuth
+    assert.ok(sessionCode.includes('contextIsolation: true'), 'session.service.js must enforce contextIsolation: true on OAuth popups');
+
+    // 2. Verifikasi nodeIntegration dimatikan dan sandbox diaktifkan
+    assert.ok(sessionCode.includes('nodeIntegration: false'), 'session.service.js must enforce nodeIntegration: false on OAuth popups');
+    assert.ok(sessionCode.includes('sandbox: true'), 'session.service.js must enable sandbox on OAuth popups');
+    assert.ok(sessionCode.includes('webSecurity: true'), 'session.service.js must enable webSecurity on OAuth popups');
+  });
+
+  test('[REG-032] H3 Security Hardening: Hardened Content-Security-Policy (CSP) Enforcement', () => {
+    const mainCode = fs.readFileSync(path.join(__dirname, '../../main.js'), 'utf8');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+
+    // 1. Verifikasi pengetatan CSP di main.js
+    assert.ok(mainCode.includes("default-src 'self'"), 'main.js CSP must restrict default-src to self');
+    assert.ok(mainCode.includes("object-src 'none'"), 'main.js CSP must restrict object-src to none');
+    assert.ok(!mainCode.includes("default-src 'self' 'unsafe-inline' https: http: data:;"), 'main.js must not contain loose default-src');
+
+    // 2. Verifikasi pengetatan meta tag CSP di index.html
+    assert.ok(indexHtml.includes("default-src 'self'"), 'index.html CSP must restrict default-src to self');
+    assert.ok(indexHtml.includes("object-src 'none'"), 'index.html CSP must restrict object-src to none');
+    assert.ok(!indexHtml.includes("default-src 'self' 'unsafe-inline' https: http: data:;"), 'index.html must not contain loose default-src');
+  });
+
+  test('[REG-033] H4 Security Hardening: Full Elimination of Legacy Static Vault Passphrases', () => {
+    const vaultCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/vault.service.js'), 'utf8');
+    const preloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+
+    // 1. Verifikasi tidak ada lagi kemunculan passphrase statis di vault.service.js
+    assert.ok(!vaultCode.includes('cs_mkt_vault_partition_k99_'), 'vault.service.js must not contain static vault passphrase');
+
+    // 2. Verifikasi tidak ada lagi kemunculan passphrase statis di webview-preload.js
+    assert.ok(!preloadCode.includes('cs_mkt_vault_partition_k99_'), 'webview-preload.js must not contain static vault passphrase');
+  });
+
+  test('[REG-034] H5 Security Hardening: Centralized Encrypted IPC Autofill Vault & Zero Webview localStorage Exposure', () => {
+    const vaultService = require('../../src/main/services/vault.service');
+    const preloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+
+    // 1. Verifikasi fungsi autofill vault terpusat diekspor
+    assert.equal(typeof vaultService.getAutofillEntries, 'function');
+    assert.equal(typeof vaultService.saveAutofillEntry, 'function');
+    assert.equal(typeof vaultService.deleteAutofillEntry, 'function');
+
+    // 2. Verifikasi operasi save, get, and delete di Main Process
+    const testHost = 'test.marketplace.co.id';
+    vaultService.saveAutofillEntry({ host: testHost, value: 'seller_andi', fieldType: 'text', password: 'SecretStorePass!99' });
+    const entries = vaultService.getAutofillEntries(testHost);
+    assert.ok(Array.isArray(entries));
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].value, 'seller_andi');
+    assert.ok(entries[0].pass.startsWith('dpapi:v1:') || entries[0].pass.startsWith('enc:v1:'));
+
+    vaultService.deleteAutofillEntry({ host: testHost, value: 'seller_andi' });
+    const deletedEntries = vaultService.getAutofillEntries(testHost);
+    assert.equal(deletedEntries.length, 0);
+
+    // 3. Verifikasi webview-preload.js mendelegasikan ke IPC sinkron
+    assert.ok(preloadCode.includes('autofill-get-entries-sync'), 'webview-preload.js must fetch entries via IPC');
+    assert.ok(preloadCode.includes('autofill-save-entry-sync'), 'webview-preload.js must save entries via IPC');
+    assert.ok(preloadCode.includes('autofill-delete-entry-sync'), 'webview-preload.js must delete entries via IPC');
+  });
 });
 
 

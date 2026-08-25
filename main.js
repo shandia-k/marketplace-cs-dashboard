@@ -107,12 +107,12 @@ function createWindow() {
     console.warn('[Host Window Watchdog] Main window is temporarily unresponsive.');
   });
 
-  // Content-Security-Policy yang aman dan ketat untuk aplikasi desktop (tanpa unsafe-eval)
+  // Content-Security-Policy yang aman dan ketat untuk host dashboard (Zero http / Zero Wildcard connect)
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' https: http: data:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"]
+        'Content-Security-Policy': ["default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://api.telegram.org https://api.github.com; object-src 'none'; base-uri 'self';"]
       }
     });
   });

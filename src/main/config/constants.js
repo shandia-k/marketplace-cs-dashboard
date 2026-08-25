@@ -19,8 +19,6 @@ const CHROME_CLIENT_HINTS = {
   'Sec-CH-UA-Model': '""'
 };
 
-const ROLE_INTEGRITY_SALT = 'cs_marketplace_role_hmac_secret_v2_99a8b7c6';
-
 const defaultStores = [
   {
     id: 'shopee-1',
@@ -78,7 +76,6 @@ module.exports = {
   cleanChromeUserAgent,
   cleanFirefoxUserAgent,
   CHROME_CLIENT_HINTS,
-  ROLE_INTEGRITY_SALT,
   defaultStores,
   POPULAR_MARKETPLACE_PRESETS
 };

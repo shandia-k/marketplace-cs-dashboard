@@ -31,38 +31,14 @@ function verifyPassword(password, storedHash, storedSalt) {
   }
 }
 
-// AES-256-GCM Vault logic
-const VAULT_PREFIX = 'enc:v1:';
-function encryptVaultPass(raw, host = 'seller.shopee.co.id') {
-  if (!raw) return '';
-  const salt = crypto.randomBytes(16);
-  const iv = crypto.randomBytes(12);
-  const key = crypto.scryptSync('cs_mkt_vault_partition_k99_' + host, salt, 32);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  let encrypted = cipher.update(raw, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const tag = cipher.getAuthTag();
-  return `${VAULT_PREFIX}${salt.toString('hex')}:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
+const vaultService = require('../../../src/main/services/vault.service');
+
+function encryptVaultPass(raw) {
+  return vaultService.encryptSecret(raw);
 }
 
-function decryptVaultPass(enc, host = 'seller.shopee.co.id') {
-  if (!enc) return '';
-  if (typeof enc === 'string' && enc.startsWith(VAULT_PREFIX)) {
-    const parts = enc.slice(VAULT_PREFIX.length).split(':');
-    if (parts.length === 4) {
-      const [saltHex, ivHex, tagHex, cipherHex] = parts;
-      const salt = Buffer.from(saltHex, 'hex');
-      const iv = Buffer.from(ivHex, 'hex');
-      const tag = Buffer.from(tagHex, 'hex');
-      const key = crypto.scryptSync('cs_mkt_vault_partition_k99_' + host, salt, 32);
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-      decipher.setAuthTag(tag);
-      let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      return decrypted;
-    }
-  }
-  return Buffer.from(enc, 'base64').toString('utf8');
+function decryptVaultPass(enc) {
+  return vaultService.decryptSecret(enc);
 }
 
 describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
@@ -113,7 +89,7 @@ describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
   test('should encrypt and decrypt credentials with AES-256-GCM Vault', () => {
     const originalPass = 'S4ngatR4h4sia!@2026';
     const encrypted = encryptVaultPass(originalPass);
-    assert.ok(encrypted.startsWith(VAULT_PREFIX), 'Encrypted string must have version prefix');
+    assert.ok(encrypted.startsWith('dpapi:v1:') || encrypted.startsWith('enc:v1:'), 'Encrypted string must have version prefix');
     assert.notEqual(encrypted, originalPass, 'Ciphertext must not be plaintext');
     assert.notEqual(encrypted, Buffer.from(originalPass).toString('base64'), 'Must not be plain Base64');
 

@@ -48,6 +48,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   searchUrls: (query) => ipcRenderer.invoke('search-urls', query),
   vaultEncrypt: (text) => ipcRenderer.invoke('vault-encrypt', text),
   vaultDecrypt: (cipher, host) => ipcRenderer.invoke('vault-decrypt', cipher, host),
+  autofillGetEntries: (host) => ipcRenderer.invoke('autofill-get-entries', host),
+  autofillSaveEntry: (payload) => ipcRenderer.invoke('autofill-save-entry', payload),
+  autofillDeleteEntry: (payload) => ipcRenderer.invoke('autofill-delete-entry', payload),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),

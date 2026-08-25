@@ -66,4 +66,28 @@ describe('Level 2: Security & RBAC Integrity Tests (HMAC Role Signatures)', () =
     assert.equal(verifyUserRoleSig(null), false);
     assert.equal(verifyUserRoleSig({}), false);
   });
+
+  test('should provide dynamic machine-bound secret without static code salt', () => {
+    const { getRoleIntegritySecret } = require('../../../src/main/services/storage.service');
+    const secret = getRoleIntegritySecret();
+    assert.equal(typeof secret, 'string');
+    assert.ok(secret.length >= 32, 'Secret must be at least 256-bit');
+  });
+
+  test('should seamlessly auto-migrate legacy role signatures to dynamic machine secret', () => {
+    const legacySecret = 'cs_marketplace_role_hmac_secret_v2_99a8b7c6';
+    const legacySig = crypto.createHmac('sha256', legacySecret).update('user_migrasi:Super Admin:salt999', 'utf8').digest('hex');
+
+    const legacyUser = {
+      username: 'user_migrasi',
+      role: 'Super Admin',
+      passwordSalt: 'salt999',
+      roleSig: legacySig
+    };
+
+    assert.equal(verifyUserRoleSig(legacyUser), true, 'Legacy roleSig must pass migration verification');
+    // Signature harus ter-upgrade ke signature dynamic baru
+    const newExpected = computeRoleSig(legacyUser.username, legacyUser.role, legacyUser.passwordSalt);
+    assert.equal(legacyUser.roleSig, newExpected, 'roleSig must be migrated in-place to dynamic machine key');
+  });
 });

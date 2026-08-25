@@ -2155,23 +2155,13 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
           const iv = Buffer.from(ivHex, 'hex');
           const tag = Buffer.from(tagHex, 'hex');
 
-          // Coba kunci machine-bound lokal
-          try {
-            const key = getLocalMachineKey(salt);
-            const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-            decipher.setAuthTag(tag);
-            let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
-            return decrypted;
-          } catch (e) {
-            // Fallback ke legacy host key
-            const legacyKey = crypto.scryptSync('cs_mkt_vault_partition_k99_' + HOST, salt, 32);
-            const decipher2 = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);
-            decipher2.setAuthTag(tag);
-            let decrypted2 = decipher2.update(cipherHex, 'hex', 'utf8');
-            decrypted2 += decipher2.final('utf8');
-            return decrypted2;
-          }
+          // Kunci machine-bound lokal (Zero Static Passphrase)
+          const key = getLocalMachineKey(salt);
+          const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+          decipher.setAuthTag(tag);
+          let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+          decrypted += decipher.final('utf8');
+          return decrypted;
         }
       }
 
@@ -2185,67 +2175,96 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
   const obfuscatePass = encryptPass;
   const deobfuscatePass = decryptPass;
 
-  // Helper membaca riwayat form dari localStorage dengan in-place DPAPI auto-migrasi
+  // Helper membaca riwayat form dari Main Process Vault (Zero localStorage exposure)
   function getStoredEntries() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
+      // 1. Baca dari Main Process IPC (Zero Webview localStorage exposure)
+      if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+        const remoteEntries = ipcRenderer.sendSync('autofill-get-entries-sync', HOST);
+        if (Array.isArray(remoteEntries) && remoteEntries.length > 0) {
+          // Bersihkan sisa legacy localStorage jika ada
+          try {
+            if (localStorage.getItem(STORAGE_KEY)) localStorage.removeItem(STORAGE_KEY);
+            if (localStorage.getItem(REMEMBER_KEY)) localStorage.removeItem(REMEMBER_KEY);
+          } catch (e) { }
+          return remoteEntries;
+        }
+      }
 
-      let needsSave = false;
-      parsed.forEach(entry => {
-        if (entry && entry.pass && typeof entry.pass === 'string' && !entry.pass.startsWith(DPAPI_PREFIX)) {
-          const plain = decryptPass(entry.pass);
-          if (plain) {
-            entry.pass = encryptPass(plain);
-            needsSave = true;
+      // 2. Transisi & Auto-migrasi: Jika ada data lama di localStorage, pindahkan ke Main Process lalu purge dari DOM
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach(entry => {
+            if (entry && entry.value) {
+              let passToSave = entry.pass || '';
+              if (passToSave && !passToSave.startsWith(DPAPI_PREFIX)) {
+                const plain = decryptPass(passToSave);
+                if (plain) passToSave = encryptPass(plain);
+              }
+              if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+                ipcRenderer.sendSync('autofill-save-entry-sync', {
+                  host: HOST,
+                  value: entry.value,
+                  fieldType: entry.fieldType || 'text',
+                  encPass: passToSave
+                });
+              }
+            }
+          });
+          // Hapus total dari DOM localStorage agar tidak dapat diakses skrip halaman
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(REMEMBER_KEY);
+          } catch (e) { }
+
+          if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+            return ipcRenderer.sendSync('autofill-get-entries-sync', HOST) || [];
           }
         }
-      });
-      if (needsSave) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       }
-      return parsed;
+      return [];
     } catch (e) {
       return [];
     }
   }
 
-  // Helper menyimpan username / email & password ke riwayat
+  // Helper menyimpan username / email & password ke Main Process Vault
   function saveEntry(value, fieldType = 'text', password = '') {
     if (!value || typeof value !== 'string') return;
     const clean = value.trim();
     if (clean.length < 3 || clean.length > 100) return;
 
     try {
-      let entries = getStoredEntries();
-      const existing = entries.find(e => e && e.value && e.value.toLowerCase() === clean.toLowerCase());
-      const encPass = password ? obfuscatePass(password) : (existing?.pass || '');
-
-      entries = entries.filter(e => e && e.value && e.value.toLowerCase() !== clean.toLowerCase());
-      entries.unshift({
-        value: clean,
-        pass: encPass,
-        fieldType,
-        time: Date.now()
-      });
-      if (entries.length > 10) entries = entries.slice(0, 10);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ user: clean, pass: encPass }));
+      if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+        ipcRenderer.sendSync('autofill-save-entry-sync', {
+          host: HOST,
+          value: clean,
+          fieldType,
+          password: password || undefined
+        });
+      }
+      // Pastikan localStorage DOM tetap bersih tanpa residu kredensial
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(REMEMBER_KEY);
+      } catch (e) { }
     } catch (e) { }
   }
 
   function deleteEntry(valueToDelete) {
     try {
-      let entries = getStoredEntries();
-      entries = entries.filter(e => e && e.value !== valueToDelete);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-
-      const rawRem = localStorage.getItem(REMEMBER_KEY);
-      if (rawRem && rawRem.includes(valueToDelete)) {
-        localStorage.removeItem(REMEMBER_KEY);
+      if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+        ipcRenderer.sendSync('autofill-delete-entry-sync', {
+          host: HOST,
+          value: valueToDelete
+        });
       }
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(REMEMBER_KEY);
+      } catch (e) { }
     } catch (e) { }
   }
 

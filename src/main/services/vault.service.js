@@ -93,24 +93,13 @@ function decryptSecret(ciphertext, hostContext = '') {
         const iv = Buffer.from(ivHex, 'hex');
         const tag = Buffer.from(tagHex, 'hex');
 
-        // Coba kunci machine-bound terlebih dahulu
-        let key = getMachineDerivedKey(salt);
-        try {
-          const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-          decipher.setAuthTag(tag);
-          let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-          decrypted += decipher.final('utf8');
-          return decrypted;
-        } catch (e) {
-          // Fallback ke legacy host salt
-          const legacySalt = 'cs_mkt_vault_partition_k99_' + (hostContext || '');
-          key = crypto.scryptSync(legacySalt, salt, 32);
-          const decipher2 = crypto.createDecipheriv('aes-256-gcm', key, iv);
-          decipher2.setAuthTag(tag);
-          let decrypted2 = decipher2.update(cipherHex, 'hex', 'utf8');
-          decrypted2 += decipher2.final('utf8');
-          return decrypted2;
-        }
+        // Kunci machine-bound (Zero Static Passphrase)
+        const key = getMachineDerivedKey(salt);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(tag);
+        let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
       }
     } catch (e) {
       return '';
@@ -128,6 +117,103 @@ function decryptSecret(ciphertext, hostContext = '') {
   return ciphertext;
 }
 
+// ── CENTRAL ENCRYPTED AUTOFILL CREDENTIAL STORE (Zero Webview localStorage) ──
+const path = require('path');
+const fs = require('fs');
+
+function getAutofillVaultFilePath() {
+  const userData = (typeof process !== 'undefined' && process.env.APPDATA)
+    ? path.join(process.env.APPDATA, 'marketplace-cs-dashboard')
+    : path.join(os.homedir(), '.marketplace-cs-dashboard');
+  return path.join(userData, 'autofill_vault.json');
+}
+
+function readAutofillVaultSync() {
+  const filePath = getAutofillVaultFilePath();
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.__vault_version__ && parsed.cipher) {
+        const decryptedStr = decryptSecret(parsed.cipher);
+        if (decryptedStr) return JSON.parse(decryptedStr);
+      }
+      return parsed || {};
+    }
+  } catch (e) {
+    console.warn('[VaultService] Failed reading autofill vault:', e.message);
+  }
+  return {};
+}
+
+function saveAutofillVaultSync(data) {
+  const filePath = getAutofillVaultFilePath();
+  try {
+    const rawJson = JSON.stringify(data, null, 2);
+    const cipher = encryptSecret(rawJson);
+    const envelope = {
+      __vault_version__: 'v1',
+      cipher: cipher
+    };
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(envelope, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('[VaultService] Failed saving autofill vault:', e.message);
+    return false;
+  }
+}
+
+function getAutofillEntries(host) {
+  if (!host) return [];
+  const cleanHost = String(host).toLowerCase().trim();
+  const allVault = readAutofillVaultSync();
+  const entries = allVault[cleanHost] || [];
+  return Array.isArray(entries) ? entries : [];
+}
+
+function saveAutofillEntry(payload) {
+  const { host, value, fieldType = 'text', password = '', encPass = '' } = payload || {};
+  if (!host || !value) return false;
+  const cleanHost = String(host).toLowerCase().trim();
+  const cleanValue = String(value).trim();
+  if (cleanValue.length < 3 || cleanValue.length > 100) return false;
+
+  const allVault = readAutofillVaultSync();
+  let entries = allVault[cleanHost] || [];
+  if (!Array.isArray(entries)) entries = [];
+
+  const existing = entries.find(e => e && e.value && e.value.toLowerCase() === cleanValue.toLowerCase());
+  const finalEncPass = password ? encryptSecret(password) : (encPass || existing?.pass || '');
+
+  entries = entries.filter(e => e && e.value && e.value.toLowerCase() !== cleanValue.toLowerCase());
+  entries.unshift({
+    value: cleanValue,
+    pass: finalEncPass,
+    fieldType,
+    time: Date.now()
+  });
+  if (entries.length > 10) entries = entries.slice(0, 10);
+  allVault[cleanHost] = entries;
+  return saveAutofillVaultSync(allVault);
+}
+
+function deleteAutofillEntry(payload) {
+  const { host, value } = payload || {};
+  if (!host || !value) return false;
+  const cleanHost = String(host).toLowerCase().trim();
+  const cleanValue = String(value).trim();
+
+  const allVault = readAutofillVaultSync();
+  let entries = allVault[cleanHost] || [];
+  if (!Array.isArray(entries)) return true;
+
+  entries = entries.filter(e => e && e.value !== cleanValue);
+  allVault[cleanHost] = entries;
+  return saveAutofillVaultSync(allVault);
+}
+
 module.exports = {
   encryptSecret,
   decryptSecret,
@@ -139,5 +225,8 @@ module.exports = {
     }
   },
   DPAPI_PREFIX,
-  LEGACY_VAULT_PREFIX
+  LEGACY_VAULT_PREFIX,
+  getAutofillEntries,
+  saveAutofillEntry,
+  deleteAutofillEntry
 };

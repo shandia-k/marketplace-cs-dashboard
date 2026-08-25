@@ -32,6 +32,32 @@ function registerIpcHandlers(getMainWindow) {
   ipcMain.on('vault-decrypt-sync', (event, ciphertext, hostContext) => {
     event.returnValue = vaultService.decryptSecret(ciphertext, hostContext);
   });
+
+  // ── Autofill Central Vault IPC (Zero Webview localStorage Exposure) ─────────
+  ipcMain.on('autofill-get-entries-sync', (event, host) => {
+    event.returnValue = vaultService.getAutofillEntries(host);
+  });
+
+  ipcMain.handle('autofill-get-entries', (event, host) => {
+    return vaultService.getAutofillEntries(host);
+  });
+
+  ipcMain.on('autofill-save-entry-sync', (event, payload) => {
+    event.returnValue = vaultService.saveAutofillEntry(payload);
+  });
+
+  ipcMain.handle('autofill-save-entry', (event, payload) => {
+    return vaultService.saveAutofillEntry(payload);
+  });
+
+  ipcMain.on('autofill-delete-entry-sync', (event, payload) => {
+    event.returnValue = vaultService.deleteAutofillEntry(payload);
+  });
+
+  ipcMain.handle('autofill-delete-entry', (event, payload) => {
+    return vaultService.deleteAutofillEntry(payload);
+  });
+
   // ── Store Management IPC ───────────────────────────────────────────────────
   ipcMain.handle('get-stores', (event, username) => {
     return storageService.readStores(username);

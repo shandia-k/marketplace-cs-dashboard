@@ -1,13 +1,13 @@
 /**
  * src/main/services/storage.service.js
- * Unified atomic file I/O and persistence for users and stores
+ * Unified atomic file I/O and persistence for users and stores with OS DPAPI encryption
  */
 
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { defaultStores, ROLE_INTEGRITY_SALT } = require('../config/constants');
+const { defaultStores } = require('../config/constants');
 const vaultService = require('./vault.service');
 
 function getUserDataPath() {
@@ -147,18 +147,64 @@ function saveStores(stores, username) {
   return saveEncryptedJsonSync(filePath, stores);
 }
 
+// ── DYNAMIC ROLE INTEGRITY SECRET (Zero Static Salt) ─────────────────────────
+let cachedRoleSecret = null;
+
+function getRoleIntegritySecret() {
+  if (cachedRoleSecret) return cachedRoleSecret;
+
+  const secretFilePath = path.join(getUserDataPath(), '.role_hmac.key');
+  try {
+    if (fs.existsSync(secretFilePath)) {
+      const encryptedSecret = fs.readFileSync(secretFilePath, 'utf8').trim();
+      const decrypted = vaultService.decryptSecret(encryptedSecret);
+      if (decrypted && decrypted.length >= 32) {
+        cachedRoleSecret = decrypted;
+        return cachedRoleSecret;
+      }
+    }
+  } catch (e) { }
+
+  // Bangkitkan dynamic 256-bit machine-bound random secret
+  const newSecret = crypto.randomBytes(32).toString('hex');
+  try {
+    const encryptedSecret = vaultService.encryptSecret(newSecret);
+    fs.writeFileSync(secretFilePath, encryptedSecret, 'utf8');
+    cachedRoleSecret = newSecret;
+    return cachedRoleSecret;
+  } catch (err) {
+    console.warn('[Storage] Failed to persist role secret to disk, using runtime secret:', err);
+    cachedRoleSecret = newSecret;
+    return cachedRoleSecret;
+  }
+}
+
 function computeRoleSig(username, role, passwordSalt) {
   const cleanUser = String(username || '').toLowerCase().trim();
   const cleanRole = String(role || '').trim();
   const cleanSalt = String(passwordSalt || '');
-  return crypto.createHmac('sha256', ROLE_INTEGRITY_SALT).update(`${cleanUser}:${cleanRole}:${cleanSalt}`, 'utf8').digest('hex');
+  const dynamicSecret = getRoleIntegritySecret();
+  return crypto.createHmac('sha256', dynamicSecret).update(`${cleanUser}:${cleanRole}:${cleanSalt}`, 'utf8').digest('hex');
 }
 
 function verifyUserRoleSig(u) {
   if (!u || typeof u !== 'object') return false;
   if (!u.roleSig) return false;
   const expected = computeRoleSig(u.username, u.role, u.passwordSalt);
-  return u.roleSig === expected;
+  if (u.roleSig === expected) return true;
+
+  // Fallback: Dukungan migrasi transparan untuk signature versi lawas
+  const legacySecret = 'cs_marketplace_role_hmac_secret_v2_99a8b7c6';
+  const cleanUser = String(u.username || '').toLowerCase().trim();
+  const cleanRole = String(u.role || '').trim();
+  const cleanSalt = String(u.passwordSalt || '');
+  const legacyExpected = crypto.createHmac('sha256', legacySecret).update(`${cleanUser}:${cleanRole}:${cleanSalt}`, 'utf8').digest('hex');
+  if (u.roleSig === legacyExpected) {
+    u.roleSig = expected; // Migrasikan signature ke kunci dinamis baru
+    return true;
+  }
+
+  return false;
 }
 
 function isUserSuperAdmin(user) {
@@ -378,6 +424,7 @@ module.exports = {
   getStoresFilePath,
   readStores,
   saveStores,
+  getRoleIntegritySecret,
   computeRoleSig,
   verifyUserRoleSig,
   isUserSuperAdmin,
@@ -389,4 +436,3 @@ module.exports = {
   getVersionTrail,
   recordVersionLaunch
 };
-

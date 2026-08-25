@@ -305,8 +305,10 @@ function setupWebContentsSecurity(contents, getMainWindow) {
             height: 680,
             autoHideMenuBar: true,
             webPreferences: {
-              sandbox: false,
-              contextIsolation: false
+              contextIsolation: true,
+              nodeIntegration: false,
+              sandbox: true,
+              webSecurity: true
             }
           }
         };
