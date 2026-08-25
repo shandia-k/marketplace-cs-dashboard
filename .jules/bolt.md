@@ -1,0 +1,3 @@
+## 2024-05-18 - Synchronous LocalStorage Writes on Input Events
+**Learning:** In a vanilla JS architecture, writing to `localStorage` (which involves `JSON.stringify`) synchronously on every keystroke in high-frequency event listeners (like textarea `input` events) severely blocks the main thread and causes UI thrashing, particularly in the Scratchpad component.
+**Action:** Always capture the DOM state immediately, but debounce the actual `localStorage` write and subsequent heavy DOM updates (like search highlighting). Always add a `beforeunload` hook to synchronously flush any pending debounced saves to prevent data loss.
