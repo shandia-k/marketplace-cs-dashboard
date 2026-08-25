@@ -29,7 +29,10 @@ function isOAuthUrl(url) {
 }
 
 // Isolated Link Interceptor Decision Logic
-function shouldOpenInNewTab(linkAttributes, isCtrlOrMiddle, currentHref) {
+function shouldOpenInNewTab(linkAttributes, isCtrlOrMiddle, currentHref, clickedTargetType = 'text') {
+  if (['button', 'copy-btn', 'copy-icon', 'salin-btn', 'input', 'textarea', 'select'].includes(clickedTargetType)) {
+    return false;
+  }
   const { href, target } = linkAttributes;
   if (!href || href.startsWith('javascript:') || href === '#') return false;
 
@@ -77,6 +80,24 @@ describe('Level 6: Webview Preload & Anti-Detection Tests', () => {
         baseUrl
       );
       assert.equal(shouldIntercept, true);
+    });
+
+    test('should NOT intercept clicks on copy icons or interactive buttons nested inside links', () => {
+      const shouldInterceptCopy = shouldOpenInNewTab(
+        { href: 'https://seller.shopee.co.id/portal/sale/order/24081290TBMGKJ', target: '_blank' },
+        false,
+        baseUrl,
+        'copy-icon'
+      );
+      assert.equal(shouldInterceptCopy, false);
+
+      const shouldInterceptBtn = shouldOpenInNewTab(
+        { href: 'https://seller.shopee.co.id/portal/sale/order/24081290TBMGKJ', target: '_blank' },
+        false,
+        baseUrl,
+        'button'
+      );
+      assert.equal(shouldInterceptBtn, false);
     });
 
     test('should intercept Ctrl+Click or Middle-Click links to new tab', () => {

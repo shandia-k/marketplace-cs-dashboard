@@ -6,6 +6,15 @@
 const { app, BrowserWindow, session, dialog } = require('electron');
 const path = require('path');
 
+// ── Global Process Safety & Transient Error Guard ────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.warn('[Main Process Exception Guard]:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Main Process Rejection Guard]:', reason?.message || reason);
+});
+
 // ── Release Guard Validation ────────────────────────────────────────────────
 // Memastikan changelog versi di package.json sudah tersedia di js/versions-registry.js sebelum startup
 try {

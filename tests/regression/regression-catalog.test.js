@@ -465,6 +465,26 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(updaterJsCode.includes('openEmergencyRollbackModal'), 'updater.js must export openEmergencyRollbackModal');
     assert.ok(updaterJsCode.includes('confirmAndRollback'), 'updater.js must export confirmAndRollback');
   });
+
+  test('[REG-021] Copy Icon Preservation & Disposed WebFrame Exception Guard', () => {
+    const mainJsCode = fs.readFileSync(path.join(__dirname, '../../main.js'), 'utf8');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+
+    // 1. Pastikan main.js memiliki global process exception & rejection guard
+    assert.ok(mainJsCode.includes("process.on('uncaughtException'"), 'main.js must register uncaughtException guard');
+    assert.ok(mainJsCode.includes("process.on('unhandledRejection'"), 'main.js must register unhandledRejection guard');
+
+    // 2. Pastikan session.service.js menolak window open about:blank tanpa postBody
+    assert.ok(sessionServiceCode.includes('isAboutBlank && !postBody'), 'session.service.js must deny about:blank window open when postBody is absent');
+    assert.ok(sessionServiceCode.includes('!contents || contents.isDestroyed()'), 'session.service.js must verify contents destruction state');
+
+    // 3. Pastikan webview-preload.js mengecualikan tombol copy dan kontrol interaktif dari universal link interceptor
+    assert.ok(webviewPreloadCode.includes('isInteractiveOrCopy'), 'webview-preload.js must detect interactive/copy controls');
+    assert.ok(webviewPreloadCode.includes('.copy-btn'), 'webview-preload.js must check .copy-btn class');
+    assert.ok(webviewPreloadCode.includes('[class*="copy" i]'), 'webview-preload.js must support case-insensitive copy class patterns');
+    assert.ok(webviewPreloadCode.includes('[title*="salin" i]'), 'webview-preload.js must support Indonesian salin title patterns');
+  });
 });
 
 

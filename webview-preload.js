@@ -179,7 +179,17 @@ if (typeof window !== 'undefined' && window.location && window.location.hostname
 
 // ── UNIVERSAL LINK & TAB OPENER INTERCEPTOR ──────────────────────────────────
 document.addEventListener('click', (e) => {
-  const link = e.target.closest('a[href], [data-href], [data-url]');
+  if (e.defaultPrevented || !e.target) return;
+
+  // Jangan hijack jika yang diklik adalah tombol salin / kontrol interaktif form / aksi UI
+  const isInteractiveOrCopy = typeof e.target.closest === 'function' && e.target.closest(
+    'button, input, textarea, select, [role="button"], .copy-btn, [data-copy], [data-clipboard-text], [class*="copy" i], [title*="copy" i], [title*="salin" i], [aria-label*="copy" i], [aria-label*="salin" i], [data-testid*="copy" i], [class*="clipboard" i]'
+  );
+  if (isInteractiveOrCopy) {
+    return;
+  }
+
+  const link = typeof e.target.closest === 'function' ? e.target.closest('a[href], [data-href], [data-url]') : null;
   if (!link) return;
 
   let href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || link.href;
@@ -1454,18 +1464,6 @@ document.addEventListener('mousedown', function (e) {
 
 window.addEventListener('scroll', updatePopupPosition, true);
 window.addEventListener('resize', updatePopupPosition);
-
-// ── Ctrl+Click - Buka Link di Tab Baru ────────────────────────────────────────
-document.addEventListener('click', function (e) {
-  if (e.ctrlKey || e.metaKey) {
-    const link = e.target.closest('a[href]');
-    if (link && link.href && !link.href.startsWith('javascript:') && link.href !== '#') {
-      e.preventDefault();
-      e.stopPropagation();
-      ipcRenderer.sendToHost('ctrl-click-link', link.href);
-    }
-  }
-}, true);
 
 // ── Ctrl+Scroll - Zoom In/Out ────────────────────────────────────────────────
 window.addEventListener('wheel', function (e) {

@@ -259,8 +259,16 @@ function setupWebContentsSecurity(contents, getMainWindow) {
 
   contents.setWindowOpenHandler((details) => {
     try {
+      if (!contents || contents.isDestroyed()) {
+        return { action: 'deny' };
+      }
       const { url, disposition, features, referrer, postBody } = details || {};
       const isAboutBlank = !url || url === 'about:blank';
+      
+      // Jika about:blank tanpa postBody (ephemeral popup / dummy iframe / polyfill copy), tolak pembukaan tab baru
+      if (isAboutBlank && !postBody) {
+        return { action: 'deny' };
+      }
       
       if (!isAboutBlank) {
         try {
