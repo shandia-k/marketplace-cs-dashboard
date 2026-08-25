@@ -1030,6 +1030,15 @@ function setupFocusAndCrashRecoveryLifecycle() {
     });
   }
 
+  // Listener IPC Diagnostic Breadcrumbs dari Main Process (Window Open Routing, Security Guards, dll.)
+  if (window.electronAPI && typeof window.electronAPI.onDiagnosticBreadcrumb === 'function') {
+    window.electronAPI.onDiagnosticBreadcrumb((data) => {
+      if (data && data.category && window.DiagnosticLogger && typeof window.DiagnosticLogger.addBreadcrumb === 'function') {
+        window.DiagnosticLogger.addBreadcrumb(data.category, data.message, data.metadata || {});
+      }
+    });
+  }
+
   // Listener IPC Hasil Find in Page (Ctrl+F) dari WebContents Main Process
   if (window.electronAPI && typeof window.electronAPI.onFoundInPageResult === 'function') {
     window.electronAPI.onFoundInPageResult((data) => {

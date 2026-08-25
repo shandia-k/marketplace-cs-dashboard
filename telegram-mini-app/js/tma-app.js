@@ -491,8 +491,7 @@ function openTicketDetail(ticketId) {
   if (el.detailReporterMarketplaces) el.detailReporterMarketplaces.textContent = `Marketplace: ${mps} (${storesCnt} Toko Aktif)`;
 
   if (el.detailSystemInfo) {
-    const sys = typeof ticket.systemInfo === 'object' ? JSON.stringify(ticket.systemInfo, null, 2) : String(ticket.systemInfo || '-');
-    el.detailSystemInfo.innerHTML = `<pre class="diag-pre">${escapeHtml(sys)}</pre>`;
+    el.detailSystemInfo.innerHTML = renderTicketDiagnostics(ticket);
   }
 
   if (el.detailStatusSelect) {
@@ -502,6 +501,128 @@ function openTicketDetail(ticketId) {
   renderChatMessages(ticket);
   switchTab('detail');
 }
+
+function formatBreadcrumbCategoryBadge(category) {
+  const cat = String(category || 'EVENT').toUpperCase();
+  const map = {
+    'CLICK_LINK': { icon: '🔗', label: 'Link', class: 'tma-bc-link' },
+    'CLICK_BUTTON': { icon: '🔘', label: 'Button', class: 'tma-bc-btn' },
+    'DEAD_CLICK': { icon: '🚫', label: 'Dead Click', class: 'tma-bc-dead' },
+    'NAV_ROUTING': { icon: '🧭', label: 'Routing', class: 'tma-bc-routing' },
+    'STORE_SWITCH': { icon: '🏬', label: 'Toko', class: 'tma-bc-store' },
+    'TAB_SWITCH': { icon: '📑', label: 'Tab', class: 'tma-bc-tab' },
+    'JS_ERROR': { icon: '❌', label: 'Error JS', class: 'tma-bc-error' },
+    'RATE_LIMIT_TOAST': { icon: '⚠️', label: 'Rate Limit', class: 'tma-bc-warn' },
+    'CLICK_ACTION': { icon: '⚡', label: 'Aksi', class: 'tma-bc-action' }
+  };
+  const item = map[cat] || { icon: '📌', label: cat, class: 'tma-bc-default' };
+  return `<span class="tma-bc-badge ${item.class}">${item.icon} ${escapeHtml(item.label)}</span>`;
+}
+
+function renderTicketDiagnostics(ticket) {
+  let html = '';
+
+  if (ticket.diagnostics) {
+    const diag = ticket.diagnostics;
+    const bcs = Array.isArray(diag.breadcrumbs) ? diag.breadcrumbs : [];
+    const count = diag.breadcrumbsCount || bcs.length;
+    const storeName = diag.activeStoreName || '-';
+    const tabUrl = (diag.activeTabUrl && diag.activeTabUrl !== '-') ? diag.activeTabUrl : '-';
+
+    html += `
+      <div class="tma-flight-recorder-card">
+        <div class="tma-fr-header">
+          <div class="tma-fr-title-row">
+            <span class="tma-fr-title">🛠️ Rekam Jejak Diagnostik (${count} Aksi)</span>
+            <button class="tma-fr-copy-btn" onclick="copyTicketDiagnostics('${escapeHtml(ticket.id)}')" title="Salin Log Diagnostik">📋 Salin Log</button>
+          </div>
+          <div class="tma-fr-meta">
+            <div>🏬 <b>Toko Aktif:</b> <span>${escapeHtml(storeName)}</span></div>
+            ${tabUrl !== '-' ? `<div class="tma-fr-url">🌐 <b>URL Tab:</b> <code>${escapeHtml(tabUrl)}</code></div>` : ''}
+          </div>
+        </div>
+        <div class="tma-fr-timeline">
+    `;
+
+    if (bcs.length === 0) {
+      html += `<div class="tma-fr-empty">Tidak ada rekam jejak aksi tercatat.</div>`;
+    } else {
+      bcs.forEach(bc => {
+        const badge = formatBreadcrumbCategoryBadge(bc.category);
+        const time = escapeHtml(bc.time || '-');
+        const msg = escapeHtml(bc.message || '');
+        let metaChips = '';
+
+        if (bc.metadata && typeof bc.metadata === 'object') {
+          const m = bc.metadata;
+          if (m.selector) metaChips += `<span class="tma-fr-chip">sel: <code>${escapeHtml(m.selector)}</code></span>`;
+          if (m.target && m.target !== '_self') metaChips += `<span class="tma-fr-chip">target: <code>${escapeHtml(m.target)}</code></span>`;
+          if (m.reason) metaChips += `<span class="tma-fr-chip tma-chip-danger">reason: <code>${escapeHtml(m.reason)}</code></span>`;
+          if (m.decision) metaChips += `<span class="tma-fr-chip tma-chip-info">route: <code>${escapeHtml(m.decision)}</code></span>`;
+          if (m.isCtrlOrMiddle) metaChips += `<span class="tma-fr-chip">Ctrl+Click</span>`;
+        }
+
+        html += `
+          <div class="tma-fr-item">
+            <div class="tma-fr-item-top">
+              <span class="tma-fr-time">${time}</span>
+              ${badge}
+            </div>
+            <div class="tma-fr-msg">${msg}</div>
+            ${metaChips ? `<div class="tma-fr-chips">${metaChips}</div>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  // System Info block
+  const sys = typeof ticket.systemInfo === 'object' ? JSON.stringify(ticket.systemInfo, null, 2) : String(ticket.systemInfo || '-');
+  html += `
+    <div class="tma-sys-info-section">
+      <div class="tma-sys-title">🖥️ Info Sistem & Lingkungan:</div>
+      <pre class="diag-pre">${escapeHtml(sys)}</pre>
+    </div>
+  `;
+
+  return html;
+}
+
+window.copyTicketDiagnostics = function(ticketId) {
+  const ticket = appState.tickets.find(t => t.id === ticketId);
+  if (!ticket || !ticket.diagnostics) {
+    showToast('Tidak ada data diagnostik');
+    return;
+  }
+
+  const diag = ticket.diagnostics;
+  const bcs = Array.isArray(diag.breadcrumbs) ? diag.breadcrumbs : [];
+  let text = `=== REKAM JEJAK DIAGNOSTIK TIKET #${ticket.id} ===\n`;
+  text += `Toko Aktif: ${diag.activeStoreName || '-'}\n`;
+  text += `URL Aktif: ${diag.activeTabUrl || '-'}\n`;
+  text += `Versi App: ${diag.appVersion || '-'}\n`;
+  text += `Total Event: ${bcs.length}\n`;
+  text += `--------------------------------------------------\n`;
+  bcs.forEach(bc => {
+    const meta = bc.metadata && Object.keys(bc.metadata).length > 0 ? ` ${JSON.stringify(bc.metadata)}` : '';
+    text += `${bc.time || '-'} | [${bc.category || 'EVENT'}] ${bc.message || ''}${meta}\n`;
+  });
+  text += `--------------------------------------------------\n`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('📋 Log Diagnostik berhasil disalin!');
+      triggerHaptic('notification', 'success');
+    }).catch(() => {
+      showToast('Gagal menyalin ke clipboard');
+    });
+  }
+};
 
 function renderChatMessages(ticket) {
   if (!el.chatMessagesContainer) return;

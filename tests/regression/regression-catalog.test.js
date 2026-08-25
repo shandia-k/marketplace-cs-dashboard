@@ -485,6 +485,49 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(webviewPreloadCode.includes('[class*="copy" i]'), 'webview-preload.js must support case-insensitive copy class patterns');
     assert.ok(webviewPreloadCode.includes('[title*="salin" i]'), 'webview-preload.js must support Indonesian salin title patterns');
   });
+
+  test('[REG-022] Diagnostic Flight Recorder & Breadcrumb Logger: Link Click, Dead Click, Routing, and Error Tracking', () => {
+    const DiagnosticLogger = require('../../js/diagnostic-logger');
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+    const sessionServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/session.service.js'), 'utf8');
+    const feedbackServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/feedback.service.js'), 'utf8');
+    const feedbackJsCode = fs.readFileSync(path.join(__dirname, '../../js/feedback.js'), 'utf8');
+    const preloadCode = fs.readFileSync(path.join(__dirname, '../../preload.js'), 'utf8');
+    const indexHtmlCode = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+
+    // 1. Verifikasi DiagnosticLogger Module & Ring Buffer
+    assert.equal(typeof DiagnosticLogger.addBreadcrumb, 'function', 'DiagnosticLogger must have addBreadcrumb');
+    assert.equal(typeof DiagnosticLogger.getBreadcrumbs, 'function', 'DiagnosticLogger must have getBreadcrumbs');
+    assert.equal(typeof DiagnosticLogger.getFormattedSummary, 'function', 'DiagnosticLogger must have getFormattedSummary');
+
+    DiagnosticLogger.clear();
+    DiagnosticLogger.addBreadcrumb('CLICK_LINK', 'Test Link', { href: 'https://shopee.co.id/item?token=secret123' });
+    const bcs = DiagnosticLogger.getBreadcrumbs();
+    assert.equal(bcs.length, 1);
+    assert.ok(!bcs[0].metadata.href.includes('secret123'), 'Sensitive parameters must be masked');
+
+    // 2. Verifikasi webview-preload.js Tracking (Link, Dead Click, JS Error, Rate-Limit Toast)
+    assert.ok(webviewPreloadCode.includes('sendDiagnosticBreadcrumb'), 'webview-preload.js must define sendDiagnosticBreadcrumb');
+    assert.ok(webviewPreloadCode.includes("'CLICK_LINK'"), 'webview-preload.js must track CLICK_LINK');
+    assert.ok(webviewPreloadCode.includes("'DEAD_CLICK'"), 'webview-preload.js must track DEAD_CLICK');
+    assert.ok(webviewPreloadCode.includes("'CLICK_BUTTON'"), 'webview-preload.js must track CLICK_BUTTON');
+    assert.ok(webviewPreloadCode.includes("'JS_ERROR'"), 'webview-preload.js must track JS_ERROR');
+    assert.ok(webviewPreloadCode.includes("'RATE_LIMIT_TOAST'"), 'webview-preload.js must track RATE_LIMIT_TOAST');
+
+    // 3. Verifikasi session.service.js Routing Decision Logging
+    assert.ok(sessionServiceCode.includes("'NAV_ROUTING'"), 'session.service.js must emit NAV_ROUTING breadcrumbs');
+    assert.ok(sessionServiceCode.includes('OAUTH_POPUP'), 'session.service.js must categorize OAuth popups');
+    assert.ok(sessionServiceCode.includes('INTERNAL_TAB'), 'session.service.js must categorize internal tabs');
+
+    // 4. Verifikasi Preload & HTML Wiring
+    assert.ok(preloadCode.includes('onDiagnosticBreadcrumb:'), 'preload.js must expose onDiagnosticBreadcrumb');
+    assert.ok(indexHtmlCode.includes('js/diagnostic-logger.js'), 'index.html must include diagnostic-logger.js script tag');
+
+    // 5. Verifikasi Feedback Integration & Diagnostics Auto-Attachment
+    assert.ok(feedbackJsCode.includes('diagnostics: diagnosticsPayload'), 'feedback.js must auto-attach diagnosticsPayload');
+    assert.ok(feedbackJsCode.includes('Rekam Jejak Diagnostik'), 'feedback.js must render diagnostic accordion');
+    assert.ok(feedbackServiceCode.includes('diagnostics:'), 'feedback.service.js must persist diagnostics');
+  });
 });
 
 

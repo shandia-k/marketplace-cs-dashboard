@@ -793,6 +793,52 @@ function renderThreadStream(ticket, isBackgroundRefresh = false) {
     }
   });
 
+  // Render Rekam Jejak Diagnostik (Flight Recorder Breadcrumbs) jika tersedia pada tiket
+  if (ticket.diagnostics && Array.isArray(ticket.diagnostics.breadcrumbs) && ticket.diagnostics.breadcrumbs.length > 0) {
+    const bcList = ticket.diagnostics.breadcrumbs;
+    const itemsHtml = bcList.map(bc => {
+      let badgeColor = 'var(--text-muted)';
+      let badgeBg = 'rgba(255,255,255,0.06)';
+      if (bc.category === 'CLICK_LINK') { badgeColor = '#38bdf8'; badgeBg = 'rgba(56, 189, 248, 0.12)'; }
+      else if (bc.category === 'CLICK_BUTTON') { badgeColor = '#a855f7'; badgeBg = 'rgba(168, 85, 247, 0.12)'; }
+      else if (bc.category === 'DEAD_CLICK') { badgeColor = '#f97316'; badgeBg = 'rgba(249, 115, 22, 0.15)'; }
+      else if (bc.category === 'NAV_ROUTING') { badgeColor = '#22c55e'; badgeBg = 'rgba(34, 197, 94, 0.12)'; }
+      else if (bc.category === 'JS_ERROR') { badgeColor = '#ef4444'; badgeBg = 'rgba(239, 68, 68, 0.15)'; }
+      else if (bc.category === 'RATE_LIMIT_TOAST') { badgeColor = '#eab308'; badgeBg = 'rgba(234, 179, 8, 0.15)'; }
+      else if (bc.category && bc.category.includes('SWITCH')) { badgeColor = '#818cf8'; badgeBg = 'rgba(129, 140, 248, 0.12)'; }
+
+      const metaSnippet = (bc.metadata && Object.keys(bc.metadata).length > 0)
+        ? `<div style="font-size:10px; color:var(--text-muted); font-family:monospace; margin-top:2px; word-break:break-all;">${escapeHtml(JSON.stringify(bc.metadata))}</div>`
+        : '';
+
+      return `
+        <div style="display:flex; flex-direction:column; gap:2px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex; align-items:center; gap:6px; font-size:10.5px;">
+            <span style="color:var(--text-muted); font-family:monospace; font-size:10px;">${escapeHtml(bc.time || '-')}</span>
+            <span style="background:${badgeBg}; color:${badgeColor}; padding:1px 5px; border-radius:3px; font-size:9.5px; font-weight:600;">${escapeHtml(bc.category)}</span>
+            <span style="color:var(--text-primary); font-size:11px;">${escapeHtml(bc.message)}</span>
+          </div>
+          ${metaSnippet}
+        </div>
+      `;
+    }).join('');
+
+    htmlParts.unshift(`
+      <details class="thread-diag-accordion" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; margin:8px 12px; padding:8px 12px; font-size:11px;">
+        <summary style="cursor:pointer; font-weight:600; color:var(--accent-primary); display:flex; align-items:center; gap:6px; user-select:none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Rekam Jejak Diagnostik (${bcList.length} Aksi Terakhir)
+        </summary>
+        <div style="margin-top:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
+          <div style="font-size:10.5px; color:var(--text-muted); margin-bottom:6px;">
+            Toko Aktif: <b>${escapeHtml(ticket.diagnostics.activeStoreName || '-')}</b> &middot; URL: <code style="color:#38bdf8;">${escapeHtml(ticket.diagnostics.activeTabUrl || '-')}</code>
+          </div>
+          ${itemsHtml}
+        </div>
+      </details>
+    `);
+  }
+
   threadStream.innerHTML = htmlParts.join('');
 
   // Scroll otomatis ke paling bawah
@@ -1136,12 +1182,38 @@ async function handleNewFeedbackSubmit() {
     sizeFormatted: img.sizeFormatted
   }));
 
+  const breadcrumbs = (window.DiagnosticLogger && typeof window.DiagnosticLogger.getBreadcrumbs === 'function')
+    ? window.DiagnosticLogger.getBreadcrumbs()
+    : [];
+
+  const activeStoreObj = (typeof stores !== 'undefined' && Array.isArray(stores) && activeStoreId)
+    ? stores.find(s => s.id === activeStoreId)
+    : null;
+  const activeWv = (typeof getActiveWebview === 'function') ? getActiveWebview() : null;
+  let activeTabUrl = '-';
+  try {
+    if (activeWv && typeof activeWv.getURL === 'function') activeTabUrl = activeWv.getURL();
+  } catch (e) { }
+
+  const diagnosticsPayload = {
+    appVersion: (window.VERSIONS_REGISTRY && typeof window.VERSIONS_REGISTRY.getLatestVersion === 'function')
+      ? window.VERSIONS_REGISTRY.getLatestVersion()?.version || '1.0.17'
+      : '1.0.17',
+    activeStoreId: activeStoreId || '-',
+    activeStoreName: activeStoreObj?.name || '-',
+    activeStoreMarketplace: activeStoreObj?.marketplace || '-',
+    activeTabUrl: activeTabUrl,
+    breadcrumbsCount: breadcrumbs.length,
+    breadcrumbs: breadcrumbs
+  };
+
   try {
     const response = await window.electronAPI.feedback.createTicket({
       type: fType ? fType.value : 'bug',
       message: msg || `[Laporan berisi ${imagesPayload.length} lampiran gambar]`,
       storesConfig: safeConfig,
-      images: imagesPayload
+      images: imagesPayload,
+      diagnostics: diagnosticsPayload
     });
 
     if (response && response.success) {

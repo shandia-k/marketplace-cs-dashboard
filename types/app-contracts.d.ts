@@ -221,6 +221,7 @@ export interface ElectronAPI {
 
   // Event Listeners
   onWebviewOpenNewTab: (callback: (data: { wcId: number; url: string; referrer?: string; postBody?: PostBodyPayload; disposition?: string }) => void) => void;
+  onDiagnosticBreadcrumb?: (callback: (data: { category: string; message: string; metadata?: any }) => void) => void;
   onClipboardChanged: (callback: (text: string) => void) => void;
   onRollbackProgress: (callback: (progress: RollbackProgress) => void) => void;
 }

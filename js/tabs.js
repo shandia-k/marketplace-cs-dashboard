@@ -40,6 +40,14 @@ function activateStore(storeId) {
     window.AppTelemetry.track('store_switched');
   }
 
+  if (window.DiagnosticLogger && typeof window.DiagnosticLogger.addBreadcrumb === 'function') {
+    window.DiagnosticLogger.addBreadcrumb('STORE_SWITCH', `Beralih ke toko "${store.name || store.id}" (${store.marketplace || 'custom'})`, {
+      storeId: store.id,
+      storeName: store.name,
+      marketplace: store.marketplace
+    });
+  }
+
   emptyState.style.display = 'none';
   webviewCont.classList.add('active');
 
@@ -1381,6 +1389,14 @@ function showTab(storeId, tabId) {
   }
 
   lastAccessed[tabId] = Date.now();
+
+  if (window.DiagnosticLogger && typeof window.DiagnosticLogger.addBreadcrumb === 'function') {
+    window.DiagnosticLogger.addBreadcrumb('TAB_SWITCH', `Buka tab "${tab.title || 'Tab'}" (${(tab.url || '').substring(0, 50)})`, {
+      storeId: store.id,
+      tabId: tab.id,
+      url: tab.url
+    });
+  }
 
   const entry = webviewMap[tabId];
 

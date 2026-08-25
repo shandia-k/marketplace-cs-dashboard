@@ -395,6 +395,17 @@ function createWebview(store, tab, targetPane = 'left') {
           renderSidebar(getFilteredStores());
         }
       }
+
+    } else if (event.channel === 'diagnostic-breadcrumb') {
+      const data = event.args[0] || {};
+      if (window.DiagnosticLogger && typeof window.DiagnosticLogger.addBreadcrumb === 'function') {
+        window.DiagnosticLogger.addBreadcrumb(data.category, data.message, {
+          ...(data.metadata || {}),
+          storeId: store.id,
+          storeName: store.name,
+          tabId: tab.id
+        });
+      }
     }
   });
 

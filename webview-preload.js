@@ -172,63 +172,212 @@ window.addEventListener('keydown', (e) => {
   });
 })();
 
+// ── DIAGNOSTIC BREADCRUMBS & FLIGHT RECORDER EMITTER ────────────────────────
+function sendDiagnosticBreadcrumb(category, message, metadata = {}) {
+  try {
+    ipcRenderer.sendToHost('diagnostic-breadcrumb', {
+      category,
+      message,
+      metadata: {
+        ...metadata,
+        url: (window.location && window.location.href) ? window.location.href : '',
+        host: (window.location && window.location.hostname) ? window.location.hostname : ''
+      }
+    });
+  } catch (e) { }
+}
+
+// Global window error & unhandled rejection listeners for diagnostic tracking
+window.addEventListener('error', (event) => {
+  try {
+    const errorMsg = (event.message || (event.error && event.error.message) || 'Uncaught Error').substring(0, 100);
+    sendDiagnosticBreadcrumb('JS_ERROR', `JS Error: ${errorMsg}`, {
+      filename: event.filename ? event.filename.split('/').pop() : '',
+      lineno: event.lineno,
+      colno: event.colno
+    });
+  } catch (e) { }
+}, { passive: true });
+
+window.addEventListener('unhandledrejection', (event) => {
+  try {
+    const reasonMsg = (event.reason?.message || String(event.reason || 'Unhandled Promise Rejection')).substring(0, 100);
+    sendDiagnosticBreadcrumb('JS_ERROR', `Promise Rejection: ${reasonMsg}`, {});
+  } catch (e) { }
+}, { passive: true });
+
 // Jika berada di halaman autentikasi Google / OAuth murni, jangan inject listener inline marketplace
 if (typeof window !== 'undefined' && window.location && window.location.hostname === 'accounts.google.com') {
   return;
 }
 
-// ── UNIVERSAL LINK & TAB OPENER INTERCEPTOR ──────────────────────────────────
+// ── URL & ELEMENT LABEL EXTRACTOR HELPERS ────────────────────────────────────
+function safeResolveUrl(rawUrl, baseHref) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  const clean = rawUrl.trim();
+  if (!clean || clean === '#' || clean.startsWith('javascript:')) return null;
+  try {
+    const base = (baseHref && typeof baseHref === 'string' && baseHref.startsWith('http')) 
+      ? baseHref 
+      : ((typeof window !== 'undefined' && window.location && window.location.href && window.location.href.startsWith('http')) ? window.location.href : 'http://localhost');
+    return new URL(clean, base).href;
+  } catch (e) {
+    if (/^(?:https?|blob|data):/i.test(clean)) return clean;
+    return null;
+  }
+}
+
+function extractElementLabel(primaryEl, clickedTarget) {
+  const candidates = [
+    clickedTarget?.getAttribute?.('aria-label'),
+    clickedTarget?.getAttribute?.('title'),
+    clickedTarget?.getAttribute?.('alt'),
+    clickedTarget?.getAttribute?.('data-tooltip'),
+    clickedTarget?.getAttribute?.('data-name'),
+    primaryEl?.getAttribute?.('aria-label'),
+    primaryEl?.getAttribute?.('title'),
+    primaryEl?.getAttribute?.('data-tooltip'),
+    clickedTarget?.textContent,
+    primaryEl?.textContent,
+    primaryEl?.value
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === 'string') {
+      const clean = c.replace(/\s+/g, ' ').trim();
+      if (clean.length > 0) {
+        return clean.length > 50 ? clean.substring(0, 47) + '...' : clean;
+      }
+    }
+  }
+  return primaryEl?.tagName || 'Elemen';
+}
+
+function getElementSelectorSnippet(el) {
+  if (!el || !el.tagName) return '';
+  let sel = el.tagName.toLowerCase();
+  if (el.id) sel += `#${el.id}`;
+  else if (el.className && typeof el.className === 'string') {
+    const firstClass = el.className.trim().split(/\s+/)[0];
+    if (firstClass && !firstClass.includes(':')) sel += `.${firstClass}`;
+  }
+  return sel;
+}
+
+// ── UNIVERSAL LINK, DEAD CLICK & TAB OPENER INTERCEPTOR ──────────────────────
 document.addEventListener('click', (e) => {
   if (e.defaultPrevented || !e.target) return;
 
-  // Jangan hijack jika yang diklik adalah tombol salin / kontrol interaktif form / aksi UI
-  const isInteractiveOrCopy = typeof e.target.closest === 'function' && e.target.closest(
-    'button, input, textarea, select, [role="button"], .copy-btn, [data-copy], [data-clipboard-text], [class*="copy" i], [title*="copy" i], [title*="salin" i], [aria-label*="copy" i], [aria-label*="salin" i], [data-testid*="copy" i], [class*="clipboard" i]'
-  );
-  if (isInteractiveOrCopy) {
+  const targetEl = e.target;
+  const link = typeof targetEl.closest === 'function' ? targetEl.closest('a[href], [data-href], [data-url]') : null;
+  const btn = typeof targetEl.closest === 'function' ? targetEl.closest('button, [role="button"], input[type="submit"], input[type="button"]') : null;
+
+  // ── 1. Jika yang diklik adalah Link (<a>) ───────────────────────────────────
+  if (link) {
+    let rawHref = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || link.href;
+    if (typeof rawHref === 'string') rawHref = rawHref.trim();
+
+    const linkTarget = (link.getAttribute('target') || '').toLowerCase();
+    const isCtrlOrMiddle = e.ctrlKey || e.metaKey || e.button === 1;
+    const linkLabel = extractElementLabel(link, targetEl);
+    const selector = getElementSelectorSnippet(link);
+
+    sendDiagnosticBreadcrumb('CLICK_LINK', `Link diklik: "${linkLabel}" (${rawHref ? rawHref.substring(0, 60) : (linkTarget || '_self')})`, {
+      label: linkLabel,
+      href: rawHref,
+      target: linkTarget || '_self',
+      selector: selector,
+      isCtrlOrMiddle: isCtrlOrMiddle
+    });
+
+    // Check link opener interceptor for target="_blank"
+    if (rawHref && !rawHref.startsWith('javascript:') && rawHref !== '#') {
+      if (linkTarget === '_blank' || isCtrlOrMiddle) {
+        // Jangan hijack jika yang diklik adalah kontrol copy khusus atau interaktif form
+        const isInteractiveOrCopy = typeof targetEl.closest === 'function' && targetEl.closest(
+          '.copy-btn, [data-copy], [data-clipboard-text], [class*="copy" i], [title*="copy" i], [title*="salin" i], [aria-label*="copy" i], [aria-label*="salin" i]'
+        );
+        if (!isInteractiveOrCopy) {
+          const fullUrl = safeResolveUrl(rawHref, window.location.href);
+          if (fullUrl && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://') || fullUrl.startsWith('blob:') || fullUrl.startsWith('data:'))) {
+            const lowerUrl = fullUrl.toLowerCase();
+            const isOAuth = lowerUrl.includes('accounts.google.com') ||
+              lowerUrl.includes('accounts.youtube.com') ||
+              lowerUrl.includes('appleid.apple.com') ||
+              lowerUrl.includes('login.live.com') ||
+              lowerUrl.includes('login.microsoftonline.com') ||
+              lowerUrl.includes('facebook.com/dialog/oauth') ||
+              lowerUrl.includes('facebook.com/login') ||
+              lowerUrl.includes('github.com/login') ||
+              lowerUrl.includes('github.com/sessions') ||
+              lowerUrl.includes('gitlab.com/oauth') ||
+              lowerUrl.includes('oauth') ||
+              lowerUrl.includes('/auth/') ||
+              lowerUrl.includes('/authorize') ||
+              lowerUrl.includes('/sso/') ||
+              lowerUrl.includes('response_type=code') ||
+              lowerUrl.includes('client_id=');
+
+            if (!isOAuth) {
+              e.preventDefault();
+              e.stopPropagation();
+              ipcRenderer.sendToHost('ctrl-click-link', fullUrl);
+            }
+          }
+        }
+      }
+    }
     return;
   }
 
-  const link = typeof e.target.closest === 'function' ? e.target.closest('a[href], [data-href], [data-url]') : null;
-  if (!link) return;
+  // ── 2. Jika yang diklik adalah Tombol / Elemen Kontrol Interaktif ────────────
+  if (btn) {
+    const btnLabel = extractElementLabel(btn, targetEl);
+    const selector = getElementSelectorSnippet(btn);
+    let isBlocked = false;
+    let blockReason = '';
 
-  let href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || link.href;
-  if (!href || typeof href !== 'string') return;
-  href = href.trim();
-  if (!href || href.startsWith('javascript:') || href === '#') return;
-
-  const target = (link.getAttribute('target') || '').toLowerCase();
-  const isCtrlOrMiddle = e.ctrlKey || e.metaKey || e.button === 1;
-
-  if (target === '_blank' || isCtrlOrMiddle) {
     try {
-      const fullUrl = new URL(href, window.location.href).href;
-      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://') || fullUrl.startsWith('blob:') || fullUrl.startsWith('data:')) {
-        const lowerUrl = fullUrl.toLowerCase();
-        const isOAuth = lowerUrl.includes('accounts.google.com') ||
-          lowerUrl.includes('accounts.youtube.com') ||
-          lowerUrl.includes('appleid.apple.com') ||
-          lowerUrl.includes('login.live.com') ||
-          lowerUrl.includes('login.microsoftonline.com') ||
-          lowerUrl.includes('facebook.com/dialog/oauth') ||
-          lowerUrl.includes('facebook.com/login') ||
-          lowerUrl.includes('github.com/login') ||
-          lowerUrl.includes('github.com/sessions') ||
-          lowerUrl.includes('gitlab.com/oauth') ||
-          lowerUrl.includes('oauth') ||
-          lowerUrl.includes('/auth/') ||
-          lowerUrl.includes('/authorize') ||
-          lowerUrl.includes('/sso/') ||
-          lowerUrl.includes('response_type=code') ||
-          lowerUrl.includes('client_id=');
-
-        if (!isOAuth) {
-          e.preventDefault();
-          e.stopPropagation();
-          ipcRenderer.sendToHost('ctrl-click-link', fullUrl);
-        }
+      const style = window.getComputedStyle(btn);
+      if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') {
+        isBlocked = true;
+        blockReason = 'disabled';
+      } else if (style.pointerEvents === 'none') {
+        isBlocked = true;
+        blockReason = 'pointer-events: none';
       }
-    } catch (err) { }
+    } catch (errStyle) { }
+
+    if (isBlocked) {
+      sendDiagnosticBreadcrumb('DEAD_CLICK', `Tombol nonaktif diklik: "${btnLabel}" (${blockReason})`, {
+        label: btnLabel,
+        tag: btn.tagName,
+        id: btn.id || null,
+        classes: (btn.className || '').toString().substring(0, 60),
+        selector: selector,
+        reason: blockReason
+      });
+    } else {
+      sendDiagnosticBreadcrumb('CLICK_BUTTON', `Tombol diklik: "${btnLabel}"`, {
+        label: btnLabel,
+        tag: btn.tagName,
+        id: btn.id || null,
+        classes: (btn.className || '').toString().substring(0, 60),
+        selector: selector
+      });
+    }
+    return;
+  }
+
+  // ── 3. Ikon Gambar / SVG / Media Interaktif Mandiri ────────────────────────
+  if (targetEl.tagName === 'IMG' || targetEl.tagName === 'SVG' || targetEl.tagName === 'CANVAS' || targetEl.getAttribute?.('role') === 'img') {
+    const label = extractElementLabel(targetEl, targetEl);
+    const selector = getElementSelectorSnippet(targetEl);
+    sendDiagnosticBreadcrumb('CLICK_ACTION', `Ikon/Gambar diklik: "${label}"`, {
+      label: label,
+      tag: targetEl.tagName,
+      selector: selector
+    });
   }
 }, true);
 
@@ -1603,11 +1752,35 @@ function checkUnread() {
   }
 }
 
+let lastRateLimitAlertTime = 0;
+function checkRateLimitOrSecurityToasts() {
+  try {
+    const now = Date.now();
+    if (now - lastRateLimitAlertTime < 8000) return;
+
+    const toastEls = document.querySelectorAll('.shopee-toast, .shopee-alert, [role="alert"], [class*="toast" i], [class*="alert" i], [class*="rate-limit" i], .ant-message, .arco-message');
+    let toastText = '';
+    toastEls.forEach(el => {
+      toastText += ' ' + (el.textContent || '');
+    });
+
+    if (/frekuensi kunjungan|terlalu sering|traffic.*error|unusual traffic|verification needed|verifikasi keamanan|captcha/i.test(toastText)) {
+      lastRateLimitAlertTime = now;
+      const matched = toastText.trim().substring(0, 80);
+      sendDiagnosticBreadcrumb('RATE_LIMIT_TOAST', `Deteksi Toast Keamanan/Limit: "${matched}"`, {
+        pageTitle: document.title,
+        url: window.location.href
+      });
+    }
+  } catch (e) { }
+}
+
 function scheduleUnreadCheck(delay = 1000) {
   if (unreadDebounceTimer) return;
   unreadDebounceTimer = setTimeout(() => {
     unreadDebounceTimer = null;
     checkUnread();
+    checkRateLimitOrSecurityToasts();
   }, delay);
 }
 

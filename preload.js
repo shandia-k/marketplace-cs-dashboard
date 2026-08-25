@@ -81,10 +81,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startVersionRollback: (payload) => ipcRenderer.invoke('start-version-rollback', payload),
   onRollbackProgress: (callback) => ipcRenderer.on('rollback-progress', (_event, value) => callback(value)),
 
-  // Crash Guard Lifecycle & Tab Manager
+  // Crash Guard Lifecycle, Navigation & Tab Manager
   onWebviewRenderProcessGone: (callback) => ipcRenderer.on('webview-render-process-gone', (_event, value) => callback(value)),
   onWebviewOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value)),
   onOpenNewTab: (callback) => ipcRenderer.on('webview-open-new-tab', (_event, value) => callback(value)),
+  onDiagnosticBreadcrumb: (callback) => ipcRenderer.on('diagnostic-breadcrumb', (_event, value) => callback(value)),
 
   // Image Context Menu & Media Toolset
   saveImageAs: (imageUrl) => ipcRenderer.invoke('save-image-as', imageUrl),

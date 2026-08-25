@@ -3,7 +3,7 @@
  * Browser session management, stealth headers, webview security guards, and cache deep-cleaning
  */
 
-const { session, app, dialog } = require('electron');
+const { session, app, dialog, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const {
@@ -262,6 +262,7 @@ function setupWebContentsSecurity(contents, getMainWindow) {
       if (!contents || contents.isDestroyed()) {
         return { action: 'deny' };
       }
+      const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : (BrowserWindow?.getAllWindows()[0] || null);
       const { url, disposition, features, referrer, postBody } = details || {};
       const isAboutBlank = !url || url === 'about:blank';
       
@@ -305,9 +306,14 @@ function setupWebContentsSecurity(contents, getMainWindow) {
         lowerUrl.includes('response_type=code') ||
         lowerUrl.includes('client_id=');
 
-      const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : null;
-
       if (isOAuth) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('diagnostic-breadcrumb', {
+            category: 'NAV_ROUTING',
+            message: `Routing Navigasi: OAUTH_POPUP (${(url || '').substring(0, 60)})`,
+            metadata: { url: url || '', disposition: disposition || 'default', decision: 'OAUTH_POPUP_WINDOW' }
+          });
+        }
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {
@@ -350,6 +356,11 @@ function setupWebContentsSecurity(contents, getMainWindow) {
       }
 
       if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('diagnostic-breadcrumb', {
+          category: 'NAV_ROUTING',
+          message: `Routing Navigasi: INTERNAL_TAB (${(url || 'about:blank').substring(0, 60)})`,
+          metadata: { url: url || 'about:blank', disposition: disposition || 'default', decision: 'INTERNAL_TAB', hasPostBody: !!postBody }
+        });
         mainWindow.webContents.send('webview-open-new-tab', {
           wcId: contents.id,
           url: url || 'about:blank',

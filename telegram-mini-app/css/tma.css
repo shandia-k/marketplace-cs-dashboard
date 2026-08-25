@@ -636,6 +636,174 @@ body.tma-body {
   word-break: break-all;
 }
 
+/* ── TMA Flight Recorder & Breadcrumbs Timeline ──────── */
+.tma-flight-recorder-card {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.tma-fr-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.tma-fr-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tma-fr-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.tma-fr-copy-btn {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tma-fr-copy-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+}
+
+.tma-fr-meta {
+  font-size: 11px;
+  color: var(--hint-color);
+  line-height: 1.4;
+}
+
+.tma-fr-url {
+  word-break: break-all;
+}
+
+.tma-fr-url code {
+  font-family: monospace;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #94a3b8;
+}
+
+.tma-fr-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.tma-fr-empty {
+  font-size: 11px;
+  color: var(--hint-color);
+  text-align: center;
+  padding: 8px;
+}
+
+.tma-fr-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(56, 189, 248, 0.6);
+  border-radius: 0 4px 4px 0;
+  padding: 5px 8px;
+}
+
+.tma-fr-item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.tma-fr-time {
+  font-size: 10px;
+  font-family: monospace;
+  color: #94a3b8;
+}
+
+.tma-fr-msg {
+  font-size: 11px;
+  color: var(--text-color);
+  line-height: 1.3;
+}
+
+.tma-fr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.tma-fr-chip {
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #cbd5e1;
+}
+
+.tma-fr-chip code {
+  font-family: monospace;
+}
+
+.tma-chip-danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+
+.tma-chip-info {
+  background: rgba(129, 140, 248, 0.15) !important;
+  color: #a5b4fc !important;
+}
+
+/* Category Badges */
+.tma-bc-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tma-bc-link { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.tma-bc-btn { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.tma-bc-dead { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.tma-bc-routing { background: rgba(129, 140, 248, 0.15); color: #818cf8; }
+.tma-bc-store { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+.tma-bc-tab { background: rgba(45, 212, 191, 0.15); color: #2dd4bf; }
+.tma-bc-error { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+.tma-bc-warn { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+.tma-bc-action { background: rgba(234, 179, 8, 0.15); color: #facc15; }
+.tma-bc-default { background: rgba(255, 255, 255, 0.1); color: #e2e8f0; }
+
+.tma-sys-info-section {
+  margin-top: 8px;
+}
+
+.tma-sys-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hint-color);
+  margin-bottom: 4px;
+}
+
 /* Chat Messages Thread */
 .chat-thread-container {
   display: flex;
