@@ -521,9 +521,15 @@ function formatBreadcrumbCategoryBadge(category) {
 
 function renderTicketDiagnostics(ticket) {
   let html = '';
+  let diag = ticket.diagnostics;
+  if (typeof diag === 'string') {
+    try { diag = JSON.parse(diag); } catch(e) {}
+  }
+  if (!diag && ticket.systemInfo && typeof ticket.systemInfo === 'object' && ticket.systemInfo.diagnostics) {
+    diag = ticket.systemInfo.diagnostics;
+  }
 
-  if (ticket.diagnostics) {
-    const diag = ticket.diagnostics;
+  if (diag && (Array.isArray(diag.breadcrumbs) || diag.breadcrumbsCount || diag.activeStoreName)) {
     const bcs = Array.isArray(diag.breadcrumbs) ? diag.breadcrumbs : [];
     const count = diag.breadcrumbsCount || bcs.length;
     const storeName = diag.activeStoreName || '-';
