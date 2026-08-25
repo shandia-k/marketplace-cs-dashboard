@@ -434,15 +434,40 @@ spSearchInput?.addEventListener('keydown', (e) => {
   }
 });
 
+// Debounced save and search to prevent main thread blocking on rapid typing
+const debouncedScratchpadSaveAndSearch = typeof window.debounce === 'function'
+  ? window.debounce(() => {
+      saveScratchpadState();
+      hasPendingScratchpadSave = false;
+      if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
+        executeScratchpadSearch('current');
+      }
+    }, 180)
+  : () => {
+      saveScratchpadState();
+      hasPendingScratchpadSave = false;
+      if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
+        executeScratchpadSearch('current');
+      }
+    };
+
+let hasPendingScratchpadSave = false;
+
 // Update current tab content on input & refresh search if open
 spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    hasPendingScratchpadSave = true;
+    debouncedScratchpadSaveAndSearch();
   }
-  if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
-    executeScratchpadSearch('current');
+});
+
+// Synchronous flush on app close to prevent data loss
+window.addEventListener('beforeunload', () => {
+  if (hasPendingScratchpadSave) {
+    saveScratchpadState();
+    hasPendingScratchpadSave = false;
   }
 });
 
