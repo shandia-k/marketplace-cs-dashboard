@@ -113,14 +113,14 @@ function renderCustomerNotesList() {
         <div class="cnote-footer">
           <span class="cnote-date">${n.date || ''}</span>
           <div class="cnote-actions">
-            <button class="qr-btn-action-icon btn-cnote-greet" title="Ketik Sapaan Khusus ke Chat" data-id="${n.id}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <button class="qr-btn-action-icon btn-cnote-greet" title="Ketik Sapaan Khusus ke Chat" aria-label="Ketik Sapaan Khusus ke Chat" data-id="${n.id}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </button>
-            <button class="qr-btn-action-icon" title="Edit Catatan" onclick="openEditNoteModal('${n.id}')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button class="qr-btn-action-icon" title="Edit Catatan" aria-label="Edit Catatan" onclick="openEditNoteModal('${n.id}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="qr-btn-action-icon danger" title="Hapus Catatan" onclick="deleteCustomerNote('${n.id}')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            <button class="qr-btn-action-icon danger" title="Hapus Catatan" aria-label="Hapus Catatan" onclick="deleteCustomerNote('${n.id}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
             </button>
           </div>
         </div>

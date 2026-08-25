@@ -1,0 +1,3 @@
+## 2024-08-25 - Accessibility fixes for interactive elements
+**Learning:** Found several icon-only buttons generated dynamically in JavaScript files (js/tabs.js, js/tools.js, js/modal.js, js/onboarding.js, js/statusbar.js, js/feedback.js, js/quickreply.js) missing `aria-label` attributes. Without `aria-label`, these interactive elements are inaccessible to screen readers because they rely entirely on visual icons or `title` tooltips which are often not announced.
+**Action:** Ensure all dynamically generated interactive elements (buttons, links) containing only icons have a descriptive `aria-label` attribute added alongside the `title` attribute to ensure full accessibility.
