@@ -2094,21 +2094,33 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
       .replace(/'/g, '&#039;');
   }
 
-  // ── VAULT KRIPTOGRAFIS AES-256-GCM UNTUK PASSWORD AUTOFILL ────────────────
+  // ── VAULT KRIPTOGRAFIS OS-NATIVE DPAPI (safeStorage) & AUTOFILL ENGINE ───
+  const DPAPI_PREFIX = 'dpapi:v1:';
   const VAULT_PREFIX = 'enc:v1:';
-  const VAULT_SALT = 'cs_mkt_vault_partition_k99_' + HOST;
 
-  function deriveVaultKey(saltBuf) {
-    return crypto.scryptSync(VAULT_SALT, saltBuf, 32);
+  function getLocalMachineKey(saltBuf) {
+    const os = require('os');
+    const machineIdentity = `${os.hostname()}_${os.userInfo()?.username || 'user'}_${os.platform()}_${os.homedir()}`;
+    return crypto.scryptSync(machineIdentity, saltBuf, 32);
   }
 
-  // Enkripsi Kriptografis AES-256-GCM untuk penyimpanan kredensial sesi toko
+  // Enkripsi Kriptografis OS Native DPAPI (Windows/macOS) untuk kredensial sesi toko
   function encryptPass(raw) {
     if (!raw) return '';
     try {
+      if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+        const dpapiRes = ipcRenderer.sendSync('vault-encrypt-sync', raw);
+        if (dpapiRes && typeof dpapiRes === 'string' && (dpapiRes.startsWith(DPAPI_PREFIX) || dpapiRes.startsWith(VAULT_PREFIX))) {
+          return dpapiRes;
+        }
+      }
+    } catch (e) { }
+
+    // Fallback: Hardware-bound local AES-GCM
+    try {
       const salt = crypto.randomBytes(16);
-      const iv = crypto.randomBytes(12); // 12-byte IV untuk standar AES-GCM
-      const key = deriveVaultKey(salt);
+      const iv = crypto.randomBytes(12);
+      const key = getLocalMachineKey(salt);
       const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
       let encrypted = cipher.update(raw, 'utf8', 'hex');
       encrypted += cipher.final('hex');
@@ -2122,22 +2134,48 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
   function decryptPass(enc) {
     if (!enc) return '';
     try {
+      // 1. Jika terenkripsi dengan format DPAPI ('dpapi:v1:...')
+      if (typeof enc === 'string' && enc.startsWith(DPAPI_PREFIX)) {
+        if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+          const plain = ipcRenderer.sendSync('vault-decrypt-sync', enc, HOST);
+          if (plain && typeof plain === 'string') return plain;
+        }
+      }
+
+      // 2. Jika terenkripsi dengan format AES-256-GCM ('enc:v1:...')
       if (typeof enc === 'string' && enc.startsWith(VAULT_PREFIX)) {
+        if (ipcRenderer && typeof ipcRenderer.sendSync === 'function') {
+          const plain = ipcRenderer.sendSync('vault-decrypt-sync', enc, HOST);
+          if (plain && typeof plain === 'string') return plain;
+        }
         const parts = enc.slice(VAULT_PREFIX.length).split(':');
         if (parts.length === 4) {
           const [saltHex, ivHex, tagHex, cipherHex] = parts;
           const salt = Buffer.from(saltHex, 'hex');
           const iv = Buffer.from(ivHex, 'hex');
           const tag = Buffer.from(tagHex, 'hex');
-          const key = deriveVaultKey(salt);
-          const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-          decipher.setAuthTag(tag);
-          let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-          decrypted += decipher.final('utf8');
-          return decrypted;
+
+          // Coba kunci machine-bound lokal
+          try {
+            const key = getLocalMachineKey(salt);
+            const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+            decipher.setAuthTag(tag);
+            let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+            decrypted += decipher.final('utf8');
+            return decrypted;
+          } catch (e) {
+            // Fallback ke legacy host key
+            const legacyKey = crypto.scryptSync('cs_mkt_vault_partition_k99_' + HOST, salt, 32);
+            const decipher2 = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);
+            decipher2.setAuthTag(tag);
+            let decrypted2 = decipher2.update(cipherHex, 'hex', 'utf8');
+            decrypted2 += decipher2.final('utf8');
+            return decrypted2;
+          }
         }
       }
-      // Backward compatibility fallback untuk kredensial legacy Base64 lama
+
+      // 3. Backward compatibility fallback untuk kredensial legacy Base64 lama
       return decodeURIComponent(atob(enc));
     } catch (e) {
       return '';
@@ -2147,7 +2185,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
   const obfuscatePass = encryptPass;
   const deobfuscatePass = decryptPass;
 
-  // Helper membaca riwayat form dari localStorage dengan in-place AES-GCM auto-migrasi
+  // Helper membaca riwayat form dari localStorage dengan in-place DPAPI auto-migrasi
   function getStoredEntries() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -2157,7 +2195,7 @@ window.addEventListener('load', () => setTimeout(checkSyncStatus, 2000));
 
       let needsSave = false;
       parsed.forEach(entry => {
-        if (entry && entry.pass && typeof entry.pass === 'string' && !entry.pass.startsWith(VAULT_PREFIX)) {
+        if (entry && entry.pass && typeof entry.pass === 'string' && !entry.pass.startsWith(DPAPI_PREFIX)) {
           const plain = decryptPass(entry.pass);
           if (plain) {
             entry.pass = encryptPass(plain);

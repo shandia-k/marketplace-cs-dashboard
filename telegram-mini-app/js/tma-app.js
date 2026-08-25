@@ -226,13 +226,21 @@ async function fetchFromBackend(payload) {
     throw new Error('URL Google Apps Script belum dikonfigurasi.');
   }
 
+  const telegramInitData = (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+    ? window.Telegram.WebApp.initData
+    : '';
+
+  const bodyPayload = Object.assign({}, payload, {
+    initData: telegramInitData || payload.initData || ''
+  });
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 18000);
 
   const response = await fetch(appState.gasUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Mode text/plain mencegah CORS preflight di GAS
-    body: JSON.stringify(payload),
+    body: JSON.stringify(bodyPayload),
     signal: controller.signal
   });
 
@@ -250,11 +258,9 @@ async function loadAllData(silent = false) {
   appState.isLoading = true;
 
   try {
-    // 1. Ambil Tiket Dev
+    // 1. Ambil Tiket Dev (Backend memverifikasi otorisasi via tanda tangan initData)
     const ticketRes = await fetchFromBackend({
-      action: 'SYNC_TICKETS',
-      isSuperAdmin: true,
-      username: 'developer'
+      action: 'SYNC_TICKETS'
     });
 
     if (ticketRes && Array.isArray(ticketRes.tickets)) {

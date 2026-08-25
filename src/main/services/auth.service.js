@@ -47,27 +47,17 @@ function hashPassword(password, salt) {
 }
 
 /**
- * Verifikasi password dengan timing-safe comparison.
- * Mendukung hash scrypt bertabur salt dan legacy unsalted SHA-256 untuk auto-migrasi.
+ * Verifikasi password dengan timing-safe comparison dan wajib salt (Zero Unsalted Fallback).
+ * Mencegah serangan rainbow table dan memblokir hash tanpa salt.
  */
 function verifyPassword(password, storedHash, storedSalt) {
-  if (!password || !storedHash) return false;
+  if (!password || !storedHash || !storedSalt) return false;
   try {
-    if (storedSalt) {
-      const computed = hashPassword(password, storedSalt);
-      const computedBuf = Buffer.from(computed, 'hex');
-      const storedBuf = Buffer.from(storedHash, 'hex');
-      if (computedBuf.length !== storedBuf.length) return false;
-      return crypto.timingSafeEqual(computedBuf, storedBuf);
-    }
-    // Fallback verifikasi legacy unsalted SHA-256 (hanya untuk proses auto-migrasi ke scrypt saat login)
-    const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
-    const legacyBuf = Buffer.from(legacyHash, 'hex');
+    const computed = hashPassword(password, storedSalt);
+    const computedBuf = Buffer.from(computed, 'hex');
     const storedBuf = Buffer.from(storedHash, 'hex');
-    if (legacyBuf.length === storedBuf.length) {
-      return crypto.timingSafeEqual(legacyBuf, storedBuf);
-    }
-    return legacyHash === storedHash;
+    if (computedBuf.length !== storedBuf.length) return false;
+    return crypto.timingSafeEqual(computedBuf, storedBuf);
   } catch (e) {
     return false;
   }

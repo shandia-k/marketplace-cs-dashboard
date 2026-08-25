@@ -52,7 +52,8 @@ describe('Level 4: IPC & Preload Surface Security Tests', () => {
       'submitFeedback', 'captureScreen', 'sendTelemetry', 'getUsers', 'getUserProfile',
       'createUser', 'updateUserProfile', 'deleteUser', 'verifyUserPin', 'loginUser',
       'logoutUser', 'getSecurityQuestion', 'resetUserPassword', 'updateSecurityQuestion',
-      'changePassword', 'exportStoresConfig', 'importStoresConfig', 'searchUrls'
+      'changePassword', 'exportStoresConfig', 'importStoresConfig', 'searchUrls',
+      'vaultEncrypt', 'vaultDecrypt'
     ];
 
     requiredMethods.forEach(method => {

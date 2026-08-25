@@ -19,23 +19,13 @@ function hashPassword(password, salt) {
 }
 
 function verifyPassword(password, storedHash, storedSalt) {
-  if (!password || !storedHash) return false;
+  if (!password || !storedHash || !storedSalt) return false;
   try {
-    if (storedSalt) {
-      const computed = hashPassword(password, storedSalt);
-      const computedBuf = Buffer.from(computed, 'hex');
-      const storedBuf = Buffer.from(storedHash, 'hex');
-      if (computedBuf.length !== storedBuf.length) return false;
-      return crypto.timingSafeEqual(computedBuf, storedBuf);
-    }
-    // Fallback for legacy unsalted SHA-256 migration
-    const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
-    const legacyBuf = Buffer.from(legacyHash, 'hex');
+    const computed = hashPassword(password, storedSalt);
+    const computedBuf = Buffer.from(computed, 'hex');
     const storedBuf = Buffer.from(storedHash, 'hex');
-    if (legacyBuf.length === storedBuf.length) {
-      return crypto.timingSafeEqual(legacyBuf, storedBuf);
-    }
-    return legacyHash === storedHash;
+    if (computedBuf.length !== storedBuf.length) return false;
+    return crypto.timingSafeEqual(computedBuf, storedBuf);
   } catch (e) {
     return false;
   }
@@ -113,10 +103,11 @@ describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
     assert.equal(verifyPassword(null, hash, salt), false);
   });
 
-  test('should verify legacy unsalted SHA-256 passwords for backward compatibility migration', () => {
+  test('should strictly REJECT unsalted legacy password hashes (Zero-Unsalted Policy)', () => {
     const legacyHash = crypto.createHash('sha256').update('legacyPass123').digest('hex');
-    assert.equal(verifyPassword('legacyPass123', legacyHash, null), true);
-    assert.equal(verifyPassword('wrongLegacy', legacyHash, null), false);
+    assert.equal(verifyPassword('legacyPass123', legacyHash, null), false, 'Unsalted hash with null salt must be rejected');
+    assert.equal(verifyPassword('legacyPass123', legacyHash, undefined), false, 'Unsalted hash with undefined salt must be rejected');
+    assert.equal(verifyPassword('legacyPass123', legacyHash, ''), false, 'Unsalted hash with empty salt must be rejected');
   });
 
   test('should encrypt and decrypt credentials with AES-256-GCM Vault', () => {
@@ -134,6 +125,18 @@ describe('Level 2: Security & Cryptography Tests (Password & Hashing)', () => {
     const legacyBase64 = Buffer.from('OldStorePassword123').toString('base64');
     const decrypted = decryptVaultPass(legacyBase64);
     assert.equal(decrypted, 'OldStorePassword123');
+  });
+
+  test('should encrypt and decrypt via vault.service.js with fallback/DPAPI support', () => {
+    const vaultService = require('../../../src/main/services/vault.service');
+    const secret = 'StoreAccountSecretPassword!2026';
+    const encrypted = vaultService.encryptSecret(secret);
+    assert.ok(typeof encrypted === 'string');
+    assert.ok(encrypted.startsWith('dpapi:v1:') || encrypted.startsWith('enc:v1:'));
+    assert.notEqual(encrypted, secret);
+
+    const decrypted = vaultService.decryptSecret(encrypted);
+    assert.equal(decrypted, secret);
   });
 });
 

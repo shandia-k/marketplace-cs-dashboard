@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { defaultStores, ROLE_INTEGRITY_SALT } = require('../config/constants');
+const vaultService = require('./vault.service');
 
 function getUserDataPath() {
   if (app && typeof app.getPath === 'function') {
@@ -42,6 +43,69 @@ function atomicWriteJsonSync(filePath, data) {
   }
 }
 
+function saveEncryptedJsonSync(filePath, data) {
+  try {
+    const rawJson = JSON.stringify(data, null, 2);
+    const cipher = vaultService.encryptSecret(rawJson);
+    const envelope = {
+      __vault_version__: 'v1',
+      cipher: cipher
+    };
+    return atomicWriteJsonSync(filePath, envelope);
+  } catch (err) {
+    console.error(`Failed to save encrypted JSON to ${filePath}:`, err);
+    return false;
+  }
+}
+
+function readEncryptedJsonSync(filePath) {
+  const bakPath = `${filePath}.bak`;
+  let rawContent = null;
+  try {
+    if (fs.existsSync(filePath)) {
+      rawContent = fs.readFileSync(filePath, 'utf8');
+    }
+  } catch (err) {
+    console.error(`Error reading ${filePath}, trying backup:`, err);
+    try {
+      if (fs.existsSync(bakPath)) {
+        rawContent = fs.readFileSync(bakPath, 'utf8');
+      }
+    } catch (bakErr) {
+      console.error(`Error reading backup ${bakPath}:`, bakErr);
+    }
+  }
+
+  if (!rawContent) return null;
+
+  try {
+    const parsed = JSON.parse(rawContent);
+    // Format Encrypted Envelope
+    if (parsed && typeof parsed === 'object' && parsed.__vault_version__ && parsed.cipher) {
+      const decryptedStr = vaultService.decryptSecret(parsed.cipher);
+      if (decryptedStr) {
+        return JSON.parse(decryptedStr);
+      }
+    }
+    // Format Legacy Plaintext JSON
+    return parsed;
+  } catch (parseErr) {
+    // Coba decrypt dari backup jika file utama corrupt
+    try {
+      if (fs.existsSync(bakPath)) {
+        const bakRaw = fs.readFileSync(bakPath, 'utf8');
+        const bakParsed = JSON.parse(bakRaw);
+        if (bakParsed && typeof bakParsed === 'object' && bakParsed.__vault_version__ && bakParsed.cipher) {
+          const decryptedBakStr = vaultService.decryptSecret(bakParsed.cipher);
+          if (decryptedBakStr) return JSON.parse(decryptedBakStr);
+        }
+        return bakParsed;
+      }
+    } catch (bakErr) {}
+    return null;
+  }
+}
+
 function getStoresFilePath(username) {
   const safeUsername = username ? String(username).trim().replace(/[/\\?%*:|"<>]/g, '_').replace(/\.{2,}/g, '_') : '';
   const fileName = safeUsername ? `stores_${safeUsername}.json` : 'stores.json';
@@ -50,29 +114,12 @@ function getStoresFilePath(username) {
 
 function readStores(username) {
   const filePath = getStoresFilePath(username);
-  const bakPath = `${filePath}.bak`;
-  let loaded = null;
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
-      loaded = JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('Error reading stores, trying backup:', err);
-    try {
-      if (fs.existsSync(bakPath)) {
-        const bakData = fs.readFileSync(bakPath, 'utf8');
-        loaded = JSON.parse(bakData);
-      }
-    } catch (bakErr) {
-      console.error('Error reading stores backup:', bakErr);
-    }
-  }
+  let loaded = readEncryptedJsonSync(filePath);
 
   if (!Array.isArray(loaded)) {
     loaded = defaultStores;
     try {
-      atomicWriteJsonSync(filePath, defaultStores);
+      saveStores(defaultStores, username);
     } catch (err) {
       console.error('Error creating default stores file:', err);
     }
@@ -97,7 +144,7 @@ function readStores(username) {
 
 function saveStores(stores, username) {
   const filePath = getStoresFilePath(username);
-  return atomicWriteJsonSync(filePath, stores);
+  return saveEncryptedJsonSync(filePath, stores);
 }
 
 function computeRoleSig(username, role, passwordSalt) {
@@ -121,27 +168,8 @@ function isUserSuperAdmin(user) {
 }
 
 function readUsers() {
-  let users = [];
   const usersFilePath = getUsersFilePath();
-  const bakPath = `${usersFilePath}.bak`;
-
-  try {
-    if (fs.existsSync(usersFilePath)) {
-      const data = fs.readFileSync(usersFilePath, 'utf8');
-      users = JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('Error reading users, trying backup:', err);
-    try {
-      if (fs.existsSync(bakPath)) {
-        const bakData = fs.readFileSync(bakPath, 'utf8');
-        users = JSON.parse(bakData);
-      }
-    } catch (bakErr) {
-      console.error('Error reading users backup:', bakErr);
-    }
-    users = [];
-  }
+  let users = readEncryptedJsonSync(usersFilePath);
 
   if (!Array.isArray(users)) users = [];
 
@@ -216,7 +244,7 @@ function saveUsers(users) {
     u.roleSig = computeRoleSig(u.username, u.role, u.passwordSalt);
     return u;
   });
-  return atomicWriteJsonSync(getUsersFilePath(), sanitized);
+  return saveEncryptedJsonSync(getUsersFilePath(), sanitized);
 }
 
 function isValidPartition(partition) {
@@ -345,6 +373,8 @@ module.exports = {
   getUserDataPath,
   getUsersFilePath,
   atomicWriteJsonSync,
+  saveEncryptedJsonSync,
+  readEncryptedJsonSync,
   getStoresFilePath,
   readStores,
   saveStores,

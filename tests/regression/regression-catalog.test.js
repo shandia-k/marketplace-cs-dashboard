@@ -543,7 +543,7 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     // 2. Verifikasi AES-256-GCM Credential Vault di webview-preload.js
     assert.ok(webviewPreloadCode.includes("'enc:v1:'"), 'webview-preload.js must use versioned AES-GCM vault prefix');
     assert.ok(webviewPreloadCode.includes('aes-256-gcm'), 'webview-preload.js must use aes-256-gcm cipher');
-    assert.ok(webviewPreloadCode.includes('deriveVaultKey'), 'webview-preload.js must derive vault keys');
+    assert.ok(webviewPreloadCode.includes('getLocalMachineKey') || webviewPreloadCode.includes('deriveVaultKey'), 'webview-preload.js must derive vault keys');
 
     // 3. Verifikasi Single Source of Truth URL Rules
     assert.equal(typeof urlRules.isOAuthUrl, 'function', 'url-rules must export isOAuthUrl');
@@ -582,6 +582,74 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(webviewPreloadCode.includes('window.chrome.app'), 'webview-preload.js must define window.chrome.app for bot defense');
     assert.ok(webviewPreloadCode.includes('window.chrome.runtime'), 'webview-preload.js must define window.chrome.runtime for bot defense');
     assert.ok(webviewPreloadCode.includes('Object.defineProperty(navigator, \'webdriver\''), 'webview-preload.js must mask navigator.webdriver with getter');
+  });
+
+  test('[REG-026] S1 Security Hardening: OS-Native DPAPI safeStorage Vault & Zero Static Passphrase in Source', () => {
+    const vaultService = require('../../src/main/services/vault.service');
+    const webviewPreloadCode = fs.readFileSync(path.join(__dirname, '../../webview-preload.js'), 'utf8');
+    const registerIpcCode = fs.readFileSync(path.join(__dirname, '../../src/main/ipc/register-ipc.js'), 'utf8');
+
+    // 1. Verifikasi vault.service.js mengekspos DPAPI enkripsi & dekripsi
+    assert.equal(typeof vaultService.encryptSecret, 'function');
+    assert.equal(typeof vaultService.decryptSecret, 'function');
+    const testSecret = 'SuperSecretMarketplaceCredentials#2026';
+    const encrypted = vaultService.encryptSecret(testSecret);
+    assert.ok(encrypted.startsWith('dpapi:v1:') || encrypted.startsWith('enc:v1:'), 'Ciphertext must start with version prefix');
+    const decrypted = vaultService.decryptSecret(encrypted);
+    assert.equal(decrypted, testSecret, 'Decrypted secret must match original exactly');
+
+    // 2. Verifikasi IPC registration untuk sinkronisasi webview vault
+    assert.ok(registerIpcCode.includes("'vault-encrypt'"), 'register-ipc.js must register vault-encrypt handler');
+    assert.ok(registerIpcCode.includes("'vault-encrypt-sync'"), 'register-ipc.js must register vault-encrypt-sync handler');
+
+    // 3. Verifikasi webview-preload.js menggunakan DPAPI_PREFIX dan IPC
+    assert.ok(webviewPreloadCode.includes("'dpapi:v1:'"), 'webview-preload.js must support DPAPI_PREFIX');
+    assert.ok(webviewPreloadCode.includes('vault-encrypt-sync'), 'webview-preload.js must invoke vault-encrypt-sync IPC');
+  });
+
+  test('[REG-027] S2 Security Hardening: Telegram initData HMAC-SHA256 Cryptographic Authentication', () => {
+    const gasCode = fs.readFileSync(path.join(__dirname, '../../scripts/google-apps-script/GoogleAppsScript_FeedbackHub.js'), 'utf8');
+    const tmaCode = fs.readFileSync(path.join(__dirname, '../../telegram-mini-app/js/tma-app.js'), 'utf8');
+
+    // 1. Verifikasi Google Apps Script memiliki fungsi validateTelegramInitData
+    assert.ok(gasCode.includes('function validateTelegramInitData'), 'GAS script must define validateTelegramInitData');
+    assert.ok(gasCode.includes('Utilities.computeHmacSha256Signature'), 'GAS script must use computeHmacSha256Signature');
+    assert.ok(gasCode.includes('"WebAppData"'), 'GAS script must use WebAppData constant for secret key derivation');
+
+    // 2. Verifikasi TMA melampirkan initData pada fetchFromBackend
+    assert.ok(tmaCode.includes('window.Telegram.WebApp.initData'), 'TMA must read window.Telegram.WebApp.initData');
+    assert.ok(tmaCode.includes('initData: telegramInitData'), 'TMA must forward initData in payload');
+  });
+
+  test('[REG-028] S3 Security Hardening: OS-Native Encrypted Storage Envelope & Zero Plaintext Disk Persistence', () => {
+    const storageService = require('../../src/main/services/storage.service');
+    const storageCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/storage.service.js'), 'utf8');
+
+    // 1. Verifikasi fungsi enkripsi storage diekspor
+    assert.equal(typeof storageService.saveEncryptedJsonSync, 'function');
+    assert.equal(typeof storageService.readEncryptedJsonSync, 'function');
+
+    // 2. Verifikasi readStores/saveStores & readUsers/saveUsers terikat ke enkripsi envelope
+    assert.ok(storageCode.includes('saveEncryptedJsonSync(filePath, stores)'), 'saveStores must use saveEncryptedJsonSync');
+    assert.ok(storageCode.includes('saveEncryptedJsonSync(getUsersFilePath(), sanitized)'), 'saveUsers must use saveEncryptedJsonSync');
+    assert.ok(storageCode.includes('readEncryptedJsonSync(filePath)'), 'readStores must use readEncryptedJsonSync');
+    assert.ok(storageCode.includes('readEncryptedJsonSync(usersFilePath)'), 'readUsers must use readEncryptedJsonSync');
+  });
+
+  test('[REG-029] S4 Security Hardening: Elimination of Unsalted SHA-256 Fallbacks & Strict Salt Enforcement', () => {
+    const authService = require('../../src/main/services/auth.service');
+    const authCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/auth.service.js'), 'utf8');
+
+    // 1. Verifikasi verifyPassword menolak password hash tanpa salt
+    const testSalt = authService.generateSalt();
+    const testHash = authService.hashPassword('MyStrongSecret2026', testSalt);
+    assert.equal(authService.verifyPassword('MyStrongSecret2026', testHash, testSalt), true);
+    assert.equal(authService.verifyPassword('MyStrongSecret2026', testHash, null), false, 'Must reject null salt');
+    assert.equal(authService.verifyPassword('MyStrongSecret2026', testHash, undefined), false, 'Must reject undefined salt');
+    assert.equal(authService.verifyPassword('MyStrongSecret2026', testHash, ''), false, 'Must reject empty salt');
+
+    // 2. Verifikasi tidak ada lagi kode SHA-256 tanpa salt di auth.service.js
+    assert.ok(!authCode.includes("createHash('sha256')"), 'auth.service.js must not contain unsalted createHash');
   });
 });
 

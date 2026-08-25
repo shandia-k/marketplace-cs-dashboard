@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportStoresConfig: (stores) => ipcRenderer.invoke('export-stores-config', stores),
   importStoresConfig: () => ipcRenderer.invoke('import-stores-config'),
   searchUrls: (query) => ipcRenderer.invoke('search-urls', query),
+  vaultEncrypt: (text) => ipcRenderer.invoke('vault-encrypt', text),
+  vaultDecrypt: (cipher, host) => ipcRenderer.invoke('vault-decrypt', cipher, host),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),

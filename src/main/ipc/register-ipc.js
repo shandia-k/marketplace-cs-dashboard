@@ -12,9 +12,26 @@ const searchService = require('../services/search.service');
 const systemService = require('../services/system.service');
 const feedbackService = require('../services/feedback.service');
 const contextMenuService = require('../services/context-menu.service');
+const vaultService = require('../services/vault.service');
 const QRCode = require('qrcode');
 
 function registerIpcHandlers(getMainWindow) {
+  // ── Native Vault DPAPI Encryption IPC ──────────────────────────────────────
+  ipcMain.handle('vault-encrypt', (event, plaintext) => {
+    return vaultService.encryptSecret(plaintext);
+  });
+
+  ipcMain.handle('vault-decrypt', (event, ciphertext, hostContext) => {
+    return vaultService.decryptSecret(ciphertext, hostContext);
+  });
+
+  ipcMain.on('vault-encrypt-sync', (event, plaintext) => {
+    event.returnValue = vaultService.encryptSecret(plaintext);
+  });
+
+  ipcMain.on('vault-decrypt-sync', (event, ciphertext, hostContext) => {
+    event.returnValue = vaultService.decryptSecret(ciphertext, hostContext);
+  });
   // ── Store Management IPC ───────────────────────────────────────────────────
   ipcMain.handle('get-stores', (event, username) => {
     return storageService.readStores(username);
