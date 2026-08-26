@@ -449,6 +449,7 @@ async function clearSafeCache(username) {
     });
 
     for (const part of partitions) {
+      if (!isValidPartition(part)) continue;
       try {
         const ses = session.fromPartition(part);
         await ses.clearCache();
