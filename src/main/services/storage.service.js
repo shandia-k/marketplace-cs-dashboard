@@ -82,9 +82,14 @@ function readEncryptedJsonSync(filePath) {
     const parsed = JSON.parse(rawContent);
     // Format Encrypted Envelope
     if (parsed && typeof parsed === 'object' && parsed.__vault_version__ && parsed.cipher) {
-      const decryptedStr = vaultService.decryptSecret(parsed.cipher);
-      if (decryptedStr) {
-        return JSON.parse(decryptedStr);
+      let decryptedStr = vaultService.decryptSecret(parsed.cipher);
+      if (decryptedStr && typeof decryptedStr === 'string') {
+        if (decryptedStr.startsWith('dpapi:v1:') || decryptedStr.startsWith('enc:v1:')) {
+          decryptedStr = vaultService.decryptSecret(decryptedStr);
+        }
+        try {
+          return JSON.parse(decryptedStr);
+        } catch (e) { }
       }
     }
     // Format Legacy Plaintext JSON
@@ -96,8 +101,15 @@ function readEncryptedJsonSync(filePath) {
         const bakRaw = fs.readFileSync(bakPath, 'utf8');
         const bakParsed = JSON.parse(bakRaw);
         if (bakParsed && typeof bakParsed === 'object' && bakParsed.__vault_version__ && bakParsed.cipher) {
-          const decryptedBakStr = vaultService.decryptSecret(bakParsed.cipher);
-          if (decryptedBakStr) return JSON.parse(decryptedBakStr);
+          let decryptedBakStr = vaultService.decryptSecret(bakParsed.cipher);
+          if (decryptedBakStr && typeof decryptedBakStr === 'string') {
+            if (decryptedBakStr.startsWith('dpapi:v1:') || decryptedBakStr.startsWith('enc:v1:')) {
+              decryptedBakStr = vaultService.decryptSecret(decryptedBakStr);
+            }
+            try {
+              return JSON.parse(decryptedBakStr);
+            } catch (e) { }
+          }
         }
         return bakParsed;
       }
@@ -116,12 +128,24 @@ function readStores(username) {
   const filePath = getStoresFilePath(username);
   let loaded = readEncryptedJsonSync(filePath);
 
+  // Fallback 1: Jika username spesifik kosong, coba baca file stores.json global
+  if (!Array.isArray(loaded) && username) {
+    const globalPath = path.join(getUserDataPath(), 'stores.json');
+    loaded = readEncryptedJsonSync(globalPath);
+  }
+
+  // Fallback 2: Jika file fisik belum pernah ada sama sekali, inisialisasi defaultStores
   if (!Array.isArray(loaded)) {
-    loaded = defaultStores;
-    try {
-      saveStores(defaultStores, username);
-    } catch (err) {
-      console.error('Error creating default stores file:', err);
+    if (!fs.existsSync(filePath)) {
+      loaded = defaultStores;
+      try {
+        saveStores(defaultStores, username);
+      } catch (err) {
+        console.error('Error creating default stores file:', err);
+      }
+    } else {
+      console.warn('[Storage] Warning: stores file exists but could not be parsed. Retaining without destructive overwrite.');
+      loaded = defaultStores;
     }
   }
 
