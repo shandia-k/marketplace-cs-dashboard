@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility on dynamic string-based UI components
+**Learning:** When generating dynamic UI elements via string-based HTML in vanilla JS (like in `renderSettingsList` inside `js/modal.js`), it is crucial to explicitly manage ARIA properties on icon-only interactive elements.
+**Action:** Always include `aria-label` attributes on icon-only interactive elements alongside `title` to ensure full screen reader accessibility. Additionally, apply `aria-hidden="true"` and `focusable="false"` to their inner `<svg>` elements to prevent screen readers from announcing redundant or non-semantic visual information.
