@@ -36,13 +36,13 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.21',
+      version: '1.0.22',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.21 🚀',
+      pillTag: 'v1.0.22 🚀',
       releaseDate: 'Agustus 2026',
       title: 'Modernisasi Engine Electron 44, Suite Security Hardening Komprehensif, Zero-Zombie Process & Dynamic Testing Switch',
-      tagline: 'Pembaruan v1.0.21: Lompatan teknologi besar dari v1.0.19 dengan pemutakhiran engine runtime ke Electron v44.0.0 & electron-builder v26; modernisasi W3C Async Clipboard API (ClipboardItem & image blob); penerapan 9 lapis Security Hardening komprehensif (OS-native DPAPI safeStorage, zero static passphrases, Telegram HMAC-SHA256 crypto authentication, encrypted storage envelope, strict password salt, sandboxed OAuth popups, hardened CSP & centralized autofill vault); eliminasi 100% proses zombie Task Manager & pencegahan dialog "Retry" pada auto-update; pemantau konektivitas multi-endpoint anti-flapping; serta switch UI interaktif untuk mode testing native Chromium.',
+      tagline: 'Pembaruan v1.0.22: Lompatan teknologi besar dari v1.0.19 dengan pemutakhiran engine runtime ke Electron v44.0.0 & electron-builder v26; modernisasi W3C Async Clipboard API (ClipboardItem & image blob); penerapan 9 lapis Security Hardening komprehensif (OS-native DPAPI safeStorage, zero static passphrases, Telegram HMAC-SHA256 crypto authentication, encrypted storage envelope, strict password salt, sandboxed OAuth popups, hardened CSP & centralized autofill vault); eliminasi 100% proses zombie Task Manager & pencegahan dialog "Retry" pada auto-update; pemantau konektivitas multi-endpoint anti-flapping; serta switch UI interaktif untuk mode testing native Chromium.',
       highlights: [
         {
           icon: '⚡',
