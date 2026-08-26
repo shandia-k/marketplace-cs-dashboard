@@ -36,10 +36,187 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   const VERSIONS_REGISTRY = [
     {
-      version: '1.0.20',
+      version: '1.0.21',
       badge: 'Versi Terbaru 🚀',
       badgeColor: '#df1683',
-      pillTag: 'v1.0.20 🚀',
+      pillTag: 'v1.0.21 🚀',
+      releaseDate: 'Agustus 2026',
+      title: 'Modernisasi Engine Electron 44, Suite Security Hardening Komprehensif, Zero-Zombie Process & Dynamic Testing Switch',
+      tagline: 'Pembaruan v1.0.21: Lompatan teknologi besar dari v1.0.19 dengan pemutakhiran engine runtime ke Electron v44.0.0 & electron-builder v26; modernisasi W3C Async Clipboard API (ClipboardItem & image blob); penerapan 9 lapis Security Hardening komprehensif (OS-native DPAPI safeStorage, zero static passphrases, Telegram HMAC-SHA256 crypto authentication, encrypted storage envelope, strict password salt, sandboxed OAuth popups, hardened CSP & centralized autofill vault); eliminasi 100% proses zombie Task Manager & pencegahan dialog "Retry" pada auto-update; pemantau konektivitas multi-endpoint anti-flapping; serta switch UI interaktif untuk mode testing native Chromium.',
+      highlights: [
+        {
+          icon: '⚡',
+          iconBg: 'rgba(223, 22, 131, 0.15)',
+          title: 'Modernisasi Engine Electron 44',
+          desc: 'Upgrade runtime ke Electron v44.0.0 & electron-builder v26.15.3 dengan dukungan penuh modern Chromium 144, ABI Node 22/24, dan W3C Async Clipboard API.'
+        },
+        {
+          icon: '🛡️',
+          iconBg: 'rgba(16, 185, 129, 0.15)',
+          title: '9 Lapis Security Hardening',
+          desc: 'Perlindungan DPAPI safeStorage, zero plaintext disk storage, Telegram initData HMAC-SHA256, OAuth sandboxing, dan penghapusan total passphrase statis.'
+        },
+        {
+          icon: '🧹',
+          iconBg: 'rgba(59, 130, 246, 0.15)',
+          title: 'Zero-Zombie Process & Clean Update',
+          desc: 'Pembersihan 100% proses di Task Manager saat aplikasi ditutup (.unref background timers) dan pencegahan total pop-up "Retry" pada auto-updater.'
+        },
+        {
+          icon: '🎛️',
+          iconBg: 'rgba(245, 158, 11, 0.15)',
+          title: 'Dynamic Webview Testing Controller',
+          desc: 'Switch UI interaktif di Pengaturan (Cache & Data) untuk beralih instan antara Mode CS Interceptor dan Mode Native Chromium Testing tanpa restart aplikasi.'
+        }
+      ],
+      categories: [
+        {
+          category: 'Modernisasi Runtime & Arsitektur Engine (Electron 44 & W3C Clipboard)',
+          tag: 'Engine Upgrade',
+          color: '#df1683',
+          bgColor: 'rgba(223, 22, 131, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'Electron v44.0.0',
+              badgeColor: '#df1683',
+              text: 'Pemutakhiran framework utama ke Electron 44.0.0 yang membawa performa rendering Chromium modern, alokasi memori V8 lebih optimal, dan keamanan engine terbaru.'
+            },
+            {
+              type: 'feature',
+              badge: 'W3C Async Clipboard API',
+              badgeColor: '#10b981',
+              text: 'Modernisasi clipboard watcher dan context-menu service menggunakan W3C ClipboardItem multi-format dan Promise-based async readText/writeText.'
+            },
+            {
+              type: 'perf',
+              badge: 'Electron Builder v26',
+              badgeColor: '#3b82f6',
+              text: 'Dukungan penuh installer packaging 64-bit modern, static ANGLE linking, dan kompatibilitas NSIS release packaging.'
+            },
+            {
+              type: 'feature',
+              badge: 'Dynamic User-Agent Sync',
+              badgeColor: '#8b5cf6',
+              text: 'Penyelarasan dinamis fallback User-Agent webview dengan versi aktif Chromium (process.versions.chrome) untuk mencegah deteksi bot WAF.'
+            }
+          ]
+        },
+        {
+          category: 'Suite Pengamanan Sistem & Kriptografi (Security Hardening S1-S4 & H1-H5)',
+          tag: 'Security Hardening',
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.12)',
+          items: [
+            {
+              type: 'security',
+              badge: 'OS-Native DPAPI Vault',
+              badgeColor: '#10b981',
+              text: 'Migrasi enkripsi kredensial autofill ke OS-native DPAPI safeStorage (dpapi:v1:) dan eliminasi seluruh passphrase statis dari source code.'
+            },
+            {
+              type: 'security',
+              badge: 'Telegram HMAC Authentication',
+              badgeColor: '#3b82f6',
+              text: 'Autentikasi kriptografis Telegram initData berbasis HMAC-SHA256 untuk mencegah pemalsuan identitas user ID bot.'
+            },
+            {
+              type: 'security',
+              badge: 'Encrypted Storage Envelope',
+              badgeColor: '#f59e0b',
+              text: 'Enkripsi menyeluruh database lokal (stores.json, users.json, feedback_tickets.json) dengan format envelope terenkripsi enc:v1:.'
+            },
+            {
+              type: 'security',
+              badge: 'Strict Password Salt',
+              badgeColor: '#e11d48',
+              text: 'Penghapusan total fallback SHA-256 tanpa salt dan penegakan strict salt hashing untuk proteksi brute-force.'
+            },
+            {
+              type: 'security',
+              badge: 'Dynamic Machine-Bound Secret',
+              badgeColor: '#8b5cf6',
+              text: 'Pembangkitan HMAC secret verifikasi role akun secara dinamis terikat hardware mesin (Zero static salt in constants).'
+            },
+            {
+              type: 'security',
+              badge: 'OAuth Strict Sandboxing',
+              badgeColor: '#0284c7',
+              text: 'Penerapan contextIsolation: true, nodeIntegration: false, dan sandbox: true pada jendela popup login OAuth (Google, Apple, Microsoft, GitHub).'
+            },
+            {
+              type: 'security',
+              badge: 'Hardened CSP',
+              badgeColor: '#10b981',
+              text: 'Pengetatan Content-Security-Policy di main.js dan index.html (default-src self, object-src none, whitelisted connect-src).'
+            },
+            {
+              type: 'security',
+              badge: 'IPC Autofill Isolation',
+              badgeColor: '#df1683',
+              text: 'Autofill akun marketplace sepenuhnya diisolasi di Main Process via IPC terenkripsi tanpa eksposur ke webview localStorage.'
+            }
+          ]
+        },
+        {
+          category: 'Stabilitas Siklus Hidup Aplikasi & Zero-Zombie Auto-Update',
+          tag: 'Process Lifecycle',
+          color: '#3b82f6',
+          bgColor: 'rgba(59, 130, 246, 0.12)',
+          items: [
+            {
+              type: 'fix',
+              badge: 'Zero Zombie Process',
+              badgeColor: '#10b981',
+              text: 'Penyematan .unref() pada background timers (RAM trimmer, session flush, clipboard watcher) dan exit guard will-quit untuk menjamin tidak ada proses tertinggal di Task Manager.'
+            },
+            {
+              type: 'fix',
+              badge: 'Anti-Retry Auto-Update',
+              badgeColor: '#3b82f6',
+              text: 'Penghancuran seluruh jendela dan flush storage seketika sebelum autoUpdater.quitAndInstall() berjalan, mencegah error file-locking dan pop-up "Retry" pada installer NSIS.'
+            },
+            {
+              type: 'fix',
+              badge: 'Safe Window Close IPC',
+              badgeColor: '#8b5cf6',
+              text: 'Penyelarasan IPC window-close untuk memastikan pemanggilan mainWindow.close() atau fallback app.quit() secara mulus.'
+            }
+          ]
+        },
+        {
+          category: 'Kendali Testing Dinamis & Pemantau Koneksi Multi-Endpoint',
+          tag: 'UI & Connectivity',
+          color: '#f59e0b',
+          bgColor: 'rgba(245, 158, 11, 0.12)',
+          items: [
+            {
+              type: 'feature',
+              badge: 'UI Interceptor Switch',
+              badgeColor: '#df1683',
+              text: 'Saklar toggle interaktif pada tab Pengaturan (Cache & Data) untuk beralih instan antara Mode CS Interceptor dan Mode Native Chromium Testing secara real-time.'
+            },
+            {
+              type: 'feature',
+              badge: 'Multi-Endpoint Net Monitor',
+              badgeColor: '#10b981',
+              text: 'Pemantau status koneksi internet tangguh (probe gstatic 204 & Cloudflare trace) dilengkapi threshold anti-flapping untuk mencegah false-positive offline.'
+            },
+            {
+              type: 'security',
+              badge: 'REG-026 s/d REG-036',
+              badgeColor: '#f59e0b',
+              text: 'Ekspansi katalog uji regresi (Level 7) dari REG-020 hingga REG-036 dengan 100% cakupan uji otomatis pada seluruh 8 layer pengujian.'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      version: '1.0.20',
+      badge: 'Stabil ✅',
+      badgeColor: '#10b981',
+      pillTag: 'v1.0.20',
       releaseDate: 'Agustus 2026',
       title: 'Preservasi Aksi Copy Pesanan Marketplace, Main Process Exception Guard & Hardening Siklus WebFrame',
       tagline: 'Pembaruan v1.0.20: Menghadirkan perbaikan cerdas pada universal link interceptor yang mempreservasi tombol salin (copy button) nomor pesanan dan kontrol interaktif marketplace tanpa membajak navigasi ke tab baru; integrasi dual-layer Main Process Exception & Rejection Guard di main.js untuk meredam race condition internal Chromium dan mencegah dialog modal error OS; serta penolakan window open ephemeral about:blank tanpa Form POST di session service.',
