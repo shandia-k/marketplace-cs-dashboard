@@ -357,13 +357,15 @@ function createWebview(store, tab, targetPane = 'left') {
       const clip = typeof currentClipboardValue !== 'undefined' && currentClipboardValue ? currentClipboardValue : (localStorage.getItem('globalCapturedClipboard') || '');
       const hist = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
       const csName = window.currentUserProfile?.displayName || window.currentUserName || window.currentUser || 'CS';
+      const disableInterceptors = (typeof isWebviewInterceptorsDisabled === 'function') ? isWebviewInterceptorsDisabled() : (localStorage.getItem('disable_webview_interceptors') === 'true');
       wv.send('sync-smart-templates', {
         templates: typeof smartTemplates !== 'undefined' ? smartTemplates : [],
         storeName: store.name || '',
         csName: csName,
         clipboard: clip,
         history: hist,
-        theme: theme
+        theme: theme,
+        disableInterceptors: disableInterceptors
       });
 
     } else if (event.channel === 'sync-status') {
@@ -553,12 +555,14 @@ function createWebview(store, tab, targetPane = 'left') {
     const theme = typeof currentTheme !== 'undefined' ? currentTheme : (document.documentElement.getAttribute('data-theme') || 'dark');
     const clip = typeof currentClipboardValue !== 'undefined' && currentClipboardValue ? currentClipboardValue : (localStorage.getItem('globalCapturedClipboard') || '');
     const hist = typeof clipboardHistory !== 'undefined' ? clipboardHistory : [];
+    const disableInterceptors = (typeof isWebviewInterceptorsDisabled === 'function') ? isWebviewInterceptorsDisabled() : (localStorage.getItem('disable_webview_interceptors') === 'true');
     wv.send('sync-smart-templates', {
       templates: typeof smartTemplates !== 'undefined' ? smartTemplates : [],
       storeName: store.name || '',
       clipboard: clip,
       history: hist,
-      theme: theme
+      theme: theme,
+      disableInterceptors: disableInterceptors
     });
   });
 
@@ -1044,7 +1048,33 @@ function initSplitResizer() {
     if (typeof setFocusedPane === 'function') setFocusedPane('right');
   });
 }
-window.initSplitResizer = initSplitResizer;
+// ── Webview Interceptor Testing Mode Switchers ─────────────────────────────
+function isWebviewInterceptorsDisabled() {
+  const val = localStorage.getItem('disable_webview_interceptors');
+  // Default: true (Testing Mode) jika belum disetel
+  return val === null ? true : val === 'true';
+}
+
+function setWebviewInterceptorsDisabled(disabled) {
+  localStorage.setItem('disable_webview_interceptors', disabled ? 'true' : 'false');
+  broadcastInterceptorSetting(disabled);
+}
+
+function broadcastInterceptorSetting(disabled) {
+  if (typeof webviewMap === 'object' && webviewMap) {
+    Object.values(webviewMap).forEach(entry => {
+      if (entry && entry.webview) {
+        try {
+          entry.webview.send('sync-interceptor-settings', { disableInterceptors: disabled });
+        } catch (err) { }
+      }
+    });
+  }
+}
+
+window.isWebviewInterceptorsDisabled = isWebviewInterceptorsDisabled;
+window.setWebviewInterceptorsDisabled = setWebviewInterceptorsDisabled;
+window.broadcastInterceptorSetting = broadcastInterceptorSetting;
 
 // ── App.Webview Module Interface ────────────────────────────────────────────
 window.App = window.App || {};
@@ -1052,5 +1082,8 @@ window.App.Webview = {
   hibernateTab,
   checkAndHibernateIfNeeded,
   hibernateAll,
-  isValidTopNavigationUrl
+  isValidTopNavigationUrl,
+  isWebviewInterceptorsDisabled,
+  setWebviewInterceptorsDisabled,
+  broadcastInterceptorSetting
 };

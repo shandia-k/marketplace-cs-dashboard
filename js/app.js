@@ -404,6 +404,11 @@ function bindEvents() {
     initPasswordToggles();
   }
 
+  // Webview Interceptor Testing Mode Toggle
+  if (typeof initWebviewInterceptorToggle === 'function') {
+    initWebviewInterceptorToggle();
+  }
+
   // Opsi 1: Clear Safe Cache Global (Hanya partisi user aktif)
   document.getElementById('btn-clear-safe-cache')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-clear-safe-cache');

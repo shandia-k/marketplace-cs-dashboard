@@ -13,11 +13,17 @@
 const { ipcRenderer } = require('electron');
 const crypto = require('crypto');
 
-// ── MASTER TESTING SWITCH ────────────────────────────────────────────────────
-// Ubah ke `true` untuk menonaktifkan pencegatan klik link (target="_blank", tab baru)
-// dan auto-capture clipboard DOM selama testing.
-// Keyboard & Navigation (Ctrl+F, Alt+Left/Right, Zoom) & Quick Reply (Ctrl+Space) TETAP AKTIF.
-const DISABLE_WEBVIEW_INTERCEPTORS = true;
+// ── WEBVIEW INTERCEPTOR DYNAMIC CONTROLLER ────────────────────────────────────
+// Dikontrol secara real-time via Switch di UI Settings Dashboard (Cache & Data).
+// Jika `true`: Webview berjalan murni mengikuti Chromium tanpa manipulasi link/clipboard.
+// Keyboard & Navigation (Ctrl+F, Alt+Panah, Zoom) & Quick Reply (Ctrl+Space) TETAP AKTIF.
+let disableWebviewInterceptors = true;
+
+ipcRenderer.on('sync-interceptor-settings', (event, data) => {
+  if (data && typeof data.disableInterceptors === 'boolean') {
+    disableWebviewInterceptors = data.disableInterceptors;
+  }
+});
 
 let isOAuthUrl;
 try {
@@ -343,7 +349,7 @@ function getElementSelectorSnippet(el) {
 
 // ── UNIVERSAL LINK, DEAD CLICK & TAB OPENER INTERCEPTOR ──────────────────────
 document.addEventListener('click', (e) => {
-  if (typeof DISABLE_WEBVIEW_INTERCEPTORS !== 'undefined' && DISABLE_WEBVIEW_INTERCEPTORS) return;
+  if (typeof disableWebviewInterceptors !== 'undefined' && disableWebviewInterceptors) return;
   if (e.defaultPrevented || !e.target) return;
 
   const targetEl = e.target;
@@ -516,6 +522,9 @@ ipcRenderer.on('sync-smart-templates', (event, data) => {
         popupElement.setAttribute('data-theme', currentTheme);
       }
     }
+    if (typeof data.disableInterceptors === 'boolean') {
+      disableWebviewInterceptors = data.disableInterceptors;
+    }
     if (isInlinePopupOpen) {
       renderInlineItems();
       updatePopupPosition();
@@ -536,7 +545,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── REAL-TIME CLIPBOARD AUTO-CAPTURE (COPY & CUT) ─────────────────────────────
 function captureClipboardFromDOM() {
-  if (typeof DISABLE_WEBVIEW_INTERCEPTORS !== 'undefined' && DISABLE_WEBVIEW_INTERCEPTORS) return;
+  if (typeof disableWebviewInterceptors !== 'undefined' && disableWebviewInterceptors) return;
   setTimeout(async () => {
     try {
       let text = '';

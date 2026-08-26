@@ -600,6 +600,7 @@ function openSettings(defaultTab = 'stores') {
   }
   renderSettingsList();
   updateCacheSizeDisplay();
+  initWebviewInterceptorToggle();
   if (typeof renderSettingsAccountTab === 'function') {
     renderSettingsAccountTab();
   }
@@ -1218,6 +1219,56 @@ async function updateCacheSizeDisplay() {
   }
 }
 
+function initWebviewInterceptorToggle() {
+  const toggle = document.getElementById('toggle-webview-interceptors');
+  const badge = document.getElementById('badge-interceptor-status');
+  if (!toggle || !badge) return;
+
+  const isDisabled = (typeof isWebviewInterceptorsDisabled === 'function')
+    ? isWebviewInterceptorsDisabled()
+    : (localStorage.getItem('disable_webview_interceptors') === 'true');
+
+  toggle.checked = !isDisabled;
+  updateInterceptorBadge(badge, !isDisabled);
+
+  toggle.onchange = () => {
+    const isEnabled = toggle.checked;
+    const shouldDisable = !isEnabled;
+    if (typeof setWebviewInterceptorsDisabled === 'function') {
+      setWebviewInterceptorsDisabled(shouldDisable);
+    } else {
+      localStorage.setItem('disable_webview_interceptors', shouldDisable ? 'true' : 'false');
+    }
+    updateInterceptorBadge(badge, isEnabled);
+    if (typeof showToast === 'function') {
+      showToast(
+        isEnabled
+          ? 'Mode Pencegatan Link & Clipboard CS diaktifkan ✓'
+          : 'Mode Native Chromium (Testing) diaktifkan ✓',
+        isEnabled ? 'success' : 'info'
+      );
+    }
+  };
+}
+
+function updateInterceptorBadge(badgeEl, isEnabled) {
+  if (!badgeEl) return;
+  if (isEnabled) {
+    badgeEl.textContent = '🟢 Aktif (Mode CS)';
+    badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
+    badgeEl.style.color = '#10b981';
+    badgeEl.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+  } else {
+    badgeEl.textContent = '🔴 Testing Mode (Native Chromium)';
+    badgeEl.style.background = 'rgba(239, 68, 68, 0.15)';
+    badgeEl.style.color = '#f87171';
+    badgeEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+  }
+}
+
+window.initWebviewInterceptorToggle = initWebviewInterceptorToggle;
+window.updateInterceptorBadge = updateInterceptorBadge;
+
 function renderSettingsList() {
   const ordered = typeof getOrderedStores === 'function' ? getOrderedStores() : stores;
   if (ordered.length === 0) {
@@ -1682,6 +1733,7 @@ window.App.Modals = {
   closeSettings,
   renderSettingsAccountTab,
   renderSuperAdminPanel,
+  initWebviewInterceptorToggle,
   showOcrResultModal,
   closeOcrResultModal
 };

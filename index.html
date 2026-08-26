@@ -921,6 +921,31 @@
             </div>
           </div>
 
+          <!-- Card: Mode Mesin Webview & Link Interceptor (Testing / Native Chromium Mode) -->
+          <div class="settings-card" id="card-webview-interceptor-settings" style="border-color: rgba(223, 22, 131, 0.25); background: rgba(223, 22, 131, 0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 260px;">
+                <h4 style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                  Pencegatan Link & Auto-Capture Clipboard
+                  <span id="badge-interceptor-status" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; transition: all 0.2s;">...</span>
+                </h4>
+                <p class="settings-hint" style="margin: 0; line-height: 1.45;">
+                  <strong>ON (Mode CS):</strong> Klik link <code>target="_blank"</code> otomatis membuka tab dashboard baru dan teks copy dicatat ke riwayat smart template.<br>
+                  <strong>OFF (Testing Native Chromium):</strong> Webview berjalan murni tanpa manipulasi link/clipboard. <em>(Shortcut Ctrl+F & Quick Reply Ctrl+Space tetap aktif)</em>.
+                </p>
+              </div>
+              <label class="switch-toggle" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer;" title="Nyalakan / Matikan Pencegatan Link & Clipboard">
+                <input type="checkbox" id="toggle-webview-interceptors" style="opacity: 0; width: 0; height: 0;">
+                <span class="switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b5563; transition: .25s ease; border-radius: 24px;"></span>
+              </label>
+            </div>
+          </div>
+
           <div class="settings-card">
             <h4>1. Bersihkan Cache Aman (Global)</h4>
             <p class="settings-hint">Menghapus file temporary, cache gambar/stiker, dan shader GPU. <strong>Sesi login toko 100% aman (tidak logout)</strong>.</p>
