@@ -269,17 +269,18 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   // ── Clipboard & Media Utilities IPC ───────────────────────────────────────
-  ipcMain.handle('read-clipboard', () => {
+  ipcMain.handle('read-clipboard', async () => {
     try {
-      return clipboard.readText();
+      const text = await clipboard.readText();
+      return typeof text === 'string' ? text : '';
     } catch (e) {
       return '';
     }
   });
 
-  ipcMain.handle('write-clipboard', (event, text) => {
+  ipcMain.handle('write-clipboard', async (event, text) => {
     try {
-      clipboard.writeText(text || '');
+      await clipboard.writeText(text || '');
       return true;
     } catch (e) {
       return false;
@@ -386,7 +387,11 @@ function registerIpcHandlers(getMainWindow) {
 
   ipcMain.on('window-close', () => {
     const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : getMainWindow;
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    } else {
+      app.quit();
+    }
   });
 
   ipcMain.on('flash-frame', (event, flag) => {

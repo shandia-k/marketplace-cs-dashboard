@@ -34,7 +34,7 @@ describe('Level 4: IPC Channel Contracts & Handlers Tests', () => {
         return {
           ipcMain: mockIpcMain,
           app: { getPath: () => '' },
-          clipboard: { readText: () => '', writeText: () => {} }
+          clipboard: { readText: async () => '', writeText: async () => {} }
         };
       }
       if (mod === '../services/storage.service') {

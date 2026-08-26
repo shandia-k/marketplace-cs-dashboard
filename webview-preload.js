@@ -12,6 +12,13 @@
  */
 const { ipcRenderer } = require('electron');
 const crypto = require('crypto');
+
+// ── MASTER TESTING SWITCH ────────────────────────────────────────────────────
+// Ubah ke `true` untuk menonaktifkan pencegatan klik link (target="_blank", tab baru)
+// dan auto-capture clipboard DOM selama testing.
+// Keyboard & Navigation (Ctrl+F, Alt+Left/Right, Zoom) & Quick Reply (Ctrl+Space) TETAP AKTIF.
+const DISABLE_WEBVIEW_INTERCEPTORS = true;
+
 let isOAuthUrl;
 try {
   const urlRules = require('./src/main/config/url-rules');
@@ -336,6 +343,7 @@ function getElementSelectorSnippet(el) {
 
 // ── UNIVERSAL LINK, DEAD CLICK & TAB OPENER INTERCEPTOR ──────────────────────
 document.addEventListener('click', (e) => {
+  if (typeof DISABLE_WEBVIEW_INTERCEPTORS !== 'undefined' && DISABLE_WEBVIEW_INTERCEPTORS) return;
   if (e.defaultPrevented || !e.target) return;
 
   const targetEl = e.target;
@@ -528,6 +536,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── REAL-TIME CLIPBOARD AUTO-CAPTURE (COPY & CUT) ─────────────────────────────
 function captureClipboardFromDOM() {
+  if (typeof DISABLE_WEBVIEW_INTERCEPTORS !== 'undefined' && DISABLE_WEBVIEW_INTERCEPTORS) return;
   setTimeout(async () => {
     try {
       let text = '';

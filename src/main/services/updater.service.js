@@ -126,8 +126,20 @@ function checkForUpdates(getMainWindow) {
 }
 
 function restartToUpdate() {
+  try {
+    const electron = require('electron');
+    if (electron.session?.defaultSession) {
+      try { electron.session.defaultSession.flushStorageData(); } catch (e) {}
+    }
+    const wins = electron.BrowserWindow ? electron.BrowserWindow.getAllWindows() : [];
+    wins.forEach(w => {
+      try {
+        if (!w.isDestroyed()) w.destroy();
+      } catch (e) { }
+    });
+  } catch (e) { }
   const autoUpdater = getAutoUpdater();
-  autoUpdater.quitAndInstall();
+  autoUpdater.quitAndInstall(false, true);
 }
 
 async function fetchReleaseHistory() {
@@ -325,7 +337,12 @@ async function executeRollback(targetVersion, downloadUrl, getMainWindow) {
       } catch (spawnErr) {
         console.error('Failed to spawn rollback installer:', spawnErr);
       }
-      setTimeout(() => app.quit(), 500);
+      setTimeout(() => {
+        try { app.quit(); } catch (e) {}
+        setTimeout(() => {
+          try { app.exit(0); } catch (e) { process.exit(0); }
+        }, 300).unref();
+      }, 500);
     }, 1200);
 
     return { success: true, installerPath, snapshot: snapshotRes };

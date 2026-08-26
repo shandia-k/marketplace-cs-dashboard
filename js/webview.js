@@ -207,9 +207,10 @@ function createWebview(store, tab, targetPane = 'left') {
   // Webview element — semua tab dalam 1 toko berbagi partition (1 sesi login) per user
   const actualPartition = getStorePartition(store);
   const isGoogleAuthUrl = tab.url && (tab.url.includes('accounts.google.com') || tab.url.includes('mail.google.com') || tab.url.includes('google.com/accounts'));
-  const cleanUa = isGoogleAuthUrl
-    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'
-    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+  const chromeVer = (typeof process !== 'undefined' && process?.versions?.chrome) ? process.versions.chrome : '144.0.0.0';
+  const defaultChromeUa = (typeof cleanChromeUserAgent !== 'undefined' && cleanChromeUserAgent) ? cleanChromeUserAgent : `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVer} Safari/537.36`;
+  const defaultFirefoxUa = (typeof cleanFirefoxUserAgent !== 'undefined' && cleanFirefoxUserAgent) ? cleanFirefoxUserAgent : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0';
+  const cleanUa = isGoogleAuthUrl ? defaultFirefoxUa : defaultChromeUa;
   const isTabActive = (targetPane === 'right') || (typeof activeStoreId !== 'undefined' && activeStoreId === store.id && activeTabMap[store.id] === tab.id);
   const wv = document.createElement('webview');
   wv.className = isTabActive ? 'store-webview visible' : 'store-webview';

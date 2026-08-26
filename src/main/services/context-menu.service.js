@@ -283,7 +283,16 @@ async function copyImage(contents, srcUrl, coords = {}, getMainWindow) {
     if (buffer) {
       const img = nativeImage.createFromBuffer(buffer);
       if (!img.isEmpty()) {
-        clipboard.writeImage(img);
+        const electron = require('electron');
+        if (typeof electron.ClipboardItem !== 'undefined' && typeof clipboard.write === 'function') {
+          try {
+            await clipboard.write([new electron.ClipboardItem({ 'image/png': img.toPNG() })]);
+          } catch (e) {
+            if (typeof clipboard.writeImage === 'function') clipboard.writeImage(img);
+          }
+        } else if (typeof clipboard.writeImage === 'function') {
+          clipboard.writeImage(img);
+        }
         notifyRenderer(getMainWindow, '✅ Gambar berhasil disalin ke clipboard!', 'success');
         return;
       }
@@ -299,10 +308,10 @@ async function copyImage(contents, srcUrl, coords = {}, getMainWindow) {
 /**
  * 4. Copy image address
  */
-function copyImageAddress(srcUrl, getMainWindow) {
+async function copyImageAddress(srcUrl, getMainWindow) {
   if (!srcUrl) return;
   try {
-    clipboard.writeText(srcUrl);
+    await clipboard.writeText(srcUrl);
     notifyRenderer(getMainWindow, '✅ Tautan gambar berhasil disalin!', 'success');
   } catch (e) {
     console.error('[Context Menu] Failed to copy image URL:', e);
@@ -332,7 +341,11 @@ async function copyTextFromImage(contents, srcUrl, coords = {}, getMainWindow) {
 
     if (cleanText.length > 0) {
       // Salin langsung ke clipboard
-      clipboard.writeText(cleanText);
+      try {
+        await clipboard.writeText(cleanText);
+      } catch (e) {
+        if (typeof clipboard.writeText === 'function') clipboard.writeText(cleanText);
+      }
       
       const charCount = cleanText.length;
       notifyRenderer(getMainWindow, `✅ Teks berhasil disalin dari gambar (${charCount} karakter)!`, 'success');

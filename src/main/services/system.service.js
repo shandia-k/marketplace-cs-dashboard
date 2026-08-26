@@ -319,12 +319,13 @@ async function sendTelemetry(data) {
 
 let lastClipboardText = '';
 function setupClipboardWatcher(getMainWindow) {
-  const checkClipboardNow = () => {
+  const checkClipboardNow = async () => {
     const mainWindow = typeof getMainWindow === 'function' ? getMainWindow() : getMainWindow;
     if (!mainWindow || mainWindow.isDestroyed()) return;
     if (!mainWindow.isFocused()) return;
     try {
-      const text = clipboard.readText()?.trim();
+      const raw = await clipboard.readText();
+      const text = typeof raw === 'string' ? raw.trim() : '';
       if (text && text !== lastClipboardText) {
         lastClipboardText = text;
         mainWindow.webContents.send('clipboard-changed', text);
@@ -333,6 +334,7 @@ function setupClipboardWatcher(getMainWindow) {
   };
 
   const intervalId = setInterval(checkClipboardNow, 350);
+  if (intervalId && typeof intervalId.unref === 'function') intervalId.unref();
   return {
     checkClipboardNow,
     intervalId

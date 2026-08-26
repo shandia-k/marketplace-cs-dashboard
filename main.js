@@ -54,12 +54,14 @@ function getMainWindow() {
 }
 
 // Flush data cookies & storage secara berkala ke disk (mencegah hilangnya cookie login)
-setInterval(sessionService.flushAllSessions, 30000);
+const flushInterval = setInterval(sessionService.flushAllSessions, 30000);
+if (flushInterval && typeof flushInterval.unref === 'function') flushInterval.unref();
 
 // Pangkas working set RAM secara otomatis setiap 45 detik untuk menjaga memori tetap ramping
-setInterval(() => {
+const pruneInterval = setInterval(() => {
   sessionService.pruneBackgroundMemory().catch(() => { });
 }, 45000);
+if (pruneInterval && typeof pruneInterval.unref === 'function') pruneInterval.unref();
 
 // Daftarkan seluruh IPC handler
 registerIpcHandlers(getMainWindow);
@@ -169,12 +171,29 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => {
-  sessionService.flushAllSessions();
+  try {
+    sessionService.flushAllSessions();
+  } catch (e) { }
+});
+
+app.on('will-quit', () => {
+  try {
+    sessionService.flushAllSessions();
+  } catch (e) { }
+  // Pastikan seluruh child process (GPU, Utility, Renderers, Crashpad) mati total (Zero Zombie Process)
+  setTimeout(() => {
+    try { app.exit(0); } catch (e) { process.exit(0); }
+  }, 400).unref();
 });
 
 app.on('window-all-closed', () => {
-  sessionService.flushAllSessions();
+  try {
+    sessionService.flushAllSessions();
+  } catch (e) { }
   if (process.platform !== 'darwin') {
     app.quit();
+    setTimeout(() => {
+      try { app.exit(0); } catch (e) { process.exit(0); }
+    }, 400).unref();
   }
 });

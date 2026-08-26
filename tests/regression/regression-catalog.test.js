@@ -753,7 +753,35 @@ mohon maaf atas kendalanya ya kak, kami sarankan ada beberapa langkah lain yang 
     assert.ok(networkCode.includes('MAX_CONSECUTIVE_FAILURES'), 'network.js must implement consecutive failure threshold to prevent flapping');
     assert.ok(networkCode.includes('probeEndpoint'), 'network.js must encapsulate probe logic per endpoint');
   });
+
+  test('[REG-036] Electron 44 Runtime & W3C Clipboard Architecture Modernization', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
+    const systemServiceCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/system.service.js'), 'utf8');
+    const contextMenuCode = fs.readFileSync(path.join(__dirname, '../../src/main/services/context-menu.service.js'), 'utf8');
+    const registerIpcCode = fs.readFileSync(path.join(__dirname, '../../src/main/ipc/register-ipc.js'), 'utf8');
+    const webviewCode = fs.readFileSync(path.join(__dirname, '../../js/webview.js'), 'utf8');
+
+    // 1. Verifikasi package.json devDependencies
+    assert.ok(pkg.devDependencies.electron.includes('44.'), 'package.json must target Electron 44');
+    assert.ok(pkg.devDependencies['electron-builder'].includes('26.'), 'package.json must target modern electron-builder');
+
+    // 2. Verifikasi setupClipboardWatcher bersifat async-safe (await clipboard.readText())
+    assert.ok(systemServiceCode.includes('const checkClipboardNow = async () =>'), 'checkClipboardNow must be async');
+    assert.ok(systemServiceCode.includes('await clipboard.readText()'), 'system.service.js must await clipboard.readText()');
+
+    // 3. Verifikasi context-menu.service.js mendukung W3C ClipboardItem dan async writeText
+    assert.ok(contextMenuCode.includes('ClipboardItem'), 'context-menu.service.js must support W3C ClipboardItem');
+    assert.ok(contextMenuCode.includes('await clipboard.writeText(cleanText)'), 'context-menu.service.js must await clipboard.writeText');
+
+    // 4. Verifikasi register-ipc.js mengekspos async read/write clipboard
+    assert.ok(registerIpcCode.includes("ipcMain.handle('read-clipboard', async () =>"), 'read-clipboard IPC handler must be async');
+    assert.ok(registerIpcCode.includes("ipcMain.handle('write-clipboard', async (event, text) =>"), 'write-clipboard IPC handler must be async');
+
+    // 5. Verifikasi webview.js menyelaraskan User-Agent dinamis
+    assert.ok(webviewCode.includes('defaultChromeUa'), 'webview.js must declare dynamic defaultChromeUa');
+  });
 });
+
 
 
 
