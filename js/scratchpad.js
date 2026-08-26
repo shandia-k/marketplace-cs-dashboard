@@ -412,7 +412,16 @@ btnSpSearchClose?.addEventListener('click', closeScratchpadSearch);
 btnSpSearchNext?.addEventListener('click', () => executeScratchpadSearch('next'));
 btnSpSearchPrev?.addEventListener('click', () => executeScratchpadSearch('prev'));
 
-spSearchInput?.addEventListener('input', () => executeScratchpadSearch('current'));
+// Local debounce fallback for safety
+const spDebounce = window.debounce || function (func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+};
+
+spSearchInput?.addEventListener('input', spDebounce(() => executeScratchpadSearch('current'), 180));
 
 spSearchInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -435,15 +444,24 @@ spSearchInput?.addEventListener('keydown', (e) => {
 });
 
 // Update current tab content on input & refresh search if open
+const debouncedSaveAndSearch = spDebounce(() => {
+  saveScratchpadState();
+  if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
+    executeScratchpadSearch('current');
+  }
+}, 180);
+
 spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveAndSearch();
   }
-  if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
-    executeScratchpadSearch('current');
-  }
+});
+
+// Ensure any pending debounced saves are flushed before the window unloads
+window.addEventListener('beforeunload', () => {
+  saveScratchpadState();
 });
 
 // Shortcut Ctrl+F / Cmd+F langsung di textarea Scratchpad
