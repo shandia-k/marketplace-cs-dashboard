@@ -44,10 +44,25 @@ function loadScratchpadState() {
   }
 }
 
+const spLocalDebounce = window.debounce || function (func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+};
+
 function saveScratchpadState() {
   Storage.set('scratchpadTabs', scratchpadTabs);
   Storage.set('activeScratchpadTabId', activeScratchpadTabId);
 }
+
+const debouncedSaveScratchpadState = spLocalDebounce(saveScratchpadState, 300);
+
+window.addEventListener('beforeunload', () => {
+  saveScratchpadState();
+});
 
 loadScratchpadState();
 
@@ -412,7 +427,7 @@ btnSpSearchClose?.addEventListener('click', closeScratchpadSearch);
 btnSpSearchNext?.addEventListener('click', () => executeScratchpadSearch('next'));
 btnSpSearchPrev?.addEventListener('click', () => executeScratchpadSearch('prev'));
 
-spSearchInput?.addEventListener('input', () => executeScratchpadSearch('current'));
+spSearchInput?.addEventListener('input', spLocalDebounce(() => executeScratchpadSearch('current'), 180));
 
 spSearchInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -439,7 +454,7 @@ spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
     executeScratchpadSearch('current');
