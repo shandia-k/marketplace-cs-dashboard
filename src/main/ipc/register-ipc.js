@@ -60,6 +60,13 @@ function registerIpcHandlers(getMainWindow) {
 
   // ── Store Management IPC ───────────────────────────────────────────────────
   ipcMain.handle('get-stores', (event, username) => {
+    const cleanUsername = String(username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    // Proteksi IDOR: CS hanya boleh membaca file toko miliknya sendiri (atau Super Admin)
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized getStores attempt by "${currentActiveSession?.username || 'unauthenticated'}" for user "${cleanUsername}"`);
+      return [];
+    }
     return storageService.readStores(username);
   });
 
@@ -67,8 +74,8 @@ function registerIpcHandlers(getMainWindow) {
     const cleanUsername = String(username || '').trim();
     const currentActiveSession = authService.getActiveSession();
     // Proteksi IDOR: CS hanya boleh menyimpan file toko miliknya sendiri (atau Super Admin)
-    if (currentActiveSession && !currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
-      console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession.username}" for user "${cleanUsername}"`);
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession?.username || 'unauthenticated'}" for user "${cleanUsername}"`);
       return false;
     }
     return storageService.saveStores(stores, username);
