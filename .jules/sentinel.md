@@ -1,0 +1,4 @@
+## 2024-05-24 - [IDOR Vulnerability in IPC Handlers]
+**Vulnerability:** The `get-stores` and `save-stores` IPC handlers lacked fail-closed authorization checks, allowing potential Insecure Direct Object Reference (IDOR) attacks if `currentActiveSession` was null or missing. The original logic only blocked requests if a session existed but was unauthorized, failing to reject unauthenticated requests entirely.
+**Learning:** Always implement fail-closed authorization logic, particularly in sensitive IPC handlers exposing internal data or state. Do not assume authentication state is guaranteed; always explicitly check for its presence before proceeding.
+**Prevention:** Ensure that all handlers require explicit session validation by checking `if (!currentActiveSession) return null/false;` as a baseline check. Avoid fail-open scenarios where missing sessions bypass security conditions.
