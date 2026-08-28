@@ -60,14 +60,29 @@ function registerIpcHandlers(getMainWindow) {
 
   // ── Store Management IPC ───────────────────────────────────────────────────
   ipcMain.handle('get-stores', (event, username) => {
+    const cleanUsername = String(username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    // Proteksi IDOR: fail-closed logic
+    if (!currentActiveSession) {
+      console.warn(`[Security Warning] Blocked unauthenticated getStores attempt for user "${cleanUsername}"`);
+      return null;
+    }
+    if (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
+      console.warn(`[Security Warning] Blocked unauthorized getStores attempt by "${currentActiveSession.username}" for user "${cleanUsername}"`);
+      return null;
+    }
     return storageService.readStores(username);
   });
 
   ipcMain.handle('save-stores', (event, stores, username) => {
     const cleanUsername = String(username || '').trim();
     const currentActiveSession = authService.getActiveSession();
-    // Proteksi IDOR: CS hanya boleh menyimpan file toko miliknya sendiri (atau Super Admin)
-    if (currentActiveSession && !currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
+    // Proteksi IDOR: fail-closed logic
+    if (!currentActiveSession) {
+      console.warn(`[Security Warning] Blocked unauthenticated saveStores attempt for user "${cleanUsername}"`);
+      return false;
+    }
+    if (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
       console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession.username}" for user "${cleanUsername}"`);
       return false;
     }
