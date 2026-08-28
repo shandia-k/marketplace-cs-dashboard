@@ -1,0 +1,3 @@
+## 2024-05-24 - Debouncing Synchronous I/O in UI Event Listeners
+**Learning:** Calling synchronous I/O operations (like `localStorage.setItem` combined with `JSON.stringify`) directly inside high-frequency UI events like `input` blocks the main thread, causing UI thrashing and poor typing performance. This is especially true in Vanilla JS where changes directly impact the DOM without Virtual DOM diffing.
+**Action:** When capturing UI state, read the DOM immediately, but debounce the expensive I/O operations (like saving to localStorage). Always accompany the debounce with a synchronous `beforeunload` event listener on `window` to flush pending state before the app closes to prevent data loss.
