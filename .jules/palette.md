@@ -1,0 +1,3 @@
+## 2024-08-28 - ARIA Labels on Dynamically Rendered Icon-Only Buttons
+**Learning:** Icon-only buttons rendered dynamically via template literals (like in `js/modal.js`'s `renderStoresList`) are often missed by standard static analysis tools. They need explicit `aria-label`s and `aria-hidden="true"` & `focusable="false"` on their inner `<svg>`s to ensure accessibility.
+**Action:** When adding or updating dynamically generated UI components, always ensure that any icon-only buttons include an `aria-label` that corresponds to its title/purpose, and that the inner SVGs are hidden from screen readers.
