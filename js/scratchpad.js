@@ -434,12 +434,33 @@ spSearchInput?.addEventListener('keydown', (e) => {
   }
 });
 
+const localDebounce = window.debounce || function(func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+};
+
+const debouncedSaveScratchpadState = localDebounce(() => {
+  saveScratchpadState();
+}, 500); // 500ms debounce for saving to localStorage
+
+// Ensure pending saves are flushed before closing
+window.addEventListener('beforeunload', () => {
+  if (scratchpadTabs && scratchpadTabs.length > 0) {
+    saveScratchpadState();
+  }
+});
+
 // Update current tab content on input & refresh search if open
 spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
+    // Read DOM immediately, debounce the expensive I/O operation
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
     executeScratchpadSearch('current');
