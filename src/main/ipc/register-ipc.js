@@ -92,6 +92,14 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('get-user-profile', (event, username) => {
+    const session = authService.getActiveSession();
+    if (!session) {
+      return { success: false, error: 'Unauthorized: No active session' };
+    }
+    // Only allow users to view their own profile unless they are Super Admin
+    if (!session.isSuperAdmin && session.username !== username) {
+      return { success: false, error: 'Unauthorized: Cannot access other user profiles' };
+    }
     return authService.getUserProfile(username);
   });
 
@@ -100,6 +108,14 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('update-user-profile', (event, data) => {
+    const session = authService.getActiveSession();
+    if (!session) {
+      return { success: false, error: 'Unauthorized: No active session' };
+    }
+    // Only allow users to update their own profile unless they are Super Admin
+    if (!session.isSuperAdmin && session.username !== data.username) {
+      return { success: false, error: 'Unauthorized: Cannot update other user profiles' };
+    }
     return authService.updateUserProfile(data);
   });
 
