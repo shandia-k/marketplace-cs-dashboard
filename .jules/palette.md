@@ -1,0 +1,3 @@
+## 2024-05-24 - Missing ARIA Labels on Icon-Only Buttons
+**Learning:** Icon-only buttons with the `.btn-icon` class often miss accessibility attributes like `aria-label`, leaving screen readers unable to announce their purpose. Additionally, the inner `<svg>` elements should be hidden from screen readers using `aria-hidden="true"` and `focusable="false"`.
+**Action:** Always ensure that icon-only buttons have a descriptive `aria-label` attribute, and their child `<svg>` elements include `aria-hidden="true"` and `focusable="false"` to prevent redundant or confusing announcements by screen readers.
