@@ -60,15 +60,21 @@ function registerIpcHandlers(getMainWindow) {
 
   // ── Store Management IPC ───────────────────────────────────────────────────
   ipcMain.handle('get-stores', (event, username) => {
+    const cleanUsername = String(username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized getStores attempt for user "${cleanUsername}"`);
+      return [];
+    }
     return storageService.readStores(username);
   });
 
   ipcMain.handle('save-stores', (event, stores, username) => {
     const cleanUsername = String(username || '').trim();
     const currentActiveSession = authService.getActiveSession();
-    // Proteksi IDOR: CS hanya boleh menyimpan file toko miliknya sendiri (atau Super Admin)
-    if (currentActiveSession && !currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase()) {
-      console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession.username}" for user "${cleanUsername}"`);
+    // Proteksi IDOR: Fail-closed unauthenticated and unauthorized access
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized saveStores attempt by "${currentActiveSession ? currentActiveSession.username : 'unauthenticated'}" for user "${cleanUsername}"`);
       return false;
     }
     return storageService.saveStores(stores, username);
@@ -92,6 +98,12 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('get-user-profile', (event, username) => {
+    const cleanUsername = String(username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized getUserProfile attempt for user "${cleanUsername}"`);
+      return { success: false, error: 'Unauthorized access' };
+    }
     return authService.getUserProfile(username);
   });
 
@@ -100,6 +112,12 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('update-user-profile', (event, data) => {
+    const cleanUsername = String(data?.username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized updateUserProfile attempt for user "${cleanUsername}"`);
+      return { success: false, error: 'Unauthorized access' };
+    }
     return authService.updateUserProfile(data);
   });
 
