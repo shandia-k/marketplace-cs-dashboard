@@ -49,6 +49,22 @@ function saveScratchpadState() {
   Storage.set('activeScratchpadTabId', activeScratchpadTabId);
 }
 
+const localDebounce = window.debounce || function (func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+};
+
+const debouncedSaveScratchpadState = localDebounce(saveScratchpadState, 300);
+
+// Ensure pending saves are flushed before user exits
+window.addEventListener('beforeunload', () => {
+  saveScratchpadState();
+});
+
 loadScratchpadState();
 
 function renderScratchpadTabs() {
@@ -439,7 +455,7 @@ spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
     executeScratchpadSearch('current');
