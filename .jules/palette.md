@@ -1,0 +1,3 @@
+## 2024-06-25 - [Add missing aria-labels and SVG accessibility to icon-only buttons]
+**Learning:** Found multiple icon-only buttons with `title` attributes that lacked corresponding `aria-label`s. Also, the SVG icons within these buttons often lacked `aria-hidden="true"` and `focusable="false"`. Screen readers need `aria-label` on icon-only buttons, and the SVGs themselves should be hidden to avoid redundant or confusing announcements.
+**Action:** When adding accessibility to icon-only buttons, ensure both `aria-label` is set (matching the tooltip `title` if appropriate) and that inner decorative `<svg>` elements explicitly include `aria-hidden="true"` and `focusable="false"`.

@@ -1798,7 +1798,7 @@ const OnboardingManager = {
       welcomeOverlay.innerHTML = `
         <div class="onboarding-welcome-modal" role="dialog" aria-labelledby="onboarding-welcome-title" aria-modal="true">
           <button class="onboarding-welcome-close-top" id="btn-onboarding-welcome-x" onclick="if (window.OnboardingManager) { window.OnboardingManager.closeWelcomeModal(); } else { document.getElementById('onboarding-welcome-modal-overlay')?.classList.remove('active'); }" title="Tutup Modal (Esc)" aria-label="Tutup">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
 
           <div class="onboarding-welcome-hero">
@@ -1829,13 +1829,13 @@ const OnboardingManager = {
             </div>
             <div class="onboarding-version-carousel-bar">
               <button class="onboarding-carousel-nav-btn" id="btn-ver-carousel-prev" title="Versi Lebih Baru (Geser Kiri)" aria-label="Versi Lebih Baru">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <div class="onboarding-version-pills-track" id="onboarding-version-pills-track" role="tablist" aria-label="Daftar Versi">
                 <!-- Populated dynamically by renderVersionPills() -->
               </div>
               <button class="onboarding-carousel-nav-btn" id="btn-ver-carousel-next" title="Versi Lebih Lama (Geser Kanan)" aria-label="Versi Lebih Lama">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
           </div>
@@ -1852,7 +1852,7 @@ const OnboardingManager = {
             <div class="onboarding-welcome-footer-right">
               <button class="btn-secondary" id="btn-onboarding-welcome-close" onclick="if (window.OnboardingManager) { window.OnboardingManager.closeWelcomeModal(); } else { document.getElementById('onboarding-welcome-modal-overlay')?.classList.remove('active'); }">Tutup & Eksplorasi</button>
               <button class="btn-primary" id="btn-onboarding-start-tour">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Mulai Tur Panduan 🎯
               </button>
             </div>
@@ -1915,8 +1915,8 @@ const OnboardingManager = {
         <div class="onboarding-tour-popover" id="onboarding-tour-popover" role="dialog" aria-modal="true">
           <div class="onboarding-tour-popover-header">
             <span class="onboarding-tour-step-badge" id="onboarding-tour-step-badge">Langkah 1/5</span>
-            <button class="onboarding-tour-close-btn" id="btn-onboarding-tour-close" title="Tutup Tur (Esc)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <button class="onboarding-tour-close-btn" id="btn-onboarding-tour-close" title="Tutup Tur (Esc)" aria-label="Tutup Tur (Esc)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
           <h3 class="onboarding-tour-title" id="onboarding-tour-title">Judul Langkah</h3>
@@ -2585,9 +2585,9 @@ const OnboardingManager = {
     tb.style.display = 'flex';
     tb.innerHTML = `
       <div class="tab-nav-controls">
-        <button class="tab-nav-btn" title="Kembali (Alt+←)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></button>
-        <button class="tab-nav-btn" title="Maju (Alt+→)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
-        <button class="tab-nav-btn" title="Refresh (F5)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+        <button class="tab-nav-btn" title="Kembali (Alt+←)" aria-label="Kembali (Alt+←)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></button>
+        <button class="tab-nav-btn" title="Maju (Alt+→)" aria-label="Maju (Alt+→)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button class="tab-nav-btn" title="Refresh (F5)" aria-label="Refresh (F5)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
       </div>
       <div class="tab-nav-separator"></div>
       <div class="tab-item active" title="Tab Chat Aktif">
@@ -2602,8 +2602,8 @@ const OnboardingManager = {
         <div class="tab-favicon-mini" style="background:#f5521d; color:#fff;">SP</div>
         <span class="tab-title">Daftar Produk</span>
       </div>
-      <button class="tab-add-btn" id="btn-add-tab" title="Tambah Tab Baru (+)">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <button class="tab-add-btn" id="btn-add-tab" title="Tambah Tab Baru (+)" aria-label="Tambah Tab Baru (+)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg>
       </button>
       <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; padding-right: 8px;">
         <span style="font-size: 10.5px; font-weight: 600; color: #df1683; background: rgba(223, 22, 131, 0.12); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(223, 22, 131, 0.25);">🎯 Simulasi Multi-Tab</span>
@@ -2889,7 +2889,7 @@ const OnboardingManager = {
         </div>
         <div class="onboarding-checklist-header-controls">
           <button class="onboarding-checklist-btn-ctrl" title="${state.checklistCollapsed ? 'Perluas' : 'Kecilkan'}" onclick="event.stopPropagation(); OnboardingManager.toggleChecklistCollapse();">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="${state.checklistCollapsed ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><path d="${state.checklistCollapsed ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>
           </button>
         </div>
       </div>
@@ -2934,7 +2934,7 @@ const OnboardingManager = {
       <div class="onboarding-checklist-footer">
         <div style="display: flex; gap: 4px; align-items: center;">
           <button class="btn-icon-text" style="padding: 2px 6px; font-size: 11px; color: var(--text-secondary);" onclick="OnboardingManager.startTour()">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" focusable="false"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Tur Ulang
           </button>
           <button class="btn-icon-text" style="padding: 2px 6px; font-size: 11px; color: var(--text-muted); opacity: 0.7;" title="Tombol Rahasia: Reset Checklist Tugas" onclick="OnboardingManager.resetChecklistTasks()">
