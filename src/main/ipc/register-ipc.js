@@ -92,6 +92,11 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('get-user-profile', (event, username) => {
+    const session = authService.getActiveSession();
+    if (!session || (!session.isSuperAdmin && session.username.toLowerCase() !== String(username || '').trim().toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized get-user-profile attempt by "${session?.username || 'anonymous'}" for user "${username}"`);
+      return { success: false, error: 'Unauthorized' };
+    }
     return authService.getUserProfile(username);
   });
 
@@ -100,6 +105,12 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('update-user-profile', (event, data) => {
+    const session = authService.getActiveSession();
+    const targetUsername = data && data.username ? data.username : '';
+    if (!session || (!session.isSuperAdmin && session.username.toLowerCase() !== String(targetUsername).trim().toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized update-user-profile attempt by "${session?.username || 'anonymous'}" for user "${targetUsername}"`);
+      return { success: false, error: 'Unauthorized' };
+    }
     return authService.updateUserProfile(data);
   });
 
