@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility improvements for icon-only buttons
+**Learning:** Found several icon-only `<button>` elements that used `title` but lacked an `aria-label`. Moreover, inner `<svg>` elements did not have `aria-hidden="true"` and `focusable="false"`. Adding these increases accessibility for screen readers. However, care was needed to avoid overwriting dynamically updated aria-labels or text.
+**Action:** Applied `aria-label` equal to `title` for static icon buttons, and added `aria-hidden="true"` and `focusable="false"` to the inner SVG tags to ensure the best screen reader experience.
