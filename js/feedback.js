@@ -211,8 +211,8 @@ function renderFeedbackThumbnails() {
         <img src="${img.base64}" class="feedback-thumb-preview" alt="${tag}" title="Klik untuk melihat perbesaran" onclick="previewFeedbackImageBase64('${img.base64}', '${tag}')">
         <div class="feedback-thumb-footer">
           <span class="feedback-thumb-tag" title="Klik untuk menyisipkan tag ${tag}" onclick="insertTagToFeedbackTextarea('${tag}')">${tag}</span>
-          <button type="button" class="btn-thumb-remove" title="Hapus gambar ini" onclick="removeFeedbackImage('${img.id}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <button type="button" class="btn-thumb-remove" title="Hapus gambar ini" onclick="removeFeedbackImage('${img.id}')" aria-label="Hapus gambar ini">
+            <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
