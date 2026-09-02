@@ -434,15 +434,44 @@ spSearchInput?.addEventListener('keydown', (e) => {
   }
 });
 
+const localDebounce = window.debounce || function(func, wait = 180) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+};
+
+let spPendingSave = false;
+
+const debouncedSaveScratchpadState = localDebounce(() => {
+  saveScratchpadState();
+  spPendingSave = false;
+}, 300);
+
+const debouncedExecuteScratchpadSearch = localDebounce(() => {
+  executeScratchpadSearch('current');
+}, 300);
+
 // Update current tab content on input & refresh search if open
 spTextarea?.addEventListener('input', () => {
   const currentTab = scratchpadTabs.find(t => t.id === activeScratchpadTabId);
   if (currentTab) {
     currentTab.content = spTextarea.value;
-    saveScratchpadState();
+    spPendingSave = true;
+    debouncedSaveScratchpadState();
   }
   if (spSearchBar && spSearchBar.style.display !== 'none' && spSearchInput?.value.trim()) {
-    executeScratchpadSearch('current');
+    debouncedExecuteScratchpadSearch();
+  }
+});
+
+// Flush pending saves before unload to prevent data loss
+window.addEventListener('beforeunload', () => {
+  if (spPendingSave) {
+    saveScratchpadState();
+    spPendingSave = false;
   }
 });
 
