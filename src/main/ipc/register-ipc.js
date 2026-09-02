@@ -92,6 +92,11 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('get-user-profile', (event, username) => {
+    const currentActiveSession = authService.getActiveSession();
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username !== username)) {
+      console.warn(`[Security Warning] Blocked unauthorized get-user-profile attempt by "${currentActiveSession?.username}" for user "${username}"`);
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk melihat profil ini.' };
+    }
     return authService.getUserProfile(username);
   });
 
@@ -100,6 +105,12 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('update-user-profile', (event, data) => {
+    const currentActiveSession = authService.getActiveSession();
+    const targetUsername = data?.username;
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username !== targetUsername)) {
+      console.warn(`[Security Warning] Blocked unauthorized update-user-profile attempt by "${currentActiveSession?.username}" for user "${targetUsername}"`);
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk mengubah profil ini.' };
+    }
     return authService.updateUserProfile(data);
   });
 
