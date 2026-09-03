@@ -892,8 +892,8 @@
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="settings-cache-badge" id="settings-cache-size-badge" style="font-size: 13px; padding: 4px 12px;">...</span>
-                <button class="btn-icon" id="btn-refresh-cache-size" title="Hitung Ulang Ukuran Cache">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="btn-icon" id="btn-refresh-cache-size" title="Hitung Ulang Ukuran Cache" aria-label="Hitung Ulang Ukuran Cache">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                   </svg>
                 </button>
@@ -1068,8 +1068,8 @@
           <!-- Audit List Section -->
           <div class="superadmin-section-header">
             <h4>Daftar Pengguna, Toko & Audit Sesi Aktif</h4>
-            <button class="btn-icon" id="btn-superadmin-refresh" title="Muat Ulang Data Audit">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <button class="btn-icon" id="btn-superadmin-refresh" title="Muat Ulang Data Audit" aria-label="Muat Ulang Data Audit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             </button>
           </div>
 
@@ -1326,8 +1326,8 @@
                 <div class="feedback-reply-input-wrap">
                   <textarea id="feedback-reply-text" rows="2" placeholder="Ketik balasan ke developer... (tekan Ctrl+V untuk menempelkan screenshot)"></textarea>
                   <div class="feedback-reply-actions">
-                    <button type="button" class="btn-icon-reply" id="btn-reply-attach-img" title="Lampirkan Gambar">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <button type="button" class="btn-icon-reply" id="btn-reply-attach-img" title="Lampirkan Gambar" aria-label="Lampirkan Gambar">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     </button>
                     <input type="file" id="feedback-reply-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display: none;">
                     <button type="button" class="btn-primary btn-reply-send" id="btn-send-ticket-reply" onclick="submitTicketReply()">
@@ -1835,13 +1835,13 @@
       </div>
       <div class="qr-clip-input-wrapper">
         <input type="text" id="qr-clipboard-input" placeholder="Salin nomor order/resi di sini...">
-        <button id="btn-qr-history-clip" title="Pilih dari Riwayat Clipboard" class="btn-icon">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <button id="btn-qr-history-clip" title="Pilih dari Riwayat Clipboard" aria-label="Pilih dari Riwayat Clipboard" class="btn-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </button>
-        <button id="btn-qr-refresh-clip" title="Refresh dari Clipboard" class="btn-icon">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <button id="btn-qr-refresh-clip" title="Refresh dari Clipboard" aria-label="Refresh dari Clipboard" class="btn-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
           </svg>
         </button>
