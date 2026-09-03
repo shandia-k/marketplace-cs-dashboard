@@ -92,6 +92,13 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('get-user-profile', (event, username) => {
+    const cleanUsername = String(username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    // Proteksi IDOR: CS hanya boleh melihat profile miliknya sendiri (atau Super Admin)
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized get-user-profile attempt for user "${cleanUsername}"`);
+      return { success: false, error: 'Akses ditolak' };
+    }
     return authService.getUserProfile(username);
   });
 
@@ -100,6 +107,13 @@ function registerIpcHandlers(getMainWindow) {
   });
 
   ipcMain.handle('update-user-profile', (event, data) => {
+    const cleanUsername = String(data.username || '').trim();
+    const currentActiveSession = authService.getActiveSession();
+    // Proteksi IDOR: CS hanya boleh update profile miliknya sendiri (atau Super Admin)
+    if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username.toLowerCase() !== cleanUsername.toLowerCase())) {
+      console.warn(`[Security Warning] Blocked unauthorized update-user-profile attempt for user "${cleanUsername}"`);
+      return { success: false, error: 'Akses ditolak' };
+    }
     return authService.updateUserProfile(data);
   });
 

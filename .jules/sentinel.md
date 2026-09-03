@@ -1,0 +1,4 @@
+## 2024-05-15 - Missing Authorization Checks in User Profile IPC Handlers
+**Vulnerability:** The `get-user-profile` and `update-user-profile` IPC handlers lack session-based authorization checks, leading to Insecure Direct Object References (IDOR). An authenticated user could potentially view or update the profile of any other user simply by providing a different username to the IPC handler, bypassing standard access controls.
+**Learning:** All user management IPC handlers must enforce fail-closed authorization checks based on the currently active session to ensure users can only access their own profiles or require Super Admin privileges.
+**Prevention:** Consistently use `authService.getActiveSession()` in IPC handlers and implement explicit fail-closed logic (`if (!currentActiveSession || (!currentActiveSession.isSuperAdmin && currentActiveSession.username !== requestedUsername))`) to validate access before fulfilling requests.
